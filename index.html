@@ -1,0 +1,2116 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Port Start — Local service supervisor</title>
+  <meta name="description" content="A self-contained UI prototype for Port Start, the on-demand local development service supervisor.">
+  <meta property="og:title" content="Port Start">
+  <meta property="og:description" content="Stable ports. Quiet processes. Ready on demand.">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="/og.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Port Start">
+  <meta name="twitter:description" content="Stable ports. Quiet processes. Ready on demand.">
+  <meta name="twitter:image" content="/og.png">
+  <script>
+    (() => {
+      const saved = localStorage.getItem("port-start-theme");
+      const preferred = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+      document.documentElement.dataset.theme = saved || preferred;
+    })();
+  </script>
+  <style>
+    :root {
+      --bg: #f4f6f8;
+      --sidebar: #eef1f3;
+      --panel: #ffffff;
+      --panel-raised: #ffffff;
+      --panel-muted: #f6f8f9;
+      --line: #dce1e5;
+      --line-strong: #c7ced4;
+      --text: #182126;
+      --muted: #667179;
+      --faint: #89939a;
+      --accent: #2764ff;
+      --accent-hover: #1d4fd1;
+      --accent-soft: #e9efff;
+      --teal: #12826b;
+      --teal-soft: #e3f5ef;
+      --amber: #a65f00;
+      --amber-soft: #fff2d5;
+      --red: #bd3348;
+      --red-soft: #fde9ec;
+      --violet: #6b4bd1;
+      --violet-soft: #f0ebff;
+      --shadow: 0 1px 2px rgba(25, 34, 39, .04), 0 12px 32px rgba(25, 34, 39, .06);
+      --shadow-lg: 0 28px 80px rgba(23, 33, 38, .18);
+      --radius: 14px;
+      --radius-sm: 9px;
+      --mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      --sans: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    html[data-theme="dark"] {
+      --bg: #101416;
+      --sidebar: #151a1d;
+      --panel: #191f22;
+      --panel-raised: #1e2529;
+      --panel-muted: #14191c;
+      --line: #2c3438;
+      --line-strong: #3c464b;
+      --text: #edf1f2;
+      --muted: #9aa5aa;
+      --faint: #748086;
+      --accent: #7298ff;
+      --accent-hover: #91adff;
+      --accent-soft: #1d2d52;
+      --teal: #58c8aa;
+      --teal-soft: #18362f;
+      --amber: #efb24c;
+      --amber-soft: #382b15;
+      --red: #ff7889;
+      --red-soft: #3c2026;
+      --violet: #ab8df3;
+      --violet-soft: #2d2546;
+      --shadow: 0 1px 2px rgba(0, 0, 0, .2), 0 16px 40px rgba(0, 0, 0, .16);
+      --shadow-lg: 0 30px 90px rgba(0, 0, 0, .5);
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      min-width: 320px;
+      min-height: 100vh;
+      overflow-x: hidden;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      font-size: 14px;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    button, input, select { font: inherit; }
+    button { color: inherit; }
+    button, a { -webkit-tap-highlight-color: transparent; }
+    button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible {
+      outline: 3px solid color-mix(in srgb, var(--accent) 30%, transparent);
+      outline-offset: 2px;
+    }
+    button[disabled] { opacity: .48; cursor: not-allowed; }
+    a { color: inherit; }
+    .hidden { display: none !important; }
+    .mono { font-family: var(--mono); }
+    .muted { color: var(--muted); }
+    .faint { color: var(--faint); }
+
+    .app-shell {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 236px minmax(0, 1fr);
+    }
+
+    .sidebar {
+      position: fixed;
+      inset: 0 auto 0 0;
+      z-index: 30;
+      width: 236px;
+      display: flex;
+      flex-direction: column;
+      border-right: 1px solid var(--line);
+      background: var(--sidebar);
+      padding: 20px 14px 14px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      padding: 2px 8px 20px;
+      font-weight: 720;
+      letter-spacing: -.02em;
+      font-size: 16px;
+    }
+
+    .brand-mark {
+      position: relative;
+      width: 30px;
+      height: 30px;
+      flex: 0 0 auto;
+      overflow: hidden;
+      border-radius: 9px;
+      background: var(--text);
+    }
+    .brand-mark::before {
+      content: "";
+      position: absolute;
+      width: 12px;
+      height: 12px;
+      left: 6px;
+      top: 6px;
+      border: 2px solid var(--bg);
+      border-radius: 50%;
+    }
+    .brand-mark::after {
+      content: "";
+      position: absolute;
+      width: 10px;
+      height: 2px;
+      right: 4px;
+      bottom: 7px;
+      background: var(--bg);
+      box-shadow: 0 -5px 0 var(--bg);
+      border-radius: 9px;
+    }
+
+    .nav-label {
+      padding: 11px 10px 6px;
+      color: var(--faint);
+      font-size: 10px;
+      font-weight: 760;
+      text-transform: uppercase;
+      letter-spacing: .13em;
+    }
+
+    .nav-list {
+      display: grid;
+      gap: 3px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .nav-button {
+      width: 100%;
+      min-height: 39px;
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      padding: 0 10px;
+      border: 0;
+      border-radius: 9px;
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      text-align: left;
+      font-weight: 600;
+      transition: background .16s ease, color .16s ease;
+    }
+    .nav-button:hover { color: var(--text); background: color-mix(in srgb, var(--panel) 62%, transparent); }
+    .nav-button.active { color: var(--text); background: var(--panel); box-shadow: 0 1px 2px rgba(0, 0, 0, .04); }
+
+    .nav-icon {
+      width: 18px;
+      height: 18px;
+      display: grid;
+      place-items: center;
+      border: 1.5px solid currentColor;
+      border-radius: 5px;
+      font-size: 9px;
+      font-weight: 800;
+      line-height: 1;
+    }
+    .nav-icon.round { border-radius: 50%; }
+    .nav-icon.lines {
+      border: 0;
+      border-radius: 0;
+      background: linear-gradient(currentColor 0 0) 1px 3px/16px 1.5px no-repeat,
+                  linear-gradient(currentColor 0 0) 1px 8px/11px 1.5px no-repeat,
+                  linear-gradient(currentColor 0 0) 1px 13px/14px 1.5px no-repeat;
+    }
+
+    .sidebar-spacer { flex: 1; }
+    .daemon-card {
+      border: 1px solid var(--line);
+      border-radius: 11px;
+      background: color-mix(in srgb, var(--panel) 55%, transparent);
+      padding: 11px;
+    }
+    .daemon-head {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      font-weight: 670;
+    }
+    .daemon-meta { margin: 5px 0 0 16px; color: var(--faint); font: 10px/1.4 var(--mono); }
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      flex: 0 0 auto;
+      border-radius: 50%;
+      background: var(--teal);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--teal) 14%, transparent);
+    }
+    .status-dot.amber { background: var(--amber); box-shadow: 0 0 0 3px color-mix(in srgb, var(--amber) 14%, transparent); }
+    .status-dot.red { background: var(--red); box-shadow: 0 0 0 3px color-mix(in srgb, var(--red) 14%, transparent); }
+    .status-dot.gray { background: var(--faint); box-shadow: none; }
+    .status-dot.pulse { animation: pulse 1.5s infinite; }
+
+    .main {
+      grid-column: 2;
+      min-width: 0;
+      min-height: 100vh;
+    }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      height: 64px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 0 30px;
+      border-bottom: 1px solid var(--line);
+      background: color-mix(in srgb, var(--bg) 86%, transparent);
+      backdrop-filter: blur(14px);
+    }
+    .mobile-menu { display: none !important; }
+    .crumb {
+      min-width: 0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      font-weight: 680;
+      white-space: nowrap;
+    }
+    .crumb .root { color: var(--muted); font-weight: 520; }
+    .crumb .slash { color: var(--line-strong); }
+    .topbar-actions { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+
+    .icon-button, .button, .seg-button {
+      border: 1px solid var(--line-strong);
+      background: var(--panel);
+      border-radius: 9px;
+      cursor: pointer;
+      transition: border-color .16s ease, background .16s ease, color .16s ease, transform .16s ease;
+    }
+    .icon-button:hover, .button:hover, .seg-button:hover { border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); }
+    .icon-button:active, .button:active { transform: translateY(1px); }
+    .icon-button {
+      width: 36px;
+      height: 36px;
+      display: grid;
+      place-items: center;
+      padding: 0;
+      font-size: 16px;
+    }
+    .theme-glyph { width: 15px; height: 15px; border: 1.8px solid currentColor; border-radius: 50%; position: relative; }
+    .theme-glyph::after {
+      content: "";
+      position: absolute;
+      inset: 3px -4px -4px 3px;
+      background: var(--panel);
+      border-radius: 50%;
+    }
+    html[data-theme="light"] .theme-glyph::after { display: none; }
+    html[data-theme="light"] .theme-glyph { box-shadow: 0 -6px 0 -5px currentColor, 0 6px 0 -5px currentColor, 6px 0 0 -5px currentColor, -6px 0 0 -5px currentColor; }
+
+    .button {
+      min-height: 36px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 0 13px;
+      color: var(--text);
+      font-weight: 680;
+      text-decoration: none;
+    }
+    .button.primary { border-color: var(--accent); background: var(--accent); color: #fff; }
+    html[data-theme="dark"] .button.primary { color: #0d1423; }
+    .button.primary:hover { border-color: var(--accent-hover); background: var(--accent-hover); }
+    .button.danger { color: var(--red); }
+    .button.ghost { border-color: transparent; background: transparent; color: var(--muted); }
+    .button.small { min-height: 31px; padding: 0 10px; font-size: 12px; }
+    .button .plus { font-size: 18px; line-height: 0; font-weight: 400; margin-top: -2px; }
+
+    .content {
+      width: min(100%, 1440px);
+      margin: 0 auto;
+      padding: 30px;
+    }
+
+    .screen { display: none; animation: enter .22s ease-out both; }
+    .screen.active { display: block; }
+
+    .page-head {
+      display: flex;
+      align-items: flex-end;
+      gap: 18px;
+      margin-bottom: 24px;
+    }
+    .page-head > div:first-child { min-width: 0; }
+    .page-head .actions { margin-left: auto; display: flex; gap: 8px; }
+    .eyebrow {
+      margin: 0 0 5px;
+      color: var(--accent);
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+    }
+    h1, h2, h3, p { margin-top: 0; }
+    h1 { margin-bottom: 4px; font-size: clamp(25px, 3vw, 34px); line-height: 1.14; letter-spacing: -.04em; }
+    h2 { margin-bottom: 4px; font-size: 18px; letter-spacing: -.025em; }
+    h3 { margin-bottom: 3px; font-size: 14px; letter-spacing: -.01em; }
+    .subhead { margin: 0; color: var(--muted); }
+
+    .grid { display: grid; gap: 16px; }
+    .stats-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); margin-bottom: 24px; }
+    .two-col { grid-template-columns: minmax(0, 1.65fr) minmax(270px, .75fr); }
+    .equal-col { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .admin-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
+    .panel {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--panel);
+      box-shadow: var(--shadow);
+    }
+    .panel-header {
+      min-height: 58px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 13px 16px;
+      border-bottom: 1px solid var(--line);
+    }
+    .panel-header > div:first-child { min-width: 0; }
+    .panel-header .right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+    .panel-title { font-weight: 720; }
+    .panel-kicker { color: var(--faint); font-size: 11px; }
+    .panel-body { padding: 16px; }
+
+    .stat-card { padding: 15px 16px; }
+    .stat-top { display: flex; align-items: center; justify-content: space-between; color: var(--muted); font-size: 12px; }
+    .stat-icon {
+      width: 26px;
+      height: 26px;
+      display: grid;
+      place-items: center;
+      border-radius: 8px;
+      background: var(--panel-muted);
+      color: var(--muted);
+      font: 700 10px var(--mono);
+    }
+    .stat-value { margin-top: 7px; font-size: 25px; font-weight: 730; letter-spacing: -.035em; }
+    .stat-foot { margin-top: 2px; color: var(--faint); font-size: 11px; }
+    .stat-foot.good { color: var(--teal); }
+    .stat-foot.warn { color: var(--amber); }
+
+    .worktree-card + .worktree-card { margin-top: 14px; }
+    .worktree-summary {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 15px 16px 13px;
+    }
+    .repo-mark {
+      width: 37px;
+      height: 37px;
+      display: grid;
+      place-items: center;
+      flex: 0 0 auto;
+      border-radius: 11px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-weight: 800;
+      letter-spacing: -.03em;
+    }
+    .repo-meta { min-width: 0; }
+    .repo-title { display: flex; align-items: center; gap: 8px; font-weight: 740; }
+    .branch {
+      max-width: 230px;
+      overflow: hidden;
+      color: var(--muted);
+      font: 11px var(--mono);
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .path {
+      max-width: 520px;
+      margin-top: 2px;
+      overflow: hidden;
+      color: var(--faint);
+      font: 10px var(--mono);
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .worktree-summary .summary-actions { margin-left: auto; display: flex; align-items: center; gap: 7px; }
+
+    .service-list { border-top: 1px solid var(--line); }
+    .service-row {
+      min-height: 61px;
+      display: grid;
+      grid-template-columns: minmax(150px, 1fr) 105px 100px minmax(118px, auto);
+      align-items: center;
+      gap: 12px;
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--line);
+    }
+    .service-row:last-child { border-bottom: 0; }
+    .service-row:hover { background: color-mix(in srgb, var(--panel-muted) 65%, transparent); }
+    .service-name { min-width: 0; }
+    .service-name strong { display: block; font-size: 13px; }
+    .service-url {
+      display: block;
+      margin-top: 2px;
+      overflow: hidden;
+      color: var(--faint);
+      font: 10px var(--mono);
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .port { color: var(--muted); font: 12px var(--mono); }
+    .service-actions { display: flex; justify-content: flex-end; gap: 6px; }
+
+    .badge {
+      width: max-content;
+      min-height: 22px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 2px 8px;
+      border-radius: 99px;
+      background: var(--panel-muted);
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 730;
+      letter-spacing: .01em;
+      text-transform: capitalize;
+      white-space: nowrap;
+    }
+    .badge::before {
+      content: "";
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+    .badge.running, .badge.healthy, .badge.ready { color: var(--teal); background: var(--teal-soft); }
+    .badge.starting { color: var(--violet); background: var(--violet-soft); }
+    .badge.starting::before { animation: pulse 1.2s infinite; }
+    .badge.idle { color: var(--accent); background: var(--accent-soft); }
+    .badge.failed, .badge.conflict { color: var(--red); background: var(--red-soft); }
+    .badge.stale, .badge.warning { color: var(--amber); background: var(--amber-soft); }
+    .badge.disabled, .badge.exited { color: var(--faint); }
+    .badge.manifest::before, .badge.imperative::before { display: none; }
+    .badge.manifest { color: var(--violet); background: var(--violet-soft); }
+    .badge.imperative { color: var(--accent); background: var(--accent-soft); }
+
+    .activity-list { display: grid; padding: 4px 16px 8px; }
+    .activity-item {
+      position: relative;
+      display: grid;
+      grid-template-columns: 24px minmax(0, 1fr);
+      gap: 10px;
+      padding: 11px 0;
+    }
+    .activity-item:not(:last-child)::after {
+      content: "";
+      position: absolute;
+      left: 11px;
+      top: 34px;
+      bottom: -6px;
+      width: 1px;
+      background: var(--line);
+    }
+    .activity-dot {
+      position: relative;
+      z-index: 1;
+      width: 24px;
+      height: 24px;
+      display: grid;
+      place-items: center;
+      border: 1px solid var(--line);
+      border-radius: 50%;
+      background: var(--panel);
+      color: var(--muted);
+      font: 800 9px var(--mono);
+    }
+    .activity-copy { font-size: 12px; }
+    .activity-copy strong { font-weight: 690; }
+    .activity-time { margin-top: 2px; color: var(--faint); font-size: 10px; }
+
+    .callout {
+      position: relative;
+      overflow: hidden;
+      padding: 17px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: linear-gradient(135deg, var(--accent-soft), var(--panel) 64%);
+    }
+    .callout::after {
+      content: "";
+      position: absolute;
+      width: 150px;
+      height: 150px;
+      right: -62px;
+      bottom: -92px;
+      border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+      border-radius: 50%;
+      box-shadow: 0 0 0 18px color-mix(in srgb, var(--accent) 7%, transparent), 0 0 0 36px color-mix(in srgb, var(--accent) 4%, transparent);
+    }
+    .callout > * { position: relative; z-index: 1; }
+    .callout p { max-width: 34ch; margin-bottom: 14px; color: var(--muted); font-size: 12px; }
+
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; text-align: left; }
+    th {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--line);
+      color: var(--faint);
+      font-size: 10px;
+      font-weight: 760;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+    td { padding: 13px 14px; border-bottom: 1px solid var(--line); font-size: 12px; vertical-align: middle; }
+    tr:last-child td { border-bottom: 0; }
+    tbody tr:hover { background: var(--panel-muted); }
+    .table-main { font-weight: 680; }
+    .table-sub { margin-top: 2px; color: var(--faint); font: 10px var(--mono); }
+    .row-button {
+      border: 0;
+      background: none;
+      padding: 0;
+      color: inherit;
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .filterbar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+    .searchbox {
+      position: relative;
+      flex: 1;
+      min-width: 180px;
+    }
+    .searchbox::before {
+      content: "";
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      width: 10px;
+      height: 10px;
+      border: 1.5px solid var(--muted);
+      border-radius: 50%;
+      transform: translateY(-58%);
+      pointer-events: none;
+    }
+    .searchbox::after {
+      content: "";
+      position: absolute;
+      left: 21px;
+      top: 22px;
+      width: 5px;
+      height: 1.5px;
+      background: var(--muted);
+      transform: rotate(45deg);
+      pointer-events: none;
+    }
+    .input, .select {
+      width: 100%;
+      height: 39px;
+      border: 1px solid var(--line-strong);
+      border-radius: 9px;
+      background: var(--panel);
+      color: var(--text);
+      padding: 0 11px;
+    }
+    .searchbox .input { padding-left: 34px; }
+    .select { width: auto; min-width: 118px; padding-right: 30px; }
+    .input::placeholder { color: var(--faint); }
+
+    .detail-layout { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(260px, .65fr); gap: 16px; }
+    .detail-hero { padding: 20px; }
+    .service-title-line { display: flex; align-items: center; gap: 10px; }
+    .service-title-line h1 { margin: 0; font-size: 27px; }
+    .url-line {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 7px;
+      color: var(--muted);
+      font: 12px var(--mono);
+    }
+    .meta-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; margin-top: 20px; overflow: hidden; border: 1px solid var(--line); border-radius: 11px; background: var(--line); }
+    .meta-cell { padding: 12px; background: var(--panel); }
+    .meta-label { color: var(--faint); font-size: 9px; font-weight: 750; letter-spacing: .09em; text-transform: uppercase; }
+    .meta-value { margin-top: 4px; overflow: hidden; font-size: 12px; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
+
+    .terminal {
+      overflow: hidden;
+      border: 1px solid #30393f;
+      border-radius: 11px;
+      background: #0e1316;
+      color: #ced7dc;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.03);
+    }
+    .terminal-top {
+      height: 37px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 0 12px;
+      border-bottom: 1px solid #293137;
+      background: #151b1f;
+    }
+    .terminal-light { width: 7px; height: 7px; border-radius: 50%; background: #475158; }
+    .terminal-title { margin-left: 5px; color: #7f8b92; font: 10px var(--mono); }
+    .terminal-status { margin-left: auto; color: #76d8b9; font: 9px var(--mono); text-transform: uppercase; letter-spacing: .08em; }
+    .terminal-body {
+      min-height: 210px;
+      max-height: 320px;
+      overflow: auto;
+      padding: 13px 14px;
+      font: 11px/1.72 var(--mono);
+      scrollbar-color: #3f4b51 #151b1f;
+    }
+    .log-line { display: grid; grid-template-columns: 64px 46px minmax(0, 1fr); gap: 8px; }
+    .log-time { color: #56636a; }
+    .log-stream { color: #668eff; }
+    .log-stream.err { color: #ff7889; }
+    .log-message { white-space: pre-wrap; word-break: break-word; }
+    .log-message.ok { color: #76d8b9; }
+    .log-message.warn { color: #eab65f; }
+
+    .definition-list { margin: 0; }
+    .definition-row {
+      display: grid;
+      grid-template-columns: 130px minmax(0, 1fr);
+      gap: 14px;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--line);
+    }
+    .definition-row:first-child { padding-top: 0; }
+    .definition-row:last-child { padding-bottom: 0; border-bottom: 0; }
+    .definition-row dt { color: var(--faint); font-size: 11px; }
+    .definition-row dd { margin: 0; overflow-wrap: anywhere; font-size: 12px; font-weight: 600; }
+
+    .notice {
+      display: flex;
+      gap: 11px;
+      padding: 12px 13px;
+      border: 1px solid color-mix(in srgb, var(--amber) 35%, var(--line));
+      border-radius: 10px;
+      background: var(--amber-soft);
+      color: var(--text);
+      font-size: 11px;
+    }
+    .notice.danger { border-color: color-mix(in srgb, var(--red) 35%, var(--line)); background: var(--red-soft); }
+    .notice.info { border-color: color-mix(in srgb, var(--accent) 35%, var(--line)); background: var(--accent-soft); }
+    .notice-mark {
+      width: 18px;
+      height: 18px;
+      display: grid;
+      place-items: center;
+      flex: 0 0 auto;
+      border: 1.5px solid currentColor;
+      border-radius: 50%;
+      font-size: 10px;
+      font-weight: 800;
+    }
+
+    .health-card { min-height: 156px; padding: 17px; }
+    .health-head { display: flex; align-items: center; gap: 9px; }
+    .health-value { margin: 20px 0 3px; font-size: 21px; font-weight: 720; letter-spacing: -.03em; }
+    .meter { height: 6px; margin-top: 12px; overflow: hidden; border-radius: 8px; background: var(--panel-muted); }
+    .meter > span { display: block; height: 100%; border-radius: inherit; background: var(--accent); }
+
+    .settings-stack { display: grid; gap: 16px; }
+    .setting-row {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      min-height: 69px;
+      padding: 13px 16px;
+      border-bottom: 1px solid var(--line);
+    }
+    .setting-row:last-child { border-bottom: 0; }
+    .setting-copy { min-width: 0; }
+    .setting-copy p { margin: 2px 0 0; color: var(--muted); font-size: 11px; }
+    .setting-control { margin-left: auto; flex: 0 0 auto; }
+    .switch {
+      width: 42px;
+      height: 24px;
+      position: relative;
+      border: 0;
+      border-radius: 99px;
+      background: var(--line-strong);
+      cursor: pointer;
+      transition: background .18s ease;
+    }
+    .switch::after {
+      content: "";
+      position: absolute;
+      width: 18px;
+      height: 18px;
+      left: 3px;
+      top: 3px;
+      border-radius: 50%;
+      background: #fff;
+      box-shadow: 0 1px 3px rgba(0,0,0,.24);
+      transition: transform .18s ease;
+    }
+    .switch.on { background: var(--accent); }
+    .switch.on::after { transform: translateX(18px); }
+
+    .segmented {
+      display: inline-flex;
+      padding: 3px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--panel-muted);
+    }
+    .seg-button { min-height: 28px; padding: 0 10px; border-color: transparent; background: transparent; color: var(--muted); font-size: 11px; }
+    .seg-button.active { background: var(--panel); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+
+    .empty-state {
+      display: grid;
+      place-items: center;
+      min-height: 350px;
+      padding: 34px;
+      text-align: center;
+    }
+    .empty-graphic {
+      width: 78px;
+      height: 64px;
+      position: relative;
+      margin-bottom: 18px;
+    }
+    .empty-graphic::before, .empty-graphic::after {
+      content: "";
+      position: absolute;
+      border: 1px solid var(--line-strong);
+      border-radius: 11px;
+      background: var(--panel);
+    }
+    .empty-graphic::before { width: 58px; height: 44px; left: 0; bottom: 0; }
+    .empty-graphic::after { width: 48px; height: 35px; right: 0; top: 0; box-shadow: var(--shadow); }
+    .empty-state p { max-width: 48ch; margin: 6px auto 17px; color: var(--muted); font-size: 12px; }
+
+    .login-wrap {
+      min-height: calc(100vh - 125px);
+      display: grid;
+      place-items: center;
+      padding: 24px;
+    }
+    .login-card { width: min(100%, 390px); padding: 28px; }
+    .login-card .brand { justify-content: center; padding: 0 0 24px; }
+    .login-card h1 { margin-bottom: 7px; text-align: center; font-size: 24px; }
+    .login-card > p { margin-bottom: 22px; color: var(--muted); text-align: center; font-size: 12px; }
+    .field { display: grid; gap: 6px; margin-bottom: 14px; }
+    .field label { font-size: 11px; font-weight: 680; }
+    .field-help { color: var(--faint); font-size: 10px; }
+
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 80;
+      display: none;
+      place-items: center;
+      padding: 20px;
+      background: rgba(8, 12, 14, .56);
+      backdrop-filter: blur(4px);
+    }
+    .modal-backdrop.open { display: grid; animation: fade .15s ease-out both; }
+    .modal {
+      width: min(100%, 570px);
+      max-height: min(720px, calc(100vh - 40px));
+      overflow: auto;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: var(--panel);
+      box-shadow: var(--shadow-lg);
+      animation: pop .18s ease-out both;
+    }
+    .modal-header, .modal-footer { display: flex; align-items: center; gap: 10px; padding: 15px 18px; }
+    .modal-header { border-bottom: 1px solid var(--line); }
+    .modal-header .icon-button { margin-left: auto; }
+    .modal-body { padding: 18px; }
+    .modal-footer { justify-content: flex-end; border-top: 1px solid var(--line); }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 13px; }
+    .field.full { grid-column: 1 / -1; }
+    .radio-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .radio-card {
+      position: relative;
+      padding: 11px;
+      border: 1px solid var(--line-strong);
+      border-radius: 10px;
+      cursor: pointer;
+    }
+    .radio-card:has(input:checked) { border-color: var(--accent); background: var(--accent-soft); }
+    .radio-card input { position: absolute; opacity: 0; }
+    .radio-card strong { display: block; font-size: 12px; }
+    .radio-card span { display: block; margin-top: 2px; color: var(--muted); font-size: 10px; }
+
+    .toast {
+      position: fixed;
+      right: 24px;
+      bottom: 24px;
+      z-index: 120;
+      max-width: min(380px, calc(100vw - 32px));
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 11px 14px;
+      border: 1px solid var(--line-strong);
+      border-radius: 11px;
+      background: var(--panel-raised);
+      box-shadow: var(--shadow-lg);
+      opacity: 0;
+      transform: translateY(10px);
+      pointer-events: none;
+      transition: opacity .2s ease, transform .2s ease;
+      font-size: 12px;
+    }
+    .toast.show { opacity: 1; transform: translateY(0); }
+
+    .startup-screen {
+      position: fixed;
+      inset: 0;
+      z-index: 70;
+      display: none;
+      overflow: auto;
+      background:
+        radial-gradient(circle at 20% 0%, color-mix(in srgb, var(--accent) 12%, transparent), transparent 36%),
+        var(--bg);
+    }
+    .startup-screen.active { display: block; animation: fade .2s ease-out both; }
+    .startup-shell {
+      width: min(100% - 36px, 970px);
+      min-height: 100vh;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      margin: 0 auto;
+      padding: 26px 0;
+    }
+    .startup-top { display: flex; align-items: center; }
+    .startup-top .brand { padding: 0; }
+    .startup-top .startup-url { margin-left: auto; color: var(--faint); font: 10px var(--mono); }
+    .startup-main { display: grid; align-content: center; padding: 38px 0; }
+    .startup-card {
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: var(--panel);
+      box-shadow: var(--shadow-lg);
+    }
+    .startup-info { padding: 27px 28px 22px; }
+    .startup-state {
+      display: flex;
+      align-items: flex-start;
+      gap: 16px;
+    }
+    .loader {
+      width: 42px;
+      height: 42px;
+      position: relative;
+      flex: 0 0 auto;
+      border: 3px solid var(--line);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    .loader.ready { border: 0; background: var(--teal-soft); animation: none; }
+    .loader.ready::before {
+      content: "";
+      position: absolute;
+      width: 15px;
+      height: 8px;
+      left: 12px;
+      top: 13px;
+      border: solid var(--teal);
+      border-width: 0 0 3px 3px;
+      transform: rotate(-45deg);
+    }
+    .loader.failed { border: 0; background: var(--red-soft); animation: none; }
+    .loader.failed::before, .loader.failed::after {
+      content: "";
+      position: absolute;
+      width: 18px;
+      height: 2.5px;
+      left: 12px;
+      top: 20px;
+      border-radius: 9px;
+      background: var(--red);
+      transform: rotate(45deg);
+    }
+    .loader.failed::after { transform: rotate(-45deg); }
+    .loader.canceled { border: 0; background: var(--panel-muted); animation: none; }
+    .loader.canceled::before {
+      content: "";
+      position: absolute;
+      width: 15px;
+      height: 2.5px;
+      left: 13px;
+      top: 20px;
+      background: var(--muted);
+      border-radius: 9px;
+    }
+    .startup-copy { min-width: 0; flex: 1; }
+    .startup-copy h1 { margin: 0 0 5px; font-size: 25px; }
+    .startup-copy p { margin: 0; color: var(--muted); font-size: 12px; }
+    .startup-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 18px;
+      margin-top: 19px;
+      padding-left: 58px;
+      color: var(--faint);
+      font: 10px var(--mono);
+    }
+    .startup-meta strong { color: var(--muted); font-weight: 500; }
+    .startup-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 19px;
+      padding-left: 58px;
+    }
+    .startup-progress { height: 3px; background: var(--line); }
+    .startup-progress > span {
+      display: block;
+      width: 8%;
+      height: 100%;
+      background: var(--accent);
+      transition: width .55s ease;
+    }
+    .startup-terminal { border: 0; border-top: 1px solid #30393f; border-radius: 0; }
+    .startup-terminal .terminal-body { height: 262px; max-height: 38vh; }
+    .startup-footer {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--faint);
+      font-size: 10px;
+    }
+    .startup-footer .demo-states { margin-left: auto; display: flex; align-items: center; gap: 5px; }
+    .state-chip {
+      border: 0;
+      border-radius: 7px;
+      background: transparent;
+      color: var(--faint);
+      padding: 4px 6px;
+      cursor: pointer;
+      font-size: 9px;
+    }
+    .state-chip:hover { background: var(--panel); color: var(--text); }
+
+    .ready-demo {
+      display: none;
+      min-height: 100vh;
+      background: #f4efe8;
+      color: #251f1a;
+    }
+    .ready-demo.active { display: block; }
+    .ready-nav {
+      height: 66px;
+      display: flex;
+      align-items: center;
+      gap: 25px;
+      padding: 0 max(24px, calc((100vw - 1100px) / 2));
+      border-bottom: 1px solid #dbd2c7;
+      background: rgba(255,255,255,.42);
+    }
+    .ready-logo { font-family: Georgia, serif; font-size: 19px; font-weight: 700; }
+    .ready-nav a { color: #6c6258; font-size: 12px; text-decoration: none; }
+    .ready-nav .button { margin-left: auto; border-color: #251f1a; background: #251f1a; color: #fff; }
+    .ready-content {
+      width: min(100% - 48px, 1100px);
+      margin: 0 auto;
+      padding: 82px 0;
+    }
+    .ready-content .eyebrow { color: #9c5c34; }
+    .ready-content h1 { max-width: 730px; font-family: Georgia, serif; font-size: clamp(42px, 7vw, 76px); font-weight: 500; line-height: .98; letter-spacing: -.055em; }
+    .ready-content p { max-width: 560px; margin: 24px 0; color: #6c6258; font-size: 16px; }
+    .return-pill {
+      position: fixed;
+      right: 20px;
+      bottom: 20px;
+      z-index: 2;
+      border: 1px solid rgba(255,255,255,.15);
+      border-radius: 99px;
+      background: #251f1a;
+      color: #fff;
+      padding: 10px 14px;
+      box-shadow: 0 12px 30px rgba(37,31,26,.25);
+      cursor: pointer;
+      font: 11px var(--sans);
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes pulse { 0%, 100% { opacity: .45; } 50% { opacity: 1; } }
+    @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes enter { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+    @keyframes pop { from { opacity: 0; transform: translateY(8px) scale(.985); } to { opacity: 1; transform: none; } }
+
+    @media (max-width: 1040px) {
+      .stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .two-col, .detail-layout { grid-template-columns: 1fr; }
+      .admin-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+
+    @media (max-width: 760px) {
+      .app-shell { display: block; }
+      .sidebar {
+        width: min(280px, 88vw);
+        transform: translateX(-102%);
+        box-shadow: var(--shadow-lg);
+        transition: transform .22s ease;
+      }
+      .sidebar.open { transform: translateX(0); }
+      .main { min-height: 100vh; }
+      .topbar { height: 58px; padding: 0 16px; }
+      .mobile-menu { display: grid !important; }
+      .desktop-add { display: none; }
+      .content { padding: 22px 16px 50px; }
+      .page-head { align-items: flex-start; flex-direction: column; }
+      .page-head .actions { width: 100%; margin-left: 0; }
+      .page-head .actions .button { flex: 1; }
+      .stats-grid, .equal-col, .admin-grid { grid-template-columns: 1fr; }
+      .service-row { grid-template-columns: minmax(120px, 1fr) auto; gap: 8px; }
+      .service-row .port { display: none; }
+      .service-row .badge { justify-self: end; }
+      .service-actions { grid-column: 1 / -1; justify-content: flex-start; }
+      .worktree-summary { align-items: flex-start; }
+      .worktree-summary .summary-actions { flex-direction: column; align-items: stretch; }
+      .worktree-summary .summary-actions .button:first-child { display: none; }
+      .meta-grid { grid-template-columns: 1fr 1fr; }
+      .filterbar { flex-wrap: wrap; }
+      .searchbox { flex-basis: 100%; }
+      .select { flex: 1; }
+      .setting-row { align-items: flex-start; }
+      .form-grid { grid-template-columns: 1fr; }
+      .field.full { grid-column: auto; }
+      .startup-shell { width: min(100% - 24px, 970px); padding: 16px 0; }
+      .startup-top .startup-url { display: none; }
+      .startup-main { padding: 24px 0; }
+      .startup-info { padding: 20px 18px 18px; }
+      .startup-meta, .startup-actions { padding-left: 0; }
+      .startup-footer { flex-wrap: wrap; }
+      .startup-footer .demo-states { width: 100%; margin-left: 0; flex-wrap: wrap; }
+      .log-line { grid-template-columns: 54px 38px minmax(0, 1fr); gap: 5px; }
+      .ready-nav a { display: none; }
+    }
+
+    @media (max-width: 460px) {
+      .stats-grid { gap: 10px; }
+      .stat-card { padding: 13px; }
+      .worktree-summary { flex-wrap: wrap; }
+      .worktree-summary .summary-actions { width: 100%; flex-direction: row; margin-left: 49px; }
+      .meta-grid { grid-template-columns: 1fr; }
+      .radio-cards { grid-template-columns: 1fr; }
+      .definition-row { grid-template-columns: 1fr; gap: 3px; }
+      .startup-state { gap: 12px; }
+      .startup-copy h1 { font-size: 21px; }
+      .startup-actions { flex-wrap: wrap; }
+      .toast { right: 16px; bottom: 16px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-shell" id="dashboard">
+    <aside class="sidebar" id="sidebar" aria-label="Primary navigation">
+      <div class="brand"><span class="brand-mark" aria-hidden="true"></span><span>Port Start</span></div>
+
+      <div class="nav-label">Workspace</div>
+      <ul class="nav-list">
+        <li><button class="nav-button active" data-nav="overview"><span class="nav-icon">4</span>Overview</button></li>
+        <li><button class="nav-button" data-nav="worktrees"><span class="nav-icon round">W</span>Worktrees</button></li>
+        <li><button class="nav-button" data-nav="services"><span class="nav-icon lines"></span>Services</button></li>
+        <li><button class="nav-button" data-nav="logs"><span class="nav-icon">_</span>Runs &amp; logs</button></li>
+      </ul>
+
+      <div class="nav-label">Admin</div>
+      <ul class="nav-list">
+        <li><button class="nav-button" data-nav="system"><span class="nav-icon round">S</span>System</button></li>
+        <li><button class="nav-button" data-nav="settings"><span class="nav-icon">A</span>Settings</button></li>
+      </ul>
+
+      <div class="sidebar-spacer"></div>
+      <div class="daemon-card">
+        <div class="daemon-head"><span class="status-dot"></span>Daemon healthy</div>
+        <p class="daemon-meta">127.0.0.1:13337<br>v1.0.0 · api/v1</p>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <button class="icon-button mobile-menu" id="mobileMenu" aria-label="Open navigation">☰</button>
+        <div class="crumb"><span class="root">Localhost</span><span class="slash">/</span><span id="crumbLabel">Overview</span></div>
+        <div class="topbar-actions">
+          <button class="icon-button" id="themeToggle" aria-label="Toggle color theme" title="Toggle color theme"><span class="theme-glyph" aria-hidden="true"></span></button>
+          <button class="button primary desktop-add" data-modal-open="addService"><span class="plus">+</span>Add service</button>
+        </div>
+      </header>
+
+      <div class="content">
+        <section class="screen active" data-screen="overview">
+          <div class="page-head">
+            <div>
+              <p class="eyebrow">Friday, July 24</p>
+              <h1>Your local services</h1>
+              <p class="subhead">Stable ports, quiet processes, ready when traffic arrives.</p>
+            </div>
+            <div class="actions">
+              <button class="button" data-action="stop-all">Stop all</button>
+              <button class="button primary" data-action="start-all">Start all</button>
+            </div>
+          </div>
+
+          <div class="grid stats-grid">
+            <article class="panel stat-card">
+              <div class="stat-top"><span>Services</span><span class="stat-icon">TCP</span></div>
+              <div class="stat-value">8</div>
+              <div class="stat-foot">Across 3 worktrees</div>
+            </article>
+            <article class="panel stat-card">
+              <div class="stat-top"><span>Running now</span><span class="stat-icon">RUN</span></div>
+              <div class="stat-value">3</div>
+              <div class="stat-foot good">2 started on demand</div>
+            </article>
+            <article class="panel stat-card">
+              <div class="stat-top"><span>Armed &amp; idle</span><span class="stat-icon">ARM</span></div>
+              <div class="stat-value">3</div>
+              <div class="stat-foot">Listening for traffic</div>
+            </article>
+            <article class="panel stat-card">
+              <div class="stat-top"><span>Needs attention</span><span class="stat-icon">!</span></div>
+              <div class="stat-value">2</div>
+              <div class="stat-foot warn">1 conflict · 1 missing</div>
+            </article>
+          </div>
+
+          <div class="grid two-col">
+            <div>
+              <article class="panel worktree-card">
+                <div class="worktree-summary">
+                  <div class="repo-mark">NS</div>
+                  <div class="repo-meta">
+                    <div class="repo-title">northstar <span class="badge healthy">active</span></div>
+                    <div class="branch">feature/billing-redesign · a84e7c1</div>
+                    <div class="path">~/Developer/northstar-billing</div>
+                  </div>
+                  <div class="summary-actions">
+                    <button class="button small" data-action="stop-worktree">Stop all</button>
+                    <button class="button small primary" data-action="open-worktree">View</button>
+                  </div>
+                </div>
+                <div class="service-list">
+                  <div class="service-row" data-service="web">
+                    <div class="service-name"><strong>web</strong><span class="service-url">http://localhost:4310/checkout</span></div>
+                    <span class="port">:4310</span>
+                    <span class="badge running">running</span>
+                    <div class="service-actions">
+                      <button class="button small" data-nav="service-detail">Details</button>
+                      <button class="button small primary" data-action="open-running">Open</button>
+                    </div>
+                  </div>
+                  <div class="service-row" data-service="api">
+                    <div class="service-name"><strong>api</strong><span class="service-url">http://localhost:4311/health</span></div>
+                    <span class="port">:4311</span>
+                    <span class="badge idle">idle</span>
+                    <div class="service-actions">
+                      <button class="button small" data-nav="service-detail">Details</button>
+                      <button class="button small primary" data-action="open-startup">Open</button>
+                    </div>
+                  </div>
+                  <div class="service-row" data-service="postgres">
+                    <div class="service-name"><strong>postgres</strong><span class="service-url">tcp://127.0.0.1:5439</span></div>
+                    <span class="port">:5439</span>
+                    <span class="badge conflict">conflict</span>
+                    <div class="service-actions">
+                      <button class="button small danger" data-action="show-conflict">Resolve</button>
+                    </div>
+                  </div>
+                </div>
+              </article>
+
+              <article class="panel worktree-card">
+                <div class="worktree-summary">
+                  <div class="repo-mark">PS</div>
+                  <div class="repo-meta">
+                    <div class="repo-title">port-start <span class="badge healthy">active</span></div>
+                    <div class="branch">main · 32be9d4</div>
+                    <div class="path">~/Developer/port-start</div>
+                  </div>
+                  <div class="summary-actions">
+                    <button class="button small" data-action="stop-worktree">Stop all</button>
+                    <button class="button small primary" data-action="open-worktree">View</button>
+                  </div>
+                </div>
+                <div class="service-list">
+                  <div class="service-row">
+                    <div class="service-name"><strong>docs</strong><span class="service-url">http://localhost:4522/</span></div>
+                    <span class="port">:4522</span>
+                    <span class="badge starting">starting</span>
+                    <div class="service-actions">
+                      <button class="button small" data-action="open-startup">Watch startup</button>
+                    </div>
+                  </div>
+                  <div class="service-row">
+                    <div class="service-name"><strong>storybook</strong><span class="service-url">http://localhost:6006/</span></div>
+                    <span class="port">:6006</span>
+                    <span class="badge disabled">disabled</span>
+                    <div class="service-actions">
+                      <button class="button small" data-action="enable-service">Enable</button>
+                    </div>
+                  </div>
+                </div>
+              </article>
+            </div>
+
+            <div class="grid" style="align-content:start">
+              <article class="callout">
+                <p class="eyebrow">On-demand by default</p>
+                <h2>See the startup handoff</h2>
+                <p>Open an idle HTTP service to watch live output before Port Start reloads the requested page.</p>
+                <button class="button small primary" data-action="open-startup">Preview port startup</button>
+              </article>
+
+              <article class="panel">
+                <div class="panel-header">
+                  <div><div class="panel-title">Recent activity</div><div class="panel-kicker">Live from the daemon</div></div>
+                  <span class="status-dot pulse"></span>
+                </div>
+                <div class="activity-list">
+                  <div class="activity-item">
+                    <span class="activity-dot">↗</span>
+                    <div class="activity-copy"><strong>web</strong> became ready<div class="activity-time">northstar · 38 seconds ago</div></div>
+                  </div>
+                  <div class="activity-item">
+                    <span class="activity-dot">!</span>
+                    <div class="activity-copy"><strong>postgres</strong> could not bind :5439<div class="activity-time">northstar · 4 minutes ago</div></div>
+                  </div>
+                  <div class="activity-item">
+                    <span class="activity-dot">+</span>
+                    <div class="activity-copy">Manifest applied with <strong>2 updates</strong><div class="activity-time">port-start · 12 minutes ago</div></div>
+                  </div>
+                  <div class="activity-item">
+                    <span class="activity-dot">■</span>
+                    <div class="activity-copy"><strong>worker</strong> exited cleanly<div class="activity-time">atlas-api · 26 minutes ago</div></div>
+                  </div>
+                </div>
+              </article>
+            </div>
+          </div>
+        </section>
+
+        <section class="screen" data-screen="worktrees">
+          <div class="page-head">
+            <div>
+              <p class="eyebrow">3 registered</p>
+              <h1>Worktrees</h1>
+              <p class="subhead">Repositories, branches, and the services they advertise.</p>
+            </div>
+            <div class="actions">
+              <button class="button" data-action="apply-manifest">Apply manifest</button>
+              <button class="button primary" data-action="start-all">Start all</button>
+            </div>
+          </div>
+
+          <div class="filterbar">
+            <div class="searchbox"><input class="input" data-filter="worktrees" placeholder="Filter by repository, branch, or path" aria-label="Filter worktrees"></div>
+            <select class="select" aria-label="Worktree state"><option>All states</option><option>Active</option><option>Missing</option></select>
+          </div>
+
+          <div class="grid">
+            <article class="panel worktree-card" data-filter-item="northstar feature billing developer active">
+              <div class="worktree-summary">
+                <div class="repo-mark">NS</div>
+                <div class="repo-meta">
+                  <div class="repo-title">northstar <span class="badge healthy">active</span></div>
+                  <div class="branch">feature/billing-redesign · a84e7c1</div>
+                  <div class="path">~/Developer/northstar-billing</div>
+                </div>
+                <div class="summary-actions">
+                  <span class="muted" style="font-size:11px">3 services</span>
+                  <button class="button small primary" data-action="open-worktree">Open</button>
+                </div>
+              </div>
+              <div class="panel-body" style="padding-top:0">
+                <div class="meta-grid">
+                  <div class="meta-cell"><div class="meta-label">Manifest</div><div class="meta-value mono">.port-start.yaml</div></div>
+                  <div class="meta-cell"><div class="meta-label">Last applied</div><div class="meta-value">12 minutes ago</div></div>
+                  <div class="meta-cell"><div class="meta-label">Processes</div><div class="meta-value">1 running · 1 idle</div></div>
+                </div>
+              </div>
+            </article>
+
+            <article class="panel worktree-card" data-filter-item="port start main developer active">
+              <div class="worktree-summary">
+                <div class="repo-mark">PS</div>
+                <div class="repo-meta">
+                  <div class="repo-title">port-start <span class="badge healthy">active</span></div>
+                  <div class="branch">main · 32be9d4</div>
+                  <div class="path">~/Developer/port-start</div>
+                </div>
+                <div class="summary-actions">
+                  <span class="muted" style="font-size:11px">2 services</span>
+                  <button class="button small primary" data-action="open-worktree">Open</button>
+                </div>
+              </div>
+            </article>
+
+            <article class="panel worktree-card" data-filter-item="atlas api refactor auth volumes missing stale">
+              <div class="worktree-summary">
+                <div class="repo-mark" style="background:var(--amber-soft);color:var(--amber)">AT</div>
+                <div class="repo-meta">
+                  <div class="repo-title">atlas-api <span class="badge stale">missing</span></div>
+                  <div class="branch">refactor/auth · 5ce201a</div>
+                  <div class="path">/Volumes/Work/atlas-api-auth</div>
+                </div>
+                <div class="summary-actions">
+                  <span class="muted" style="font-size:11px">3 services</span>
+                  <button class="button small danger" data-action="show-stale">Review</button>
+                </div>
+              </div>
+              <div class="panel-body" style="padding-top:0">
+                <div class="notice"><span class="notice-mark">!</span><div><strong>Worktree path not found.</strong><br>Services are stopped and disarmed. Port Start will remove this registration in 18 hours if the path does not return.</div></div>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <section class="screen" data-screen="services">
+          <div class="page-head">
+            <div>
+              <p class="eyebrow">8 managed ports</p>
+              <h1>Services</h1>
+              <p class="subhead">Every command and advertised address managed by the daemon.</p>
+            </div>
+            <div class="actions"><button class="button primary" data-modal-open="addService"><span class="plus">+</span>Add service</button></div>
+          </div>
+
+          <div class="filterbar">
+            <div class="searchbox"><input class="input" data-filter="services" placeholder="Search services or ports" aria-label="Search services"></div>
+            <select class="select" aria-label="Service state"><option>All states</option><option>Running</option><option>Idle</option><option>Needs attention</option></select>
+            <select class="select" aria-label="Service ownership"><option>All sources</option><option>Manifest</option><option>Imperative</option></select>
+          </div>
+
+          <article class="panel table-wrap">
+            <table>
+              <thead><tr><th>Service</th><th>State</th><th>Port</th><th>Mode</th><th>Source</th><th>Last run</th><th></th></tr></thead>
+              <tbody>
+                <tr data-filter-item="web northstar 4310 running proxy manifest">
+                  <td><button class="row-button" data-nav="service-detail"><div class="table-main">web</div><div class="table-sub">northstar</div></button></td>
+                  <td><span class="badge running">running</span></td><td class="mono">:4310</td><td>Proxy · HTTP</td><td><span class="badge manifest">manifest</span></td><td>38s ago</td>
+                  <td><button class="button small" data-action="open-running">Open</button></td>
+                </tr>
+                <tr data-filter-item="api northstar 4311 idle proxy manifest">
+                  <td><button class="row-button" data-nav="service-detail"><div class="table-main">api</div><div class="table-sub">northstar</div></button></td>
+                  <td><span class="badge idle">idle</span></td><td class="mono">:4311</td><td>Proxy · HTTP</td><td><span class="badge manifest">manifest</span></td><td>Yesterday</td>
+                  <td><button class="button small primary" data-action="open-startup">Start</button></td>
+                </tr>
+                <tr data-filter-item="postgres northstar 5439 conflict proxy manifest tcp">
+                  <td><div class="table-main">postgres</div><div class="table-sub">northstar</div></td>
+                  <td><span class="badge conflict">conflict</span></td><td class="mono">:5439</td><td>Proxy · TCP</td><td><span class="badge manifest">manifest</span></td><td>4m ago</td>
+                  <td><button class="button small danger" data-action="show-conflict">Resolve</button></td>
+                </tr>
+                <tr data-filter-item="docs port start 4522 starting proxy manifest http">
+                  <td><div class="table-main">docs</div><div class="table-sub">port-start</div></td>
+                  <td><span class="badge starting">starting</span></td><td class="mono">:4522</td><td>Proxy · HTTP</td><td><span class="badge manifest">manifest</span></td><td>Now</td>
+                  <td><button class="button small" data-action="open-startup">Watch</button></td>
+                </tr>
+                <tr data-filter-item="storybook port start 6006 disabled handoff imperative">
+                  <td><div class="table-main">storybook</div><div class="table-sub">port-start</div></td>
+                  <td><span class="badge disabled">disabled</span></td><td class="mono">:6006</td><td>Handoff · HTTP</td><td><span class="badge imperative">imperative</span></td><td>2d ago</td>
+                  <td><button class="button small" data-action="enable-service">Enable</button></td>
+                </tr>
+              </tbody>
+            </table>
+          </article>
+        </section>
+
+        <section class="screen" data-screen="service-detail">
+          <div class="page-head">
+            <div>
+              <button class="button ghost small" data-nav="services" style="margin-left:-10px">← All services</button>
+            </div>
+            <div class="actions">
+              <button class="button" data-action="stop-service">Stop</button>
+              <button class="button" data-action="restart-service">Restart</button>
+              <button class="button primary" data-action="open-running">Open :4310</button>
+            </div>
+          </div>
+          <div class="detail-layout">
+            <div class="grid">
+              <article class="panel detail-hero">
+                <div class="service-title-line"><h1>web</h1><span class="badge running">running</span><span class="badge manifest">manifest</span></div>
+                <div class="url-line">http://localhost:4310/checkout <button class="button ghost small" data-action="copy-url">Copy</button></div>
+                <div class="meta-grid">
+                  <div class="meta-cell"><div class="meta-label">Advertised port</div><div class="meta-value mono">127.0.0.1:4310</div></div>
+                  <div class="meta-cell"><div class="meta-label">Backend port</div><div class="meta-value mono">127.0.0.1:52184</div></div>
+                  <div class="meta-cell"><div class="meta-label">Mode</div><div class="meta-value">Proxy · HTTP</div></div>
+                  <div class="meta-cell"><div class="meta-label">Ready in</div><div class="meta-value">3.8 seconds</div></div>
+                  <div class="meta-cell"><div class="meta-label">Current run</div><div class="meta-value mono">run_01J3…K8M</div></div>
+                  <div class="meta-cell"><div class="meta-label">Triggered by</div><div class="meta-value">HTTP navigation</div></div>
+                </div>
+              </article>
+
+              <article class="panel">
+                <div class="panel-header">
+                  <div><div class="panel-title">Live output</div><div class="panel-kicker">Run #42 · following</div></div>
+                  <div class="right"><span class="status-dot pulse"></span><button class="button small" data-nav="logs">View all logs</button></div>
+                </div>
+                <div class="panel-body">
+                  <div class="terminal">
+                    <div class="terminal-top"><span class="terminal-light"></span><span class="terminal-light"></span><span class="terminal-light"></span><span class="terminal-title">web · stdout + stderr</span><span class="terminal-status">live</span></div>
+                    <div class="terminal-body" aria-label="Recent process logs">
+                      <div class="log-line"><span class="log-time">14:06:10</span><span class="log-stream">stdout</span><span class="log-message">&gt; northstar-web@2.4.0 dev</span></div>
+                      <div class="log-line"><span class="log-time">14:06:10</span><span class="log-stream">stdout</span><span class="log-message">&gt; vite --host 127.0.0.1 --port 52184</span></div>
+                      <div class="log-line"><span class="log-time">14:06:11</span><span class="log-stream">stdout</span><span class="log-message">optimizing dependencies…</span></div>
+                      <div class="log-line"><span class="log-time">14:06:13</span><span class="log-stream">stdout</span><span class="log-message ok">✓ Local: http://127.0.0.1:52184/</span></div>
+                      <div class="log-line"><span class="log-time">14:06:13</span><span class="log-stream">stdout</span><span class="log-message">ready in 3.8s</span></div>
+                    </div>
+                  </div>
+                </div>
+              </article>
+            </div>
+            <aside class="grid" style="align-content:start">
+              <article class="panel">
+                <div class="panel-header"><div class="panel-title">Configuration</div></div>
+                <div class="panel-body">
+                  <div class="notice info" style="margin-bottom:15px"><span class="notice-mark">i</span><div>This service is owned by <span class="mono">.port-start.yaml</span>. Edit the manifest and reapply it to change configuration.</div></div>
+                  <dl class="definition-list">
+                    <div class="definition-row"><dt>Command</dt><dd class="mono">npm run dev -- --port {port}</dd></div>
+                    <div class="definition-row"><dt>Working directory</dt><dd class="mono">apps/web</dd></div>
+                    <div class="definition-row"><dt>Startup timeout</dt><dd>60 seconds</dd></div>
+                    <div class="definition-row"><dt>Stop timeout</dt><dd>10 seconds</dd></div>
+                    <div class="definition-row"><dt>Retention</dt><dd>50 MiB · 20 runs</dd></div>
+                  </dl>
+                </div>
+              </article>
+              <article class="panel">
+                <div class="panel-header"><div class="panel-title">Danger zone</div></div>
+                <div class="panel-body">
+                  <button class="button danger" data-action="disable-service">Disable service</button>
+                  <p class="muted" style="margin:10px 0 0;font-size:10px">Stops the process and releases the advertised listener.</p>
+                </div>
+              </article>
+            </aside>
+          </div>
+        </section>
+
+        <section class="screen" data-screen="logs">
+          <div class="page-head">
+            <div>
+              <p class="eyebrow">Retained output</p>
+              <h1>Runs &amp; logs</h1>
+              <p class="subhead">Search stdout and stderr across current and historical runs.</p>
+            </div>
+            <div class="actions"><button class="button" data-action="download-logs">Download NDJSON</button></div>
+          </div>
+
+          <div class="filterbar">
+            <select class="select" aria-label="Service"><option>web · northstar</option><option>api · northstar</option><option>docs · port-start</option></select>
+            <select class="select" aria-label="Run"><option>Run #42 · running</option><option>Run #41 · exited</option><option>Run #40 · failed</option></select>
+            <div class="searchbox"><input class="input" placeholder="Literal or RE2 search" aria-label="Search logs"></div>
+            <select class="select" aria-label="Log stream"><option>Both streams</option><option>stdout</option><option>stderr</option></select>
+          </div>
+
+          <div class="grid two-col">
+            <article class="terminal" style="min-width:0">
+              <div class="terminal-top"><span class="terminal-light"></span><span class="terminal-light"></span><span class="terminal-light"></span><span class="terminal-title">run_01J3…K8M · seq 1–9</span><span class="terminal-status">following</span></div>
+              <div class="terminal-body" style="min-height:480px;max-height:62vh">
+                <div class="log-line"><span class="log-time">14:06:10</span><span class="log-stream">stdout</span><span class="log-message">$ npm run dev -- --port 52184</span></div>
+                <div class="log-line"><span class="log-time">14:06:10</span><span class="log-stream">stdout</span><span class="log-message">&gt; northstar-web@2.4.0 dev</span></div>
+                <div class="log-line"><span class="log-time">14:06:10</span><span class="log-stream">stdout</span><span class="log-message">&gt; vite --host 127.0.0.1 --port 52184</span></div>
+                <div class="log-line"><span class="log-time">14:06:10</span><span class="log-stream err">stderr</span><span class="log-message warn">ExperimentalWarning: JSON modules are experimental</span></div>
+                <div class="log-line"><span class="log-time">14:06:11</span><span class="log-stream">stdout</span><span class="log-message">optimizing dependencies…</span></div>
+                <div class="log-line"><span class="log-time">14:06:11</span><span class="log-stream">stdout</span><span class="log-message">✓ 214 modules transformed</span></div>
+                <div class="log-line"><span class="log-time">14:06:13</span><span class="log-stream">stdout</span><span class="log-message ok">✓ Local: http://127.0.0.1:52184/</span></div>
+                <div class="log-line"><span class="log-time">14:06:13</span><span class="log-stream">stdout</span><span class="log-message">ready in 3.8s</span></div>
+                <div class="log-line"><span class="log-time">14:06:14</span><span class="log-stream">stdout</span><span class="log-message">GET /checkout 200 14ms</span></div>
+              </div>
+            </article>
+            <aside class="grid" style="align-content:start">
+              <article class="panel">
+                <div class="panel-header"><div><div class="panel-title">Run #42</div><div class="panel-kicker">Current run</div></div><span class="badge running right">running</span></div>
+                <div class="panel-body">
+                  <dl class="definition-list">
+                    <div class="definition-row"><dt>Started</dt><dd>Today, 2:06:10 PM</dd></div>
+                    <div class="definition-row"><dt>Trigger</dt><dd>HTTP navigation</dd></div>
+                    <div class="definition-row"><dt>Ready</dt><dd>3.8 seconds</dd></div>
+                    <div class="definition-row"><dt>PID / group</dt><dd class="mono">48614 / 48614</dd></div>
+                    <div class="definition-row"><dt>Retained</dt><dd>1.8 KiB · 9 records</dd></div>
+                  </dl>
+                </div>
+              </article>
+              <article class="panel">
+                <div class="panel-header"><div class="panel-title">Run history</div></div>
+                <div class="activity-list">
+                  <div class="activity-item"><span class="activity-dot">42</span><div class="activity-copy"><strong>Running</strong><div class="activity-time">Traffic · now</div></div></div>
+                  <div class="activity-item"><span class="activity-dot">41</span><div class="activity-copy"><strong>Exited · code 0</strong><div class="activity-time">Manual · yesterday</div></div></div>
+                  <div class="activity-item"><span class="activity-dot">40</span><div class="activity-copy"><strong>Failed · timeout</strong><div class="activity-time">Traffic · 2 days ago</div></div></div>
+                </div>
+              </article>
+            </aside>
+          </div>
+        </section>
+
+        <section class="screen" data-screen="system">
+          <div class="page-head">
+            <div>
+              <p class="eyebrow">Administration</p>
+              <h1>System</h1>
+              <p class="subhead">Daemon health, storage, listeners, and recovery status.</p>
+            </div>
+            <div class="actions"><button class="button" data-action="refresh-system">Refresh</button></div>
+          </div>
+
+          <div class="grid admin-grid" style="margin-bottom:16px">
+            <article class="panel health-card">
+              <div class="health-head"><span class="status-dot"></span><strong>Daemon</strong></div>
+              <div class="health-value">Healthy</div>
+              <div class="muted" style="font-size:11px">Uptime 2d 14h · PID 12844</div>
+            </article>
+            <article class="panel health-card">
+              <div class="health-head"><span class="status-dot"></span><strong>Control plane</strong></div>
+              <div class="health-value mono" style="font-size:16px">127.0.0.1:13337</div>
+              <div class="muted" style="font-size:11px">API v1 · loopback only</div>
+            </article>
+            <article class="panel health-card">
+              <div class="health-head"><span class="status-dot"></span><strong>Metadata store</strong></div>
+              <div class="health-value">SQLite ready</div>
+              <div class="muted" style="font-size:11px">WAL enabled · schema 006</div>
+            </article>
+            <article class="panel health-card">
+              <div class="health-head"><span class="status-dot amber"></span><strong>Process logs</strong></div>
+              <div class="health-value">1.7 GiB</div>
+              <div class="muted" style="font-size:11px">64 runs across 8 services</div>
+              <div class="meter"><span style="width:34%"></span></div>
+            </article>
+            <article class="panel health-card">
+              <div class="health-head"><span class="status-dot"></span><strong>Managed listeners</strong></div>
+              <div class="health-value">6 bound</div>
+              <div class="muted" style="font-size:11px">1 handoff · 5 proxy</div>
+            </article>
+            <article class="panel health-card">
+              <div class="health-head"><span class="status-dot amber"></span><strong>Worktree scanner</strong></div>
+              <div class="health-value">1 missing</div>
+              <div class="muted" style="font-size:11px">Next scan in 42 seconds</div>
+            </article>
+          </div>
+
+          <div class="grid equal-col">
+            <article class="panel">
+              <div class="panel-header"><div><div class="panel-title">Runtime</div><div class="panel-kicker">Current daemon environment</div></div></div>
+              <div class="panel-body">
+                <dl class="definition-list">
+                  <div class="definition-row"><dt>Version</dt><dd>1.0.0 (darwin/arm64)</dd></div>
+                  <div class="definition-row"><dt>Data directory</dt><dd class="mono">~/Library/Application Support/port-start</dd></div>
+                  <div class="definition-row"><dt>Login shell</dt><dd class="mono">/bin/zsh</dd></div>
+                  <div class="definition-row"><dt>Single-instance lock</dt><dd>Acquired</dd></div>
+                  <div class="definition-row"><dt>Recovery</dt><dd>No interrupted runs</dd></div>
+                </dl>
+              </div>
+            </article>
+            <article class="panel">
+              <div class="panel-header"><div><div class="panel-title">Listener issues</div><div class="panel-kicker">1 service needs attention</div></div></div>
+              <div class="panel-body">
+                <div class="notice danger"><span class="notice-mark">!</span><div><strong>127.0.0.1:5439 is already in use</strong><br>Port Start kept the persisted address and marked <strong>northstar/postgres</strong> as conflicted instead of silently remapping it.</div></div>
+                <div style="display:flex;gap:8px;margin-top:13px"><button class="button small" data-action="show-conflict">Inspect conflict</button><button class="button small" data-action="retry-listener">Retry bind</button></div>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <section class="screen" data-screen="settings">
+          <div class="page-head">
+            <div>
+              <p class="eyebrow">Administration</p>
+              <h1>Settings</h1>
+              <p class="subhead">Control-plane access, lifecycle defaults, and log retention.</p>
+            </div>
+          </div>
+
+          <div class="settings-stack">
+            <article class="panel">
+              <div class="panel-header"><div><div class="panel-title">Administration access</div><div class="panel-kicker">Controls the permanent API and dashboard</div></div></div>
+              <div class="setting-row">
+                <div class="setting-copy"><strong>Admin endpoint</strong><p>Where the dashboard and <span class="mono">/api/v1</span> listen.</p></div>
+                <div class="setting-control"><span class="mono" style="font-size:11px">127.0.0.1:13337</span></div>
+              </div>
+              <div class="setting-row">
+                <div class="setting-copy"><strong>Password authentication</strong><p>Optional on loopback. Passwords are stored as Argon2id hashes.</p></div>
+                <div class="setting-control"><button class="switch" data-toggle aria-label="Enable password authentication" aria-pressed="false"></button></div>
+              </div>
+              <div class="setting-row">
+                <div class="setting-copy"><strong>Sign-in preview</strong><p>See the screen shown when dashboard authentication is required.</p></div>
+                <div class="setting-control"><button class="button small" data-nav="login">Preview login</button></div>
+              </div>
+            </article>
+
+            <article class="panel">
+              <div class="panel-header"><div><div class="panel-title">Lifecycle defaults</div><div class="panel-kicker">Manifest values can override these settings</div></div></div>
+              <div class="setting-row">
+                <div class="setting-copy"><strong>Startup timeout</strong><p>Time allowed for the managed process to accept a TCP connection.</p></div>
+                <div class="setting-control"><select class="select" aria-label="Startup timeout"><option>60 seconds</option><option>30 seconds</option><option>90 seconds</option></select></div>
+              </div>
+              <div class="setting-row">
+                <div class="setting-copy"><strong>Stop timeout</strong><p>Wait between SIGTERM and SIGKILL.</p></div>
+                <div class="setting-control"><select class="select" aria-label="Stop timeout"><option>10 seconds</option><option>5 seconds</option><option>30 seconds</option></select></div>
+              </div>
+              <div class="setting-row">
+                <div class="setting-copy"><strong>Missing worktree grace</strong><p>Keep registrations before deleting a continuously missing worktree.</p></div>
+                <div class="setting-control"><select class="select" aria-label="Missing worktree grace"><option>24 hours</option><option>12 hours</option><option>48 hours</option></select></div>
+              </div>
+            </article>
+
+            <article class="panel">
+              <div class="panel-header"><div><div class="panel-title">Default log retention</div><div class="panel-kicker">Newest retained output is preserved when limits are reached</div></div></div>
+              <div class="setting-row">
+                <div class="setting-copy"><strong>Maximum per run</strong><p>Oldest completed segments are removed first.</p></div>
+                <div class="setting-control"><select class="select" aria-label="Maximum logs per run"><option>50 MiB</option><option>100 MiB</option><option>Unlimited</option></select></div>
+              </div>
+              <div class="setting-row">
+                <div class="setting-copy"><strong>Runs per service</strong><p>Number of newest run histories to retain.</p></div>
+                <div class="setting-control"><select class="select" aria-label="Runs per service"><option>20 runs</option><option>50 runs</option><option>Unlimited</option></select></div>
+              </div>
+              <div class="setting-row">
+                <div class="setting-copy"><strong>Theme</strong><p>Stored on this device only.</p></div>
+                <div class="setting-control">
+                  <div class="segmented" aria-label="Theme preference">
+                    <button class="seg-button" data-theme-choice="light">Light</button>
+                    <button class="seg-button" data-theme-choice="dark">Dark</button>
+                    <button class="seg-button active" data-theme-choice="system">System</button>
+                  </div>
+                </div>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <section class="screen" data-screen="login">
+          <div class="login-wrap">
+            <article class="panel login-card">
+              <div class="brand"><span class="brand-mark" aria-hidden="true"></span><span>Port Start</span></div>
+              <h1>Welcome back</h1>
+              <p>Enter the password for the local administration server at <span class="mono">127.0.0.1:13337</span>.</p>
+              <form id="loginForm">
+                <div class="field"><label for="password">Password</label><input class="input" id="password" type="password" value="local-development" autocomplete="current-password"></div>
+                <button class="button primary" style="width:100%">Sign in</button>
+              </form>
+              <p class="field-help" style="margin:14px 0 0;text-align:center">Sessions expire after 24 hours. Password-free loopback access is the default.</p>
+              <button class="button ghost small" data-nav="settings" style="width:100%;margin-top:12px">← Return to settings</button>
+            </article>
+          </div>
+        </section>
+
+        <section class="screen" data-screen="empty">
+          <div class="page-head">
+            <div><p class="eyebrow">Fresh install</p><h1>Your local services</h1><p class="subhead">Nothing is registered yet.</p></div>
+          </div>
+          <article class="panel empty-state">
+            <div>
+              <div class="empty-graphic" aria-hidden="true"></div>
+              <h2>Advertise your first service</h2>
+              <p>Apply a checked-in <span class="mono">.port-start.yaml</span> from a Git worktree, or register an ad hoc command directly.</p>
+              <div style="display:flex;justify-content:center;gap:8px;flex-wrap:wrap">
+                <button class="button" data-action="apply-manifest">Apply a manifest</button>
+                <button class="button primary" data-modal-open="addService">Register a service</button>
+              </div>
+            </div>
+          </article>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <section class="startup-screen" id="startupScreen" aria-label="Port startup interstitial">
+    <div class="startup-shell">
+      <div class="startup-top">
+        <div class="brand"><span class="brand-mark" aria-hidden="true"></span><span>Port Start</span></div>
+        <span class="startup-url">localhost:4311/health</span>
+      </div>
+      <div class="startup-main">
+        <article class="startup-card">
+          <div class="startup-info">
+            <div class="startup-state">
+              <div class="loader" id="startupLoader" aria-hidden="true"></div>
+              <div class="startup-copy">
+                <h1 id="startupTitle">Starting api</h1>
+                <p id="startupMessage">A request arrived while this service was idle. Port Start is launching it now.</p>
+              </div>
+            </div>
+            <div class="startup-meta">
+              <span>Service <strong>northstar/api</strong></span>
+              <span>Port <strong>:4311</strong></span>
+              <span>Mode <strong>proxy</strong></span>
+              <span id="startupElapsed">Elapsed <strong>0.0s</strong></span>
+            </div>
+            <div class="startup-actions">
+              <button class="button" id="restartStartup">Restart</button>
+              <button class="button danger" id="cancelStartup">Cancel</button>
+              <span class="muted" id="reloadNote" style="margin-left:auto;font-size:10px">This page reloads automatically when ready.</span>
+            </div>
+          </div>
+          <div class="startup-progress"><span id="startupProgress"></span></div>
+          <div class="terminal startup-terminal">
+            <div class="terminal-top"><span class="terminal-light"></span><span class="terminal-light"></span><span class="terminal-light"></span><span class="terminal-title">live startup output</span><span class="terminal-status" id="startupTerminalStatus">connecting</span></div>
+            <div class="terminal-body" id="startupLogs" aria-live="polite"></div>
+          </div>
+        </article>
+      </div>
+      <footer class="startup-footer">
+        <span>Scoped startup access · expires after this launch</span>
+        <div class="demo-states">
+          <span>Prototype states:</span>
+          <button class="state-chip" data-startup-state="starting">Starting</button>
+          <button class="state-chip" data-startup-state="failed">Failed</button>
+          <button class="state-chip" data-startup-state="backoff">Backoff</button>
+          <button class="state-chip" data-startup-state="ready">Ready</button>
+          <button class="state-chip" id="closeStartup">Dashboard</button>
+        </div>
+      </footer>
+    </div>
+  </section>
+
+  <section class="ready-demo" id="readyDemo" aria-label="Demo of loaded managed service">
+    <nav class="ready-nav">
+      <div class="ready-logo">Northstar</div>
+      <a href="#">Products</a><a href="#">Customers</a><a href="#">About</a>
+      <button class="button small">Open app</button>
+    </nav>
+    <main class="ready-content">
+      <p class="eyebrow">Port :4311 is ready</p>
+      <h1>Your original page has loaded.</h1>
+      <p>This placeholder represents the managed app taking over after its process accepts connections. Port Start stays out of the way until it is needed again.</p>
+      <button class="button" style="border-color:#251f1a;background:transparent" data-action="return-dashboard">View Port Start</button>
+    </main>
+    <button class="return-pill" data-action="return-dashboard">← Return to Port Start</button>
+  </section>
+
+  <div class="modal-backdrop" id="addServiceModal" role="dialog" aria-modal="true" aria-labelledby="addServiceTitle">
+    <div class="modal">
+      <div class="modal-header">
+        <div><div class="panel-title" id="addServiceTitle">Register an imperative service</div><div class="panel-kicker">One command · one advertised port</div></div>
+        <button class="icon-button" data-modal-close aria-label="Close">×</button>
+      </div>
+      <form id="serviceForm">
+        <div class="modal-body">
+          <div class="form-grid">
+            <div class="field"><label for="serviceName">Name</label><input class="input" id="serviceName" value="marketing" required></div>
+            <div class="field"><label for="servicePort">Advertised port</label><input class="input mono" id="servicePort" value="auto" required></div>
+            <div class="field full">
+              <label>Managed port mode</label>
+              <div class="radio-cards">
+                <label class="radio-card"><input type="radio" name="mode" value="proxy" checked><strong>Proxy</strong><span>Reliable startup and raw TCP forwarding.</span></label>
+                <label class="radio-card"><input type="radio" name="mode" value="handoff"><strong>Handoff</strong><span>The command binds the advertised port.</span></label>
+              </div>
+            </div>
+            <div class="field"><label for="serviceProtocol">Protocol hint</label><select class="select" id="serviceProtocol" style="width:100%"><option>HTTP</option><option>HTTPS</option><option>TCP</option></select></div>
+            <div class="field"><label for="serviceCwd">Working directory</label><input class="input mono" id="serviceCwd" value="~/Developer/northstar"></div>
+            <div class="field full"><label for="serviceCommand">Command</label><input class="input mono" id="serviceCommand" value="npm run dev -- --port {port}" required><span class="field-help">Use {port} for the backend or handed-off bind port.</span></div>
+          </div>
+        </div>
+        <div class="modal-footer"><button type="button" class="button" data-modal-close>Cancel</button><button class="button primary">Register service</button></div>
+      </form>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status"><span class="status-dot"></span><span id="toastMessage">Updated</span></div>
+
+  <script>
+    (() => {
+      const screens = [...document.querySelectorAll("[data-screen]")];
+      const navButtons = [...document.querySelectorAll(".nav-button")];
+      const crumb = document.getElementById("crumbLabel");
+      const sidebar = document.getElementById("sidebar");
+      const startup = document.getElementById("startupScreen");
+      const readyDemo = document.getElementById("readyDemo");
+      const modal = document.getElementById("addServiceModal");
+      const toast = document.getElementById("toast");
+      const toastMessage = document.getElementById("toastMessage");
+      const labels = {
+        overview: "Overview", worktrees: "Worktrees", services: "Services",
+        "service-detail": "Services / web", logs: "Runs & logs",
+        system: "System", settings: "Settings", login: "Sign in", empty: "Empty state"
+      };
+      let toastTimer;
+      let startupTimer;
+      let startupBeganAt = 0;
+      let startupStep = 0;
+
+      const startupLines = [
+        ["stdout", "$ npm run dev -- --host 127.0.0.1 --port 52193"],
+        ["stdout", "> northstar-api@1.8.2 dev"],
+        ["stdout", "> tsx watch src/server.ts --port 52193"],
+        ["stdout", "loading environment from .env.local"],
+        ["stdout", "connecting to local database…"],
+        ["stdout", "migrations are up to date"],
+        ["stdout", "registering 24 API routes"],
+        ["stdout", "server listening on http://127.0.0.1:52193"],
+        ["stdout", "ready in 5.7s"]
+      ];
+
+      function showToast(message, tone = "good") {
+        toastMessage.textContent = message;
+        const dot = toast.querySelector(".status-dot");
+        dot.className = "status-dot" + (tone === "warn" ? " amber" : tone === "danger" ? " red" : "");
+        toast.classList.add("show");
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => toast.classList.remove("show"), 2800);
+      }
+
+      function navigate(name) {
+        screens.forEach(screen => screen.classList.toggle("active", screen.dataset.screen === name));
+        navButtons.forEach(button => button.classList.toggle("active", button.dataset.nav === name || (name === "service-detail" && button.dataset.nav === "services")));
+        crumb.textContent = labels[name] || name;
+        sidebar.classList.remove("open");
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        history.replaceState(null, "", "#" + name);
+      }
+
+      document.addEventListener("click", event => {
+        const nav = event.target.closest("[data-nav]");
+        if (nav) navigate(nav.dataset.nav);
+
+        const openModal = event.target.closest("[data-modal-open]");
+        if (openModal) {
+          modal.classList.add("open");
+          setTimeout(() => document.getElementById("serviceName").focus(), 80);
+        }
+        if (event.target.closest("[data-modal-close]")) modal.classList.remove("open");
+
+        const action = event.target.closest("[data-action]")?.dataset.action;
+        if (!action) return;
+        const messages = {
+          "start-all": "Starting 6 enabled services concurrently",
+          "stop-all": "Stopping all active services",
+          "stop-worktree": "Stopping active services in this worktree",
+          "apply-manifest": "Manifest validation preview opened",
+          "enable-service": "Service enabled and listener armed",
+          "stop-service": "Service stopped and returned to idle",
+          "restart-service": "Restart requested — backoff bypassed",
+          "disable-service": "Service disabled and listener released",
+          "copy-url": "Copied http://localhost:4310/checkout",
+          "download-logs": "Preparing structured log download",
+          "refresh-system": "System status refreshed",
+          "retry-listener": "Retrying 127.0.0.1:5439",
+          "show-stale": "Missing worktree details are shown below",
+          "open-worktree": "Opened northstar worktree details"
+        };
+        if (action === "open-startup") return openStartup();
+        if (action === "open-running") return showToast("Opening http://localhost:4310/checkout");
+        if (action === "show-conflict") return showToast("Port :5439 is owned by another process", "danger");
+        if (action === "return-dashboard") return closeReadyDemo();
+        if (messages[action]) showToast(messages[action], action.includes("stop") || action === "disable-service" ? "warn" : "good");
+      });
+
+      document.getElementById("themeToggle").addEventListener("click", () => {
+        const theme = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
+        setTheme(theme, true);
+      });
+
+      function setTheme(theme, persist) {
+        document.documentElement.dataset.theme = theme;
+        if (persist) localStorage.setItem("port-start-theme", theme);
+        document.querySelectorAll("[data-theme-choice]").forEach(button => button.classList.toggle("active", button.dataset.themeChoice === theme));
+      }
+
+      document.querySelectorAll("[data-theme-choice]").forEach(button => {
+        button.addEventListener("click", () => {
+          const choice = button.dataset.themeChoice;
+          if (choice === "system") {
+            localStorage.removeItem("port-start-theme");
+            setTheme(matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light", false);
+            document.querySelectorAll("[data-theme-choice]").forEach(item => item.classList.toggle("active", item === button));
+          } else {
+            setTheme(choice, true);
+          }
+        });
+      });
+
+      document.querySelectorAll("[data-toggle]").forEach(toggle => {
+        toggle.addEventListener("click", () => {
+          const on = toggle.classList.toggle("on");
+          toggle.setAttribute("aria-pressed", String(on));
+          showToast(on ? "Password authentication enabled" : "Password authentication disabled");
+        });
+      });
+
+      document.querySelectorAll("[data-filter]").forEach(input => {
+        input.addEventListener("input", () => {
+          const query = input.value.toLowerCase().trim();
+          const screen = input.closest("[data-screen]");
+          screen.querySelectorAll("[data-filter-item]").forEach(item => {
+            item.hidden = query && !item.dataset.filterItem.includes(query);
+          });
+        });
+      });
+
+      document.getElementById("mobileMenu").addEventListener("click", () => sidebar.classList.toggle("open"));
+      document.addEventListener("click", event => {
+        if (innerWidth <= 760 && sidebar.classList.contains("open") && !sidebar.contains(event.target) && !event.target.closest("#mobileMenu")) sidebar.classList.remove("open");
+      });
+
+      function timestamp(offsetSeconds = 0) {
+        const date = new Date(Date.now() + offsetSeconds * 1000);
+        return date.toLocaleTimeString([], { hour12: false, hour: "2-digit", minute: "2-digit", second: "2-digit" });
+      }
+
+      function appendStartupLine(stream, message, index) {
+        const row = document.createElement("div");
+        row.className = "log-line";
+        const messageClass = index === startupLines.length - 1 ? "log-message ok" : "log-message";
+        row.innerHTML = `<span class="log-time">${timestamp()}</span><span class="log-stream">${stream}</span><span class="${messageClass}"></span>`;
+        row.querySelector(".log-message").textContent = message;
+        const logs = document.getElementById("startupLogs");
+        logs.appendChild(row);
+        logs.scrollTop = logs.scrollHeight;
+      }
+
+      function setStartupState(state) {
+        clearInterval(startupTimer);
+        const loader = document.getElementById("startupLoader");
+        const title = document.getElementById("startupTitle");
+        const message = document.getElementById("startupMessage");
+        const terminalStatus = document.getElementById("startupTerminalStatus");
+        const progress = document.getElementById("startupProgress");
+        const reloadNote = document.getElementById("reloadNote");
+        loader.className = "loader";
+
+        if (state === "starting") return beginStartup();
+        if (state === "ready") {
+          loader.classList.add("ready");
+          title.textContent = "api is ready";
+          message.textContent = "The managed process accepted a connection. Loading your original request…";
+          terminalStatus.textContent = "ready";
+          progress.style.width = "100%";
+          reloadNote.textContent = "Reloading http://localhost:4311/health";
+          setTimeout(() => {
+            if (startup.classList.contains("active")) {
+              startup.classList.remove("active");
+              readyDemo.classList.add("active");
+            }
+          }, 1150);
+        } else if (state === "failed") {
+          loader.classList.add("failed");
+          title.textContent = "api failed to start";
+          message.textContent = "The command exited before it accepted connections. Review the last output, then restart.";
+          terminalStatus.textContent = "failed";
+          progress.style.width = "100%";
+          progress.style.background = "var(--red)";
+          reloadNote.textContent = "The service remains armed for a new request.";
+          appendStartupLine("stderr", "Error: database connection refused at 127.0.0.1:5439");
+        } else if (state === "backoff") {
+          loader.classList.add("failed");
+          title.textContent = "Waiting before retry";
+          message.textContent = "Repeated launch failures triggered a short cooldown. Restart now to bypass backoff.";
+          terminalStatus.textContent = "backoff";
+          progress.style.width = "64%";
+          progress.style.background = "var(--amber)";
+          reloadNote.textContent = "Automatic retry available in 8 seconds.";
+        } else if (state === "canceled") {
+          loader.classList.add("canceled");
+          title.textContent = "Startup canceled";
+          message.textContent = "The launch was stopped. The service is idle and still armed for the next request.";
+          terminalStatus.textContent = "canceled";
+          progress.style.width = "0";
+          reloadNote.textContent = "You can safely close this page.";
+        }
+      }
+
+      function beginStartup() {
+        clearInterval(startupTimer);
+        startupStep = 0;
+        startupBeganAt = performance.now();
+        const logs = document.getElementById("startupLogs");
+        const loader = document.getElementById("startupLoader");
+        loader.className = "loader";
+        logs.innerHTML = "";
+        document.getElementById("startupTitle").textContent = "Starting api";
+        document.getElementById("startupMessage").textContent = "A request arrived while this service was idle. Port Start is launching it now.";
+        document.getElementById("startupTerminalStatus").textContent = "connecting";
+        document.getElementById("startupProgress").style.cssText = "width:8%;background:var(--accent)";
+        document.getElementById("reloadNote").textContent = "This page reloads automatically when ready.";
+
+        appendStartupLine("stdout", "Port Start triggered northstar/api from HTTP navigation", 0);
+        startupTimer = setInterval(() => {
+          const elapsed = (performance.now() - startupBeganAt) / 1000;
+          document.getElementById("startupElapsed").innerHTML = `Elapsed <strong>${elapsed.toFixed(1)}s</strong>`;
+          if (startupStep < startupLines.length) {
+            const [stream, message] = startupLines[startupStep];
+            appendStartupLine(stream, message, startupStep);
+            startupStep += 1;
+            document.getElementById("startupProgress").style.width = `${10 + startupStep * 9}%`;
+          } else {
+            clearInterval(startupTimer);
+            setStartupState("ready");
+          }
+        }, 620);
+      }
+
+      function openStartup() {
+        readyDemo.classList.remove("active");
+        startup.classList.add("active");
+        beginStartup();
+      }
+
+      function closeReadyDemo() {
+        readyDemo.classList.remove("active");
+        startup.classList.remove("active");
+        navigate("overview");
+      }
+
+      document.getElementById("restartStartup").addEventListener("click", beginStartup);
+      document.getElementById("cancelStartup").addEventListener("click", () => setStartupState("canceled"));
+      document.getElementById("closeStartup").addEventListener("click", closeReadyDemo);
+      document.querySelectorAll("[data-startup-state]").forEach(button => button.addEventListener("click", () => setStartupState(button.dataset.startupState)));
+
+      document.getElementById("serviceForm").addEventListener("submit", event => {
+        event.preventDefault();
+        modal.classList.remove("open");
+        showToast("marketing registered on available port :4682");
+        navigate("services");
+      });
+
+      document.getElementById("loginForm").addEventListener("submit", event => {
+        event.preventDefault();
+        showToast("Signed in to the local admin server");
+        navigate("overview");
+      });
+
+      modal.addEventListener("click", event => {
+        if (event.target === modal) modal.classList.remove("open");
+      });
+
+      document.addEventListener("keydown", event => {
+        if (event.key === "Escape") {
+          modal.classList.remove("open");
+          sidebar.classList.remove("open");
+        }
+        if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+          event.preventDefault();
+          navigate("services");
+          setTimeout(() => document.querySelector('[data-filter="services"]').focus(), 20);
+        }
+      });
+
+      const initial = location.hash.slice(1);
+      if (labels[initial]) navigate(initial);
+      const storedTheme = localStorage.getItem("port-start-theme");
+      if (storedTheme) setTheme(storedTheme, false);
+    })();
+  </script>
+</body>
+</html>
