@@ -1,0 +1,13 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <title>Handoff Orbit</title>
+  <g fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round">
+    <path d="M26 43A27 27 0 0 1 69 28"/>
+    <path d="M74 57A27 27 0 0 1 31 72"/>
+  </g>
+  <g fill="currentColor">
+    <circle cx="26" cy="43" r="6"/>
+    <circle cx="69" cy="28" r="4"/>
+    <circle cx="74" cy="57" r="6"/>
+    <circle cx="31" cy="72" r="4"/>
+  </g>
+</svg>

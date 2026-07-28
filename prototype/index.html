@@ -1,0 +1,2373 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Port Start — UI prototype</title>
+  <link rel="icon" href="./assets/logos/twin-listener.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="./assets/phosphor/style.css">
+  <script>
+    (() => {
+      const saved = localStorage.getItem("port-start-prototype-theme");
+      document.documentElement.dataset.theme =
+        saved || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+    })();
+  </script>
+  <style>
+    @font-face {
+      font-family: "Manrope";
+      src: url("./assets/manrope.woff2") format("woff2");
+      font-style: normal;
+      font-weight: 400 800;
+      font-display: swap;
+    }
+
+    :root {
+      --canvas: #aeb9b2;
+      --shell: #f7f8f6;
+      --surface: #ffffff;
+      --surface-soft: #edf0ec;
+      --surface-quiet: #f2f4f1;
+      --ink: #17181a;
+      --ink-soft: #353834;
+      --muted: #626a63;
+      --line: #dfe3de;
+      --rail: #18191c;
+      --rail-soft: #393b3e;
+      --acid: #efff83;
+      --acid-ink: #1a1c17;
+      --good: #2f8c69;
+      --warning: #bd7d25;
+      --danger: #c6525d;
+      --badge-good-ink: #28765a;
+      --badge-danger-ink: #ad4650;
+      --badge-warning-ink: #90601d;
+      --manifest-ink: #6c59c2;
+      --badge-starting-mix: 40%;
+      --badge-imperative-ink: #17181a;
+      --log-time: #78827d;
+      --white: #fff;
+      --shadow: 0 30px 85px rgba(38, 50, 43, .2);
+      --card-shadow: 0 1px 0 rgba(255, 255, 255, .7) inset;
+      --radius-shell: 38px;
+      --radius-card: 30px;
+      --radius-control: 18px;
+      --font: "Manrope", "Helvetica Neue", Arial, sans-serif;
+      --mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      --access-banner-height: 0px;
+    }
+
+    html[data-theme="dark"] {
+      --canvas: #111715;
+      --shell: #222623;
+      --surface: #2b302c;
+      --surface-soft: #323833;
+      --surface-quiet: #262b27;
+      --ink: #f5f7f3;
+      --ink-soft: #dfe4de;
+      --muted: #adb5ae;
+      --line: #3d443e;
+      --rail: #0e100f;
+      --rail-soft: #343936;
+      --acid: #eaff71;
+      --acid-ink: #141713;
+      --good: #75d2a9;
+      --warning: #f2b85f;
+      --danger: #ff8290;
+      --badge-good-ink: #75d2a9;
+      --badge-danger-ink: #ff8795;
+      --badge-warning-ink: #f2b85f;
+      --manifest-ink: #ad99ff;
+      --badge-starting-mix: 33%;
+      --badge-imperative-ink: #141713;
+      --shadow: 0 34px 90px rgba(0, 0, 0, .42);
+      --card-shadow: 0 1px 0 rgba(255, 255, 255, .03) inset;
+    }
+
+    * { box-sizing: border-box; }
+    html {
+      min-width: 320px;
+      height: 100%;
+      background: var(--shell);
+    }
+    body {
+      margin: 0;
+      min-width: 320px;
+      height: 100%;
+      min-height: 100%;
+      overflow: hidden;
+      background: var(--shell);
+      color: var(--ink);
+      font-family: var(--font);
+      font-size: 14px;
+      line-height: 1.45;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .app-frame {
+      width: 100%;
+      height: 100%;
+      min-height: 0;
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr);
+    }
+    .access-banner {
+      z-index: 120;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-height: 52px;
+      padding: 10px clamp(16px, 3vw, 30px);
+      background: #9d3444;
+      color: #fff;
+      font-size: 11px;
+      font-weight: 600;
+      line-height: 1.45;
+    }
+    .access-banner[hidden] { display: none; }
+    .access-banner > i { flex: 0 0 auto; font-size: 19px; }
+    .access-banner > span { min-width: 0; }
+    .access-banner strong { font-weight: 780; }
+    .access-banner .button {
+      min-height: 34px;
+      margin-left: auto;
+      flex: 0 0 auto;
+      border: 0;
+      background: #fff;
+      color: #8c2737;
+      box-shadow: none;
+    }
+
+    button, input, select { font: inherit; }
+    button { color: inherit; }
+    button, a { -webkit-tap-highlight-color: transparent; }
+    button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible {
+      outline: 3px solid color-mix(in srgb, var(--acid) 70%, var(--ink));
+      outline-offset: 3px;
+    }
+    button[disabled] { opacity: .45; cursor: not-allowed; }
+    .ph { display: inline-block; font-size: 1.25em; vertical-align: -.13em; }
+    .mono { font-family: var(--mono); }
+    .muted { color: var(--muted); }
+    .hidden { display: none !important; }
+
+    .stage {
+      width: 100%;
+      height: 100%;
+      min-height: 0;
+    }
+
+    .app-shell {
+      width: 100%;
+      height: 100%;
+      min-height: 0;
+      display: grid;
+      grid-template-columns: 102px minmax(0, 1fr);
+      gap: 0;
+      overflow: hidden;
+      border: 0;
+      border-radius: 0;
+      background: var(--shell);
+      padding: 0;
+      box-shadow: none;
+    }
+
+    .rail {
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      border-right: 1px solid rgba(255, 255, 255, .06);
+      border-radius: 0;
+      background: var(--rail);
+      padding: 17px 10px 14px;
+      color: #f5f5f1;
+    }
+
+    .rail-logo, .rail-button {
+      width: 52px;
+      height: 52px;
+      display: grid;
+      place-items: center;
+      flex: 0 0 auto;
+      border: 0;
+      border-radius: 17px;
+      background: transparent;
+      color: #d9ddd9;
+      cursor: pointer;
+      transition: background .18s ease, color .18s ease, transform .18s ease;
+    }
+
+    .rail-logo {
+      margin-bottom: 20px;
+      border: 6px solid #d8dbd9;
+      border-radius: 18px;
+      background: var(--rail);
+      color: var(--acid);
+      font-size: 22px;
+    }
+
+    .brand-symbol {
+      width: 30px;
+      height: 30px;
+      display: block;
+      background: currentColor;
+      -webkit-mask: url("./assets/logos/twin-listener.svg") center / contain no-repeat;
+      mask: url("./assets/logos/twin-listener.svg") center / contain no-repeat;
+    }
+
+    .rail-button {
+      position: relative;
+      margin: 2px 0;
+      font-size: 19px;
+    }
+    .rail-button:hover { background: #2b2d30; color: #fff; }
+    .rail-button.active { background: #404246; color: #fff; }
+    .rail-button.active::after {
+      content: "";
+      position: absolute;
+      left: -10px;
+      width: 3px;
+      height: 21px;
+      border-radius: 4px;
+      background: var(--acid);
+    }
+    .rail-button[data-label]::before {
+      content: attr(data-label);
+      position: absolute;
+      left: 62px;
+      z-index: 60;
+      width: max-content;
+      padding: 7px 10px;
+      border-radius: 9px;
+      background: var(--rail);
+      color: #fff;
+      font-size: 10px;
+      font-weight: 650;
+      opacity: 0;
+      pointer-events: none;
+      transform: translateX(-4px);
+      transition: opacity .14s ease, transform .14s ease;
+    }
+    .rail-button[data-label]:hover::before { opacity: 1; transform: none; }
+    .rail-spacer { flex: 1; }
+    .rail-separator { width: 30px; height: 1px; margin: 8px 0; background: #35373a; }
+    .workspace {
+      min-width: 0;
+      overflow: hidden;
+      border-radius: 0;
+      background: var(--shell);
+    }
+
+    .workspace-scroll {
+      height: 100%;
+      overflow: auto;
+      padding: 25px 28px 40px;
+      scrollbar-width: thin;
+      scrollbar-color: var(--line) transparent;
+    }
+
+    .masthead {
+      display: flex;
+      align-items: flex-start;
+      gap: 24px;
+      padding: 0 6px 22px;
+    }
+
+    .masthead-title {
+      max-width: 890px;
+      margin: 0;
+      font-size: clamp(38px, 4.1vw, 64px);
+      font-weight: 500;
+      line-height: 1.03;
+      letter-spacing: -.065em;
+    }
+
+    .headline-chip {
+      width: 60px;
+      height: 42px;
+      display: inline-grid;
+      place-items: center;
+      margin: 0 7px;
+      border-radius: 99px;
+      background: var(--surface);
+      font-size: 21px;
+      vertical-align: .16em;
+      box-shadow: var(--card-shadow);
+    }
+    .headline-chip.acid { background: var(--acid); color: var(--acid-ink); }
+
+    .masthead-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-left: auto;
+      padding-top: 8px;
+      white-space: nowrap;
+    }
+
+    .icon-button, .button, .tab, .small-button {
+      border: 0;
+      background: var(--surface);
+      color: var(--ink);
+      cursor: pointer;
+      transition: transform .16s ease, background .16s ease, color .16s ease;
+    }
+    .icon-button:hover, .button:hover, .tab:hover, .small-button:hover { transform: translateY(-1px); }
+    .icon-button:active, .button:active, .small-button:active { transform: translateY(1px); }
+
+    .icon-button {
+      width: 54px;
+      height: 54px;
+      display: inline-grid;
+      place-items: center;
+      border-radius: 19px;
+      font-size: 18px;
+      box-shadow: var(--card-shadow);
+    }
+    .button {
+      min-height: 54px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 9px;
+      padding: 0 22px;
+      border-radius: 20px;
+      font-weight: 580;
+      box-shadow: var(--card-shadow);
+    }
+    .button.dark { background: var(--rail); color: #fff; }
+    .button.acid { background: var(--acid); color: var(--acid-ink); }
+    .button.ghost { background: var(--surface-soft); }
+    .button.danger { background: color-mix(in srgb, var(--danger) 14%, var(--surface)); color: var(--badge-danger-ink); }
+    .button.compact { min-height: 42px; padding: 0 16px; border-radius: 15px; font-size: 12px; }
+
+    .tabs {
+      display: flex;
+      gap: 5px;
+      overflow-x: auto;
+      padding: 0 0 11px 2px;
+      scrollbar-width: none;
+    }
+    .tabs::-webkit-scrollbar { display: none; }
+    .tab {
+      min-height: 49px;
+      flex: 0 0 auto;
+      padding: 0 21px;
+      border-radius: 18px;
+      font-size: 12px;
+      font-weight: 600;
+      box-shadow: var(--card-shadow);
+    }
+    .tab.active { background: var(--rail); color: #fff; }
+    .tab-count {
+      min-width: 20px;
+      height: 20px;
+      display: inline-grid;
+      place-items: center;
+      margin-left: 7px;
+      border-radius: 99px;
+      background: var(--surface-soft);
+      color: var(--ink);
+      font-size: 9px;
+    }
+    .tab.active .tab-count { background: #3b3d40; color: #fff; }
+
+    .view { display: none; animation: enter .24s ease-out both; }
+    .view.active { display: block; }
+
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 310px;
+      gap: 11px;
+    }
+
+    .main-grid {
+      min-width: 0;
+      display: grid;
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+      gap: 11px;
+    }
+
+    .card {
+      min-width: 0;
+      overflow: hidden;
+      border: 1px solid color-mix(in srgb, var(--line) 54%, transparent);
+      border-radius: var(--radius-card);
+      background: var(--surface-soft);
+      box-shadow: var(--card-shadow);
+    }
+    .card.white { background: var(--surface); }
+    .card.acid { background: var(--acid); color: var(--acid-ink); }
+    .card.dark { border-color: #292b2e; background: var(--rail); color: #fff; }
+
+    .metric-card {
+      grid-column: span 4;
+      min-height: 252px;
+      display: flex;
+      flex-direction: column;
+      padding: 25px 25px 20px;
+    }
+
+    .card-heading {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 14px;
+      font-weight: 650;
+    }
+    .card-heading .more { margin-left: auto; }
+    .mini-icon {
+      width: 44px;
+      height: 44px;
+      display: inline-grid;
+      place-items: center;
+      flex: 0 0 auto;
+      border-radius: 15px;
+      background: color-mix(in srgb, var(--surface) 84%, transparent);
+      color: var(--ink);
+      font-size: 18px;
+    }
+    .acid .mini-icon { background: rgba(255,255,255,.64); color: var(--acid-ink); }
+    .dark .mini-icon { background: #2a2c2f; color: #fff; }
+
+    .metric-number {
+      display: flex;
+      align-items: flex-end;
+      gap: 8px;
+      margin-top: 24px;
+      font-size: clamp(44px, 4vw, 65px);
+      font-weight: 500;
+      line-height: .88;
+      letter-spacing: -.065em;
+    }
+    .metric-number small {
+      padding-bottom: 6px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: 0;
+    }
+    .acid .metric-number small { color: #687044; }
+
+    .metric-label {
+      width: max-content;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 9px;
+      padding: 4px 9px;
+      border-radius: 99px;
+      background: color-mix(in srgb, var(--acid) 72%, var(--surface));
+      font-size: 10px;
+      font-weight: 700;
+    }
+    .acid .metric-label { background: rgba(255,255,255,.66); }
+    .metric-label i { font-size: 12px; }
+
+    .segments {
+      display: grid;
+      grid-auto-flow: column;
+      grid-auto-columns: 1fr;
+      gap: 4px;
+      margin-top: auto;
+      padding-top: 18px;
+    }
+    .segment {
+      height: 52px;
+      border: 1px dashed color-mix(in srgb, var(--ink) 25%, transparent);
+      border-radius: 99px;
+    }
+    .segment.filled { border-style: solid; border-color: var(--ink); background: var(--ink); }
+    .acid .segment.filled { border-color: #252722; background: #252722; }
+    .zero-detail {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: auto;
+      padding-top: 20px;
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 600;
+    }
+    .zero-detail i { font-size: 16px; }
+    .acid .zero-detail { color: #59603b; }
+
+    .wake-card {
+      position: relative;
+      grid-column: span 4;
+      min-height: 252px;
+      display: flex;
+      flex-direction: column;
+      padding: 25px;
+    }
+    .wake-card::after {
+      content: "";
+      position: absolute;
+      width: 144px;
+      height: 144px;
+      right: -38px;
+      top: -44px;
+      border: 18px solid var(--acid);
+      border-radius: 50%;
+      opacity: .12;
+    }
+    .wake-card h2 {
+      max-width: 10ch;
+      margin: 0;
+      font-size: 26px;
+      font-weight: 500;
+      line-height: 1.06;
+      letter-spacing: -.045em;
+    }
+    .wake-card p {
+      max-width: 28ch;
+      margin: 10px 0 16px;
+      color: #aeb3ae;
+      font-size: 11px;
+    }
+    .wake-card .button { width: 100%; min-height: 44px; margin-top: auto; background: #fff; color: #161719; border-radius: 16px; }
+
+    .activity-card {
+      grid-column: 1 / -1;
+      min-height: 525px;
+      padding: 25px 27px 18px;
+    }
+    .activity-head { display: flex; align-items: center; gap: 18px; }
+    .activity-head h2 { margin: 0; font-size: 24px; font-weight: 560; letter-spacing: -.035em; }
+    .legend { display: flex; gap: 14px; color: var(--ink-soft); font-size: 10px; }
+    .legend span { display: inline-flex; align-items: center; gap: 6px; }
+    .legend-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--rail); }
+    .legend-dot.acid { background: var(--acid); border: 1px solid #dfe879; }
+    .activity-head .select { margin-left: auto; }
+    .activity-empty {
+      min-height: 410px;
+      display: grid;
+      place-items: center;
+      margin-top: 18px;
+      padding: 32px;
+      border-top: 1px solid var(--line);
+      text-align: center;
+    }
+    .activity-empty > div { max-width: 390px; }
+    .activity-empty .mini-icon { margin: 0 auto 14px; }
+    .activity-empty h3 { margin: 0; font-size: 18px; font-weight: 620; letter-spacing: -.025em; }
+    .activity-empty p { margin: 7px 0 0; color: var(--muted); font-size: 11px; line-height: 1.6; }
+
+    .select {
+      height: 42px;
+      border: 0;
+      border-radius: 14px;
+      background: var(--surface);
+      color: var(--ink);
+      padding: 0 34px 0 14px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .chart {
+      height: 425px;
+      display: grid;
+      grid-template-columns: 36px repeat(8, minmax(34px, 1fr));
+      gap: clamp(7px, 1.7vw, 24px);
+      align-items: end;
+      margin-top: 18px;
+      padding: 20px 10px 0 0;
+      border-top: 1px solid var(--line);
+      background-image: linear-gradient(to bottom, transparent calc(25% - .5px), var(--line) 25%, transparent calc(25% + .5px), transparent calc(50% - .5px), var(--line) 50%, transparent calc(50% + .5px), transparent calc(75% - .5px), var(--line) 75%, transparent calc(75% + .5px));
+    }
+    .chart-axis {
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding-bottom: 27px;
+      color: var(--muted);
+      font-size: 9px;
+    }
+    .chart-day {
+      height: 100%;
+      display: grid;
+      grid-template-rows: minmax(0, 1fr) 22px;
+      gap: 8px;
+      align-items: end;
+    }
+    .bar-track {
+      width: 35px;
+      height: 100%;
+      position: relative;
+      justify-self: center;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      overflow: hidden;
+      border: 1px dashed #b6bdb7;
+      border-radius: 99px;
+    }
+    .bar-total { width: 100%; border-radius: 99px; background: var(--rail); }
+    .bar-warm {
+      width: 100%;
+      position: absolute;
+      bottom: 0;
+      border-radius: 99px;
+      background: var(--acid);
+    }
+    .bar-track::after {
+      content: "";
+      position: absolute;
+      width: 9px;
+      height: 9px;
+      left: 50%;
+      top: 11px;
+      border-radius: 50%;
+      background: var(--surface);
+      transform: translateX(-50%);
+    }
+    .bar-track.empty::after { background: #9fa69f; }
+    .day-label { color: var(--muted); font-size: 9px; text-align: center; white-space: nowrap; }
+    .day-label.today { color: var(--ink); font-weight: 700; }
+
+    .quick-column {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      align-content: start;
+    }
+    .quick-card {
+      min-height: 188px;
+      display: flex;
+      flex-direction: column;
+      padding: 20px;
+      border: 0;
+      text-align: left;
+      cursor: pointer;
+      transition: transform .16s ease, background .16s ease;
+    }
+    .quick-card:hover { transform: translateY(-2px); background: color-mix(in srgb, var(--surface-soft) 86%, var(--acid)); }
+    .quick-card[disabled] { cursor: not-allowed; }
+    .quick-card[disabled]:hover { transform: none; background: var(--surface-soft); }
+    .quick-card.wide { grid-column: 1 / -1; min-height: 194px; }
+    .quick-card .mini-icon { width: 42px; height: 42px; }
+    .quick-card i.arrow { margin-left: auto; font-size: 16px; }
+    .quick-card h3 { margin: auto 0 0; font-size: 13px; font-weight: 620; }
+    .quick-card p {
+      display: -webkit-box;
+      margin: 5px 0 0;
+      overflow: hidden;
+      color: var(--muted);
+      font-size: 10px;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 1;
+    }
+    .quick-card.system { min-height: 194px; }
+    .system-line { display: flex; align-items: center; gap: 8px; margin-top: auto; font-size: 12px; font-weight: 650; }
+    .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--good); box-shadow: 0 0 0 4px color-mix(in srgb, var(--good) 14%, transparent); }
+    .status-dot.warn { background: var(--warning); box-shadow: 0 0 0 4px color-mix(in srgb, var(--warning) 14%, transparent); }
+
+    .section-toolbar {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      margin: 3px 2px 12px;
+    }
+    .section-toolbar h2 { margin: 0; font-size: 25px; font-weight: 560; letter-spacing: -.04em; }
+    .section-toolbar p { margin: 3px 0 0; color: var(--muted); font-size: 11px; }
+    .section-toolbar .toolbar-actions { display: flex; gap: 8px; margin-left: auto; }
+
+    .search {
+      height: 42px;
+      min-width: 220px;
+      border: 0;
+      border-radius: 15px;
+      background: var(--surface);
+      color: var(--ink);
+      padding: 0 15px;
+      font-size: 11px;
+    }
+    .search::placeholder { color: var(--muted); }
+
+    .worktree-list, .services-list, .settings-grid { display: grid; gap: 10px; }
+    .worktree-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .empty-panel {
+      grid-column: 1 / -1;
+      min-height: 330px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 42px 28px;
+      text-align: center;
+    }
+    .empty-panel .mini-icon { width: 58px; height: 58px; margin-bottom: 16px; border-radius: 20px; font-size: 23px; }
+    .empty-panel h3 { margin: 0; font-size: 19px; font-weight: 620; letter-spacing: -.025em; }
+    .empty-panel p { max-width: 430px; margin: 8px 0 20px; color: var(--muted); font-size: 11px; line-height: 1.65; }
+    .empty-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+    .worktree {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      gap: 14px;
+      align-items: center;
+      min-height: 154px;
+      padding: 22px;
+    }
+    .repo-avatar {
+      width: 52px;
+      height: 52px;
+      display: grid;
+      place-items: center;
+      border-radius: 18px;
+      background: var(--rail);
+      color: var(--acid);
+      font-size: 17px;
+      font-weight: 760;
+      letter-spacing: -.06em;
+    }
+    .repo-name { display: flex; align-items: center; gap: 8px; font-size: 16px; font-weight: 680; }
+    .repo-meta { margin-top: 5px; color: var(--muted); font: 10px/1.5 var(--mono); }
+    .repo-stats { display: flex; gap: 8px; margin-top: 12px; }
+    .repo-stat { padding: 5px 8px; border-radius: 9px; background: var(--surface); color: var(--ink-soft); font-size: 9px; }
+    .badge {
+      width: max-content;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      min-height: 23px;
+      padding: 3px 9px;
+      border-radius: 99px;
+      background: var(--surface-quiet);
+      color: var(--muted);
+      font-size: 9px;
+      font-weight: 700;
+      text-transform: capitalize;
+      white-space: nowrap;
+    }
+    .badge::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+    .badge.running, .badge.active, .badge.ready { background: color-mix(in srgb, var(--good) 14%, var(--surface)); color: var(--badge-good-ink); }
+    .badge.idle { background: var(--acid); color: var(--acid-ink); }
+    .badge.starting { background: color-mix(in srgb, var(--acid) var(--badge-starting-mix), var(--surface)); color: var(--ink); }
+    .badge.conflict, .badge.failed { background: color-mix(in srgb, var(--danger) 14%, var(--surface)); color: var(--badge-danger-ink); }
+    .badge.stale { background: color-mix(in srgb, var(--warning) 14%, var(--surface)); color: var(--badge-warning-ink); }
+    .badge.disabled { color: var(--muted); }
+    .badge.unavailable { color: var(--muted); }
+    .badge.manifest::before, .badge.imperative::before { display: none; }
+    .badge.manifest { background: color-mix(in srgb, #8572db 15%, var(--surface)); color: var(--manifest-ink); }
+    .badge.imperative { background: color-mix(in srgb, var(--acid) 50%, var(--surface)); color: var(--badge-imperative-ink); }
+
+    .service-table {
+      overflow-x: auto;
+      padding: 8px 0;
+    }
+    .service-row {
+      min-width: 790px;
+      display: grid;
+      grid-template-columns: minmax(160px, 1.35fr) 105px 90px 120px 118px 105px;
+      gap: 12px;
+      align-items: center;
+      padding: 13px 20px;
+      border-bottom: 1px solid var(--line);
+    }
+    .service-row:last-child { border-bottom: 0; }
+    .service-row.header { color: var(--muted); font-size: 9px; font-weight: 720; letter-spacing: .08em; text-transform: uppercase; }
+    .service-row:not(.header):hover { background: color-mix(in srgb, var(--surface) 50%, transparent); }
+    .service-title { font-size: 12px; font-weight: 680; }
+    .service-sub { margin-top: 3px; color: var(--muted); font: 9px var(--mono); }
+    .service-port { font: 11px var(--mono); }
+    .service-actions { display: flex; gap: 5px; justify-content: flex-end; }
+    .small-button {
+      width: 34px;
+      height: 34px;
+      display: grid;
+      place-items: center;
+      border-radius: 12px;
+      font-size: 14px;
+    }
+    .small-button.dark { background: var(--rail); color: #fff; }
+    .table-empty {
+      min-width: 790px;
+      min-height: 300px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 36px;
+      border-top: 1px solid var(--line);
+    }
+    .table-empty .empty-panel { min-height: 0; padding: 22px; }
+
+    .logs-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1.7fr) minmax(250px, .55fr);
+      gap: 10px;
+    }
+    .log-search-panel {
+      margin-bottom: 10px;
+      padding: 15px;
+      background: var(--surface-soft);
+    }
+    .log-search-primary {
+      display: grid;
+      grid-template-columns: minmax(220px, 1fr) auto;
+      gap: 9px;
+      align-items: end;
+    }
+    .log-search-primary .button { min-height: 46px; }
+    .log-filter-row {
+      display: flex;
+      align-items: end;
+      flex-wrap: wrap;
+      gap: 9px;
+      margin-top: 10px;
+    }
+    .log-filter-field {
+      min-width: 130px;
+      display: grid;
+      gap: 5px;
+    }
+    .log-filter-field label, .log-search-primary label {
+      color: var(--muted);
+      font-size: 8px;
+      font-weight: 760;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+    .log-filter-field .input { height: 38px; border-radius: 13px; }
+    .log-filter-check {
+      min-height: 38px;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 0 12px;
+      border: 1px solid var(--line);
+      border-radius: 13px;
+      background: var(--surface);
+      font-size: 9px;
+      font-weight: 650;
+      cursor: pointer;
+    }
+    .log-filter-check input { accent-color: var(--ink); }
+    .terminal {
+      overflow: hidden;
+      border: 1px solid #313538;
+      border-radius: 26px;
+      background: #111416;
+      color: #d9dfdc;
+    }
+    .terminal-head {
+      height: 52px;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      padding: 0 18px;
+      border-bottom: 1px solid #292d2f;
+      background: #1a1e20;
+      color: #8c9792;
+      font: 10px var(--mono);
+    }
+    .terminal-light { width: 8px; height: 8px; border-radius: 50%; background: #4b5450; }
+    .terminal-head strong { margin-left: 6px; color: #bdc5c1; font-weight: 500; }
+    .live-indicator { display: inline-flex; align-items: center; gap: 7px; margin-left: auto; color: #7ed3ae; text-transform: uppercase; letter-spacing: .08em; }
+    .terminal-body {
+      min-height: 470px;
+      max-height: 56vh;
+      overflow: auto;
+      padding: 17px 20px;
+      font: 10px/1.8 var(--mono);
+      scrollbar-color: #3c4641 #111416;
+    }
+    .terminal-empty {
+      min-height: 430px;
+      display: grid;
+      place-items: center;
+      color: #9ba59f;
+      text-align: center;
+    }
+    .terminal-empty > div { max-width: 340px; }
+    .terminal-empty i { display: block; margin-bottom: 10px; color: #c1c9c5; font-size: 24px; }
+    .terminal-empty strong { display: block; margin-bottom: 5px; color: #d9dfdc; font-family: var(--font); font-size: 13px; }
+    .terminal-empty span { font-family: var(--font); font-size: 10px; line-height: 1.6; }
+    .log-line { display: grid; grid-template-columns: 67px 48px minmax(0, 1fr); gap: 8px; }
+    .log-time { color: var(--log-time); }
+    .log-stream { color: #9aefc7; }
+    .log-stream.err { color: #ff8b97; }
+    .log-message { white-space: pre-wrap; word-break: break-word; }
+    .log-message.success { color: var(--acid); }
+    .retention-gap {
+      display: flex;
+      align-items: flex-start;
+      gap: 9px;
+      margin-bottom: 14px;
+      padding: 10px 12px;
+      border: 1px solid color-mix(in srgb, var(--warning) 45%, #292d2f);
+      border-radius: 13px;
+      background: color-mix(in srgb, var(--warning) 12%, #111416);
+      color: #d8dfdb;
+      font: 9px/1.55 var(--mono);
+    }
+    .retention-gap i { margin-top: 1px; color: #f2b85f; font-size: 15px; }
+    .retention-gap strong { color: #fff; }
+    .run-list { display: grid; gap: 8px; }
+    .run-card { padding: 18px; }
+    .run-top { display: flex; align-items: center; gap: 8px; }
+    .run-top strong { font-size: 12px; }
+    .run-top .badge { margin-left: auto; }
+    .run-card p { margin: 10px 0 0; color: var(--muted); font: 9px/1.6 var(--mono); }
+
+    .settings-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .settings-card { padding: 23px; }
+    .settings-card h3 { margin: 0 0 5px; font-size: 16px; font-weight: 650; }
+    .settings-card > p { margin: 0 0 17px; color: var(--muted); font-size: 10px; }
+    .setting-row {
+      min-height: 60px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 12px 0;
+      border-top: 1px solid var(--line);
+    }
+    .setting-copy { min-width: 0; }
+    .setting-copy strong { font-size: 11px; }
+    .setting-copy p { margin: 3px 0 0; color: var(--muted); font-size: 9px; }
+    .setting-control { margin-left: auto; }
+    .value-pill {
+      min-height: 38px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 14px;
+      border-radius: 14px;
+      background: var(--surface-quiet);
+      color: var(--ink);
+      font-size: 10px;
+      font-weight: 650;
+      white-space: nowrap;
+    }
+    .modal-backdrop {
+      position: fixed;
+      inset: var(--access-banner-height) 0 0;
+      z-index: 100;
+      display: none;
+      place-items: center;
+      padding: 18px;
+      background: rgba(13, 16, 14, .52);
+      backdrop-filter: blur(8px);
+    }
+    .modal-backdrop.open { display: grid; animation: fade .16s ease both; }
+    .modal {
+      width: min(560px, 100%);
+      overflow: hidden;
+      border-radius: 30px;
+      background: var(--shell);
+      box-shadow: 0 30px 90px rgba(0,0,0,.38);
+      animation: pop .2s ease-out both;
+    }
+    .modal-head, .modal-foot { display: flex; align-items: center; gap: 12px; padding: 20px 22px; }
+    .modal-head { border-bottom: 1px solid var(--line); }
+    .modal-head h2 { margin: 0; font-size: 18px; font-weight: 650; letter-spacing: -.03em; }
+    .modal-head .icon-button { width: 40px; height: 40px; margin-left: auto; border-radius: 14px; }
+    .modal-body { padding: 22px; }
+    .modal-foot { justify-content: flex-end; border-top: 1px solid var(--line); }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 13px; }
+    .field { display: grid; gap: 6px; }
+    .field.full { grid-column: 1 / -1; }
+    .field label { font-size: 10px; font-weight: 700; }
+    .input {
+      width: 100%;
+      height: 46px;
+      border: 1px solid var(--line);
+      border-radius: 15px;
+      background: var(--surface);
+      color: var(--ink);
+      padding: 0 13px;
+      font-size: 11px;
+    }
+    .mode-picker { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .mode-fieldset {
+      min-width: 0;
+      margin: 0;
+      padding: 0;
+      border: 0;
+    }
+    .mode-fieldset legend {
+      margin: 0 0 6px;
+      padding: 0;
+      font-size: 10px;
+      font-weight: 700;
+    }
+    .mode-card {
+      position: relative;
+      padding: 13px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: var(--surface);
+      cursor: pointer;
+    }
+    .mode-card:has(input:checked) { border-color: var(--ink); background: var(--acid); color: var(--acid-ink); }
+    .mode-card:has(input:focus-visible) {
+      outline: 3px solid var(--ink);
+      outline-offset: 3px;
+    }
+    .mode-card:has(input:checked):has(input:focus-visible) {
+      outline-color: var(--acid-ink);
+    }
+    .mode-card input { position: absolute; opacity: 0; }
+    .mode-card strong { display: block; font-size: 11px; }
+    .mode-card span { display: block; margin-top: 3px; color: var(--muted); font-size: 9px; }
+    .mode-card:has(input:checked) span { color: #697145; }
+    .flow-modal {
+      width: 100%;
+      height: 100%;
+      max-height: none;
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr);
+      overflow: hidden;
+      border-radius: 0;
+      box-shadow: none;
+    }
+    #flowModal {
+      place-items: stretch;
+      padding: 0;
+      background: var(--shell);
+      backdrop-filter: none;
+    }
+    #flowModal.open { grid-template-columns: 102px minmax(0, 1fr); }
+    .flow-rail {
+      grid-column: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      border-right: 1px solid rgba(255, 255, 255, .06);
+      background: var(--rail);
+      padding: 17px 10px;
+      color: #fff;
+    }
+    .flow-rail-track {
+      width: 4px;
+      flex: 1;
+      margin: 24px 0;
+      border-radius: 99px;
+      background: color-mix(in srgb, var(--acid) 72%, #343936);
+    }
+    .flow-modal { grid-column: 2; }
+    .flow-modal .modal-head {
+      padding-inline: clamp(20px, 4vw, 58px);
+    }
+    .flow-modal .modal-body {
+      width: min(1120px, 100%);
+      margin: 0 auto;
+      overflow: auto;
+      padding: clamp(24px, 5vw, 64px);
+    }
+    #flowModal[data-flow="auth"] .modal-body {
+      width: min(480px, 100%);
+      display: grid;
+      align-content: center;
+    }
+    #flowModal[data-flow="auth"] .modal-head {
+      border-bottom-color: transparent;
+    }
+    #flowModal[data-flow="auth"] .modal-head > div { visibility: hidden; }
+    #flowModal[data-auth-locked="true"] #flowClose { display: none; }
+    #flowModal[data-flow="auth"] .flow-grid { grid-template-columns: 1fr; }
+    .auth-kicker {
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 750;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+    }
+    .auth-title {
+      margin: 10px 0 7px;
+      font-size: 30px;
+      font-weight: 600;
+      letter-spacing: -.04em;
+    }
+    #flowModal[data-flow="manifest"] .modal-body { width: min(820px, 100%); }
+    .flow-kicker {
+      display: block;
+      margin-bottom: 4px;
+      color: var(--muted);
+      font: 8px var(--mono);
+      letter-spacing: .12em;
+      text-transform: uppercase;
+    }
+    .flow-panel[hidden], .flow-state[hidden] { display: none; }
+    .flow-lead { margin: 0 0 18px; color: var(--muted); font-size: 11px; line-height: 1.65; }
+    .flow-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .flow-code {
+      height: 132px;
+      resize: vertical;
+      padding-top: 13px;
+      font: 9px/1.65 var(--mono);
+    }
+    .flow-alert, .ownership-banner, .flow-summary {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      margin-bottom: 16px;
+      padding: 13px 14px;
+      border-radius: 16px;
+      background: color-mix(in srgb, var(--acid) 42%, var(--surface));
+      color: var(--ink);
+      font-size: 10px;
+      line-height: 1.5;
+    }
+    .flow-alert.danger {
+      background: color-mix(in srgb, var(--danger) 14%, var(--surface));
+      color: var(--badge-danger-ink);
+    }
+    .flow-alert[hidden] { display: none; }
+    .flow-alert i, .ownership-banner i, .flow-summary i { margin-top: 1px; font-size: 16px; }
+    .flow-results {
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: var(--surface);
+    }
+    .flow-result {
+      display: grid;
+      grid-template-columns: minmax(130px, 1fr) minmax(120px, 1.25fr) auto;
+      gap: 12px;
+      align-items: center;
+      min-height: 58px;
+      padding: 11px 14px;
+      border-bottom: 1px solid var(--line);
+      font-size: 10px;
+    }
+    .flow-result:last-child { border-bottom: 0; }
+    .flow-result strong { display: block; }
+    .flow-result p { margin: 3px 0 0; color: var(--muted); font-size: 8.5px; }
+    .flow-link { color: inherit; font: 9px var(--mono); text-decoration-thickness: 1px; text-underline-offset: 3px; }
+    .flow-actions-inline { display: flex; flex-wrap: wrap; gap: 7px; }
+    .flow-spacer { flex: 1; }
+    .ownership-banner { background: color-mix(in srgb, #8572db 14%, var(--surface)); }
+    .detail-facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+    .detail-fact { padding: 13px; border-radius: 16px; background: var(--surface-quiet); }
+    .detail-fact span { display: block; color: var(--muted); font-size: 8px; text-transform: uppercase; letter-spacing: .08em; }
+    .detail-fact strong { display: block; margin-top: 6px; font-size: 11px; }
+    .prototype-links { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 14px; }
+    .prototype-link {
+      border: 0;
+      background: transparent;
+      color: var(--muted);
+      padding: 0;
+      font-size: 9px;
+      text-decoration: underline;
+      text-underline-offset: 3px;
+      cursor: pointer;
+    }
+
+    .startup {
+      position: fixed;
+      inset: var(--access-banner-height) 0 0;
+      z-index: 90;
+      display: none;
+      overflow: auto;
+      background: var(--shell);
+      padding: 0;
+    }
+    .startup.open { display: block; animation: fade .18s ease both; }
+    .startup-shell {
+      width: 100%;
+      height: 100%;
+      min-height: 100dvh;
+      display: grid;
+      grid-template-columns: 102px minmax(0, 1fr);
+      gap: 0;
+      overflow: hidden;
+      border-radius: 0;
+      background: var(--shell);
+      padding: 0;
+      box-shadow: none;
+    }
+    .startup-rail {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      border-right: 1px solid rgba(255, 255, 255, .06);
+      border-radius: 0;
+      background: var(--rail);
+      padding: 17px 10px;
+      color: #fff;
+    }
+    .startup-rail .status-track {
+      width: 4px;
+      flex: 1;
+      position: relative;
+      margin: 23px 0;
+      overflow: hidden;
+      border-radius: 99px;
+      background: #35383a;
+    }
+    .startup-rail .status-track span {
+      width: 100%;
+      height: 12%;
+      display: block;
+      border-radius: inherit;
+      background: var(--acid);
+      transition: height .5s ease;
+    }
+    .startup-content {
+      min-width: 0;
+      display: grid;
+      grid-template-rows: auto auto minmax(0, 1fr) auto;
+      gap: 12px;
+      padding: 24px 28px;
+    }
+    .startup-topbar { display: flex; align-items: center; min-height: 50px; }
+    .startup-brand { font-size: 13px; font-weight: 700; }
+    .startup-address { margin-left: auto; color: var(--muted); font: 10px var(--mono); }
+    .startup-topbar .icon-button { width: 40px; height: 40px; margin-left: 12px; border-radius: 14px; }
+    .startup-hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 18px;
+      align-items: end;
+      padding: 22px 24px;
+    }
+    .startup-kicker { display: inline-flex; align-items: center; gap: 7px; color: var(--muted); font-size: 10px; font-weight: 680; text-transform: uppercase; letter-spacing: .08em; }
+    .startup-title { margin: 13px 0 5px; font-size: clamp(36px, 6vw, 72px); font-weight: 500; line-height: .95; letter-spacing: -.07em; }
+    .startup-copy { max-width: 580px; margin: 0; color: var(--muted); font-size: 11px; }
+    .startup-timer {
+      min-width: 122px;
+      padding: 16px;
+      border-radius: 22px;
+      background: var(--acid);
+      color: var(--acid-ink);
+      text-align: center;
+    }
+    .startup-timer strong { display: block; font-size: 31px; font-weight: 550; letter-spacing: -.05em; }
+    .startup-timer span { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; }
+    .startup .terminal-body { min-height: 260px; height: 100%; max-height: none; }
+    .startup-actions { display: flex; align-items: center; gap: 8px; }
+    .startup-note { margin-left: auto; color: var(--muted); font-size: 9px; }
+
+    .toast {
+      position: fixed;
+      right: 28px;
+      bottom: 28px;
+      z-index: 130;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      max-width: min(360px, calc(100vw - 32px));
+      padding: 12px 16px;
+      border-radius: 15px;
+      background: var(--rail);
+      color: #fff;
+      box-shadow: 0 18px 50px rgba(0,0,0,.28);
+      font-size: 11px;
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(10px);
+      transition: opacity .2s ease, transform .2s ease;
+    }
+    .toast.show { opacity: 1; transform: none; }
+    .toast i { color: var(--acid); font-size: 17px; }
+
+    @keyframes enter { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: none; } }
+    @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes pop { from { opacity: 0; transform: translateY(8px) scale(.985); } to { opacity: 1; transform: none; } }
+
+    @media (max-width: 1180px) {
+      .app-shell { height: 100%; }
+      .masthead-title { font-size: clamp(36px, 4.8vw, 54px); }
+      .dashboard-grid { grid-template-columns: 1fr; }
+      .quick-column { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+      .quick-card.wide { grid-column: span 2; }
+      .quick-card.system { grid-column: span 2; }
+    }
+
+    @media (max-width: 900px) {
+      .stage { display: block; padding: 0; }
+      .app-shell {
+        width: 100%;
+        height: 100%;
+        min-height: 0;
+        grid-template-columns: 1fr;
+        grid-template-rows: minmax(0, 1fr) 72px;
+        gap: 0;
+        border: 0;
+        border-radius: 0;
+        padding: 0;
+      }
+      .rail {
+        grid-row: 2;
+        flex-direction: row;
+        justify-content: center;
+        gap: 3px;
+        border-radius: 0;
+        padding: 8px 12px;
+      }
+      .rail-logo, .rail-separator, .rail-spacer, .rail .secondary { display: none; }
+      .rail-button { width: 47px; height: 47px; margin: 0; }
+      .rail-button.active::after { width: 20px; height: 3px; left: 50%; top: -8px; transform: translateX(-50%); }
+      .rail-button[data-label]::before { display: none; }
+      .workspace { grid-row: 1; border-radius: 0; }
+      .workspace-scroll { padding: 18px 16px 24px; }
+      .masthead { padding: 0 0 18px; }
+      .masthead-title { font-size: clamp(34px, 8vw, 53px); }
+      .headline-chip { width: 48px; height: 34px; font-size: 17px; }
+      .masthead-actions .button span { display: none; }
+      .masthead-actions .button { width: 54px; padding: 0; }
+      .metric-card, .wake-card { grid-column: span 6; }
+      .wake-card { grid-column: span 12; min-height: 190px; }
+      .activity-card { overflow-x: auto; }
+      .chart { min-width: 710px; }
+      .worktree-list, .settings-grid { grid-template-columns: 1fr; }
+      .logs-layout { grid-template-columns: 1fr; }
+      .run-list { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .startup { padding: 0; }
+      .startup-shell { width: 100%; min-height: 100vh; grid-template-columns: 1fr; border-radius: 0; padding: 0; }
+      .startup-rail { display: none; }
+      .startup-content { padding: 18px; }
+      #flowModal.open { grid-template-columns: 1fr; }
+      .flow-rail { display: none; }
+      .flow-modal { grid-column: 1; }
+    }
+
+    @media (max-width: 620px) {
+      .access-banner {
+        align-items: flex-start;
+        flex-wrap: wrap;
+        padding-block: 11px;
+      }
+      .access-banner .button { width: 100%; margin-left: 31px; justify-content: center; }
+      .masthead { align-items: flex-start; }
+      .masthead-title { font-size: 34px; line-height: 1.07; }
+      .masthead-actions { gap: 5px; padding-top: 0; }
+      .masthead-actions .icon-button, .masthead-actions .button { width: 44px; height: 44px; min-height: 44px; border-radius: 15px; }
+      .metric-card, .wake-card { grid-column: 1 / -1; min-height: 216px; }
+      .quick-column { grid-template-columns: 1fr 1fr; }
+      .quick-card.wide, .quick-card.system { grid-column: 1 / -1; }
+      .section-toolbar { align-items: flex-start; flex-direction: column; }
+      .section-toolbar .toolbar-actions { width: 100%; margin-left: 0; }
+      .search { min-width: 0; flex: 1; }
+      .log-search-primary { grid-template-columns: 1fr; }
+      .log-search-primary .button { width: 100%; justify-content: center; }
+      .log-filter-field { flex: 1 1 140px; }
+      .worktree { grid-template-columns: auto minmax(0, 1fr); }
+      .worktree > .button { grid-column: 1 / -1; }
+      .run-list { grid-template-columns: 1fr; }
+      .form-grid { grid-template-columns: 1fr; }
+      .flow-grid, .detail-facts { grid-template-columns: 1fr; }
+      .flow-result { grid-template-columns: minmax(0, 1fr) auto; }
+      .flow-result > :nth-child(2) { grid-column: 1 / -1; grid-row: 2; }
+      .field.full { grid-column: auto; }
+      .startup-hero { grid-template-columns: 1fr; }
+      .startup-timer { width: 100%; }
+      .startup-actions { flex-wrap: wrap; }
+      .startup-note { width: 100%; margin: 5px 0 0; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: .01ms !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-frame">
+    <div class="access-banner" id="accessBanner" role="alert" hidden>
+      <i class="ph ph-warning-circle" aria-hidden="true"></i>
+      <span><strong>This dashboard is reachable from other devices and has no password.</strong> Anyone who can reach it can view and control your services.</span>
+      <button class="button compact" data-flow-open="auth" data-flow-state="setup">Set a password</button>
+    </div>
+
+    <div class="stage">
+    <div class="app-shell" id="appShell">
+      <aside class="rail" aria-label="Primary navigation">
+        <button class="rail-logo" data-view-target="overview" aria-label="Port Start overview"><span class="brand-symbol" aria-hidden="true"></span></button>
+        <button class="rail-button active" data-view-target="overview" data-label="Overview" aria-label="Overview" aria-current="page"><i class="ph ph-house"></i></button>
+        <button class="rail-button" data-view-target="worktrees" data-label="Worktrees" aria-label="Worktrees"><i class="ph ph-git-branch"></i></button>
+        <button class="rail-button" data-view-target="services" data-label="Services" aria-label="Services"><i class="ph ph-plugs-connected"></i></button>
+        <button class="rail-button" data-view-target="logs" data-label="Runs & logs" aria-label="Runs and logs"><i class="ph ph-terminal-window"></i></button>
+        <button class="rail-button" data-view-target="admin" data-label="Administration" aria-label="Administration"><i class="ph ph-gauge"></i></button>
+        <div class="rail-separator"></div>
+        <button class="rail-button secondary" data-action="open-startup" data-label="Startup preview" aria-label="Startup preview"><i class="ph ph-lightning"></i></button>
+        <div class="rail-spacer"></div>
+        <button class="rail-button secondary" data-action="help" data-label="Documentation" aria-label="Documentation"><i class="ph ph-book-open"></i></button>
+        <button class="rail-button secondary" data-action="help" data-label="Help" aria-label="Help"><i class="ph ph-question"></i></button>
+      </aside>
+
+      <main class="workspace">
+        <div class="workspace-scroll">
+          <header class="masthead">
+            <h1 class="masthead-title">
+              Keep <span class="headline-chip"><i class="ph ph-git-branch"></i></span> worktrees quiet<br>
+              until <span class="headline-chip acid"><i class="ph ph-lightning"></i></span> traffic arrives
+            </h1>
+            <div class="masthead-actions">
+              <button class="icon-button" id="themeToggle" aria-label="Toggle light and dark mode" title="Toggle theme"><i class="ph ph-moon-stars" id="themeIcon"></i></button>
+              <button class="button dark" data-modal-open><i class="ph ph-plus"></i><span>Register a Service</span></button>
+            </div>
+          </header>
+
+          <nav class="tabs" aria-label="Workspace sections">
+            <button class="tab active" data-view-target="overview" aria-current="page">Overview</button>
+            <button class="tab" data-view-target="worktrees">Worktrees<span class="tab-count">0</span></button>
+            <button class="tab" data-view-target="services">Services<span class="tab-count">0</span></button>
+            <button class="tab" data-view-target="logs">Runs &amp; Logs</button>
+            <button class="tab" data-view-target="admin">Administration</button>
+          </nav>
+
+          <section class="view active" data-view="overview">
+            <div class="dashboard-grid">
+              <div class="main-grid">
+                <article class="card metric-card" data-managed-count="0">
+                  <div class="card-heading">
+                    <span class="mini-icon"><i class="ph ph-plugs"></i></span>
+                    <span>Managed ports</span>
+                    <i class="ph ph-dots-three-vertical more"></i>
+                  </div>
+                  <div class="metric-number">0 <small>assigned</small></div>
+                  <div class="metric-label"><span>Across 0 worktrees</span><i class="ph ph-circle-notch"></i></div>
+                  <div class="zero-detail"><i class="ph ph-plus-circle"></i><span>Register a service or apply a manifest.</span></div>
+                </article>
+
+                <article class="card acid metric-card" data-running-count="0">
+                  <div class="card-heading">
+                    <span class="mini-icon"><i class="ph ph-wave-sine"></i></span>
+                    <span>Running now</span>
+                    <i class="ph ph-dots-three-vertical more"></i>
+                  </div>
+                  <div class="metric-number">0 <small>services</small></div>
+                  <div class="metric-label"><span>Nothing starting</span><i class="ph ph-circle-notch"></i></div>
+                  <div class="zero-detail"><i class="ph ph-moon"></i><span>Managed services appear here when configured.</span></div>
+                </article>
+
+                <article class="card dark wake-card">
+                  <div class="card-heading">
+                    <span class="mini-icon"><i class="ph ph-rocket-launch"></i></span>
+                    <span>Startup handoff</span>
+                  </div>
+                  <h2>Watch a port wake up.</h2>
+                  <p>See live process output, retry states, and the automatic reload into your app.</p>
+                  <button class="button" data-action="open-startup">Preview startup <i class="ph ph-play"></i></button>
+                </article>
+
+                <article class="card activity-card">
+                  <div class="activity-head">
+                    <span class="mini-icon"><i class="ph ph-chart-bar"></i></span>
+                    <h2>Service activity</h2>
+                    <select class="select" aria-label="Activity period" disabled><option>No activity yet</option></select>
+                  </div>
+                  <div class="activity-empty">
+                    <div>
+                      <span class="mini-icon"><i class="ph ph-chart-line-up"></i></span>
+                      <h3>No activity yet</h3>
+                      <p>Launch history will appear after a registered service starts for the first time.</p>
+                    </div>
+                  </div>
+                </article>
+              </div>
+
+              <aside class="quick-column" aria-label="Quick actions">
+                <button class="card quick-card" disabled aria-disabled="true" title="There are no registered services to start">
+                  <span class="mini-icon"><i class="ph ph-play"></i></span>
+                  <h3>Start all</h3>
+                  <p>Nothing to start yet.</p>
+                </button>
+                <button class="card quick-card" disabled aria-disabled="true" title="There are no running services to stop">
+                  <span class="mini-icon"><i class="ph ph-stop"></i></span>
+                  <h3>Stop all</h3>
+                  <p>Nothing is running.</p>
+                </button>
+                <button class="card quick-card wide" data-flow-open="manifest" data-flow-state="input">
+                  <span style="display:flex;align-items:flex-start">
+                    <span class="mini-icon"><i class="ph ph-file-code"></i></span>
+                    <i class="ph ph-arrow-up-right arrow"></i>
+                  </span>
+                  <h3>Apply manifest</h3>
+                  <p>Reconcile the current worktree from .port-start.yaml.</p>
+                </button>
+                <button class="card quick-card wide" data-view-target="worktrees">
+                  <span style="display:flex;align-items:flex-start">
+                    <span class="mini-icon"><i class="ph ph-check-circle"></i></span>
+                    <i class="ph ph-arrow-up-right arrow"></i>
+                  </span>
+                  <h3>No worktree alerts</h3>
+                  <p>Applied worktrees and path warnings will appear here.</p>
+                </button>
+                <button class="card quick-card wide system" data-view-target="admin">
+                  <span style="display:flex;align-items:center">
+                    <span class="mini-icon"><i class="ph ph-pulse"></i></span>
+                    <i class="ph ph-arrow-up-right arrow"></i>
+                  </span>
+                  <div class="system-line" data-live-status="unavailable"><i class="ph ph-minus-circle"></i>Live health unavailable</div>
+                  <p>System status appears when the dashboard is connected.</p>
+                </button>
+              </aside>
+            </div>
+          </section>
+
+          <section class="view" data-view="worktrees">
+            <div class="section-toolbar">
+              <div><h2>Worktrees</h2><p>Repositories, branches, and their managed services.</p></div>
+              <div class="toolbar-actions">
+                <input class="search" data-filter="worktrees" placeholder="Filter worktrees" aria-label="Filter worktrees">
+                <button class="button compact acid" data-flow-open="manifest" data-flow-state="input"><i class="ph ph-file-code"></i>Apply</button>
+              </div>
+            </div>
+            <div class="worktree-list">
+              <article class="card empty-panel">
+                <span class="mini-icon"><i class="ph ph-git-branch"></i></span>
+                <h3>No worktrees applied</h3>
+                <p>Apply a checked-in <span class="mono">.port-start.yaml</span> from a Git worktree to register its services here.</p>
+                <div class="empty-actions">
+                  <button class="button compact acid" data-flow-open="manifest" data-flow-state="input"><i class="ph ph-file-code"></i>Apply a manifest</button>
+                </div>
+              </article>
+            </div>
+          </section>
+
+          <section class="view" data-view="services">
+            <div class="section-toolbar">
+              <div><h2>Services</h2><p>Every command and advertised port managed by the daemon.</p></div>
+              <div class="toolbar-actions">
+                <input class="search" data-filter="services" placeholder="Search name or port" aria-label="Filter services">
+                <button class="button compact dark" data-modal-open><i class="ph ph-plus"></i>Register</button>
+              </div>
+            </div>
+            <div class="card service-table" role="table" aria-label="Managed services">
+              <div class="service-row header" role="row"><span role="columnheader">Service</span><span role="columnheader">State</span><span role="columnheader">Port</span><span role="columnheader">Mode</span><span role="columnheader">Source</span><span role="columnheader">Actions</span></div>
+              <div class="table-empty" role="row">
+                <div class="empty-panel" role="cell">
+                  <span class="mini-icon"><i class="ph ph-plugs-connected"></i></span>
+                  <h3>No services registered</h3>
+                  <p>Register a command and advertised port, or apply a worktree manifest, to see its live state here.</p>
+                  <div class="empty-actions">
+                    <button class="button compact dark" data-modal-open><i class="ph ph-plus"></i>Register a service</button>
+                    <button class="button compact" data-flow-open="manifest" data-flow-state="input"><i class="ph ph-file-code"></i>Apply a manifest</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="view" data-view="logs">
+            <div class="section-toolbar">
+              <div><h2>Runs &amp; logs</h2><p>Follow current output or search retained process history.</p></div>
+              <div class="toolbar-actions">
+                <select class="select" aria-label="Service" disabled><option>No service selected</option></select>
+                <button class="button compact" disabled><i class="ph ph-download-simple"></i>Download</button>
+              </div>
+            </div>
+            <form class="card log-search-panel" id="logSearchForm" role="search">
+              <div class="log-search-primary">
+                <div class="field">
+                  <label for="logSearchQuery">Search retained output</label>
+                  <input class="input mono" id="logSearchQuery" type="search" placeholder="Available after the first run" disabled>
+                </div>
+                <button class="button compact dark" type="submit" disabled><i class="ph ph-magnifying-glass"></i>Search logs</button>
+              </div>
+              <div class="log-filter-row">
+                <div class="log-filter-field">
+                  <label for="logStream">Stream</label>
+                  <select class="input" id="logStream" disabled><option>stdout + stderr</option><option>stdout</option><option>stderr</option></select>
+                </div>
+                <div class="log-filter-field">
+                  <label for="logRun">Run</label>
+                  <select class="input" id="logRun" disabled><option>No runs available</option></select>
+                </div>
+                <div class="log-filter-field">
+                  <label for="logSince">Time range</label>
+                  <select class="input" id="logSince" disabled><option>Any retained time</option><option>Last 15 minutes</option><option>Last hour</option><option>Today</option></select>
+                </div>
+                <label class="log-filter-check" for="logRegex"><input id="logRegex" type="checkbox" disabled>Regular expression</label>
+                <label class="log-filter-check" for="logIgnoreCase"><input id="logIgnoreCase" type="checkbox" disabled>Ignore case</label>
+              </div>
+            </form>
+            <div class="logs-layout">
+              <article class="terminal">
+                <div class="terminal-head"><span class="terminal-light"></span><span class="terminal-light"></span><span class="terminal-light"></span><strong>No run selected</strong><span class="live-indicator"><i class="ph ph-minus-circle"></i>waiting</span></div>
+                <div class="terminal-body">
+                  <div class="terminal-empty">
+                    <div><i class="ph ph-terminal-window"></i><strong>Nothing has run yet</strong><span>Process output will appear after a registered service starts.</span></div>
+                  </div>
+                </div>
+              </article>
+              <aside class="run-list">
+                <article class="card run-card empty-panel">
+                  <span class="mini-icon"><i class="ph ph-clock-counter-clockwise"></i></span>
+                  <h3>No run history</h3>
+                  <p>Completed and interrupted runs will appear here.</p>
+                </article>
+              </aside>
+            </div>
+          </section>
+
+          <section class="view" data-view="admin">
+            <div class="section-toolbar">
+              <div><h2>Administration</h2><p>Effective configuration, live health, access, and log history.</p></div>
+              <div class="toolbar-actions"><button class="button compact" disabled><i class="ph ph-arrows-clockwise"></i>Refresh</button></div>
+            </div>
+            <div class="settings-grid">
+              <article class="card settings-card" data-live-status="unavailable">
+                <h3>System health</h3><p>Live status appears when this dashboard is connected to Port Start.</p>
+                <div class="setting-row"><div class="setting-copy"><strong>Daemon</strong><p>Status is waiting for a live connection.</p></div><div class="setting-control"><span class="badge unavailable">unavailable</span></div></div>
+                <div class="setting-row"><div class="setting-copy"><strong>Control plane</strong><p>Address is reported by the running daemon.</p></div><div class="setting-control"><span class="badge unavailable">unavailable</span></div></div>
+                <div class="setting-row"><div class="setting-copy"><strong>Service catalog</strong><p>Live service state is not connected.</p></div><div class="setting-control"><span class="badge unavailable">unavailable</span></div></div>
+                <div class="setting-row"><div class="setting-copy"><strong>Listener conflicts</strong><p>Conflict checks require live service state.</p></div><div class="setting-control"><span class="badge unavailable">unavailable</span></div></div>
+              </article>
+              <article class="card settings-card">
+                <h3>Administration access</h3><p>Effective access for this dashboard and API.</p>
+                <div class="setting-row"><div class="setting-copy"><strong>Password authentication</strong><p id="adminPasswordStatus">No password is currently required.</p></div><div class="setting-control"><button class="button compact" id="adminPasswordAction" data-flow-open="auth" data-flow-state="setup">Set password</button></div></div>
+                <div class="setting-row"><div class="setting-copy"><strong>Non-loopback warning</strong><p>Always shown when external access has no password.</p></div><div class="setting-control"><button class="button compact" data-action="preview-access-warning">Preview warning</button></div></div>
+                <div class="setting-row"><div class="setting-copy"><strong>Session lifetime</strong><p>How long an authenticated browser stays signed in.</p></div><div class="setting-control"><span class="value-pill">24 hours</span></div></div>
+              </article>
+              <article class="card settings-card">
+                <h3>Lifecycle defaults</h3><p>Documented defaults; each manifest can choose its own limits.</p>
+                <div class="setting-row"><div class="setting-copy"><strong>Startup timeout</strong><p>Time allowed for a service to become reachable.</p></div><div class="setting-control"><span class="value-pill">60 seconds</span></div></div>
+                <div class="setting-row"><div class="setting-copy"><strong>Stop timeout</strong><p>Time allowed for a clean shutdown.</p></div><div class="setting-control"><span class="value-pill">10 seconds</span></div></div>
+                <div class="setting-row"><div class="setting-copy"><strong>Missing worktree grace</strong><p>Time preserved before a missing worktree is removed.</p></div><div class="setting-control"><span class="value-pill">24 hours</span></div></div>
+              </article>
+              <article class="card settings-card">
+                <h3>Log retention</h3><p>Documented limits for process output and run history.</p>
+                <div class="setting-row"><div class="setting-copy"><strong>Maximum per run</strong><p>Output kept for each individual run.</p></div><div class="setting-control"><span class="value-pill">50 MiB</span></div></div>
+                <div class="setting-row"><div class="setting-copy"><strong>Runs per service</strong><p>Recent terminal sessions kept for each command.</p></div><div class="setting-control"><span class="value-pill">20 runs</span></div></div>
+                <div class="setting-row"><div class="setting-copy"><strong>Age limit</strong><p>Run history does not expire by age.</p></div><div class="setting-control"><span class="value-pill">No limit</span></div></div>
+              </article>
+            </div>
+          </section>
+        </div>
+      </main>
+    </div>
+  </div>
+  </div>
+
+  <section class="startup" id="startup" role="dialog" aria-modal="true" aria-labelledby="startupTitle" aria-hidden="true">
+    <div class="startup-shell">
+      <aside class="startup-rail">
+        <div class="rail-logo"><span class="brand-symbol" aria-hidden="true"></span></div>
+        <div class="status-track"><span id="startupTrack"></span></div>
+      </aside>
+      <div class="startup-content">
+        <div class="startup-topbar">
+          <span class="startup-brand">Port Start</span>
+          <span class="startup-address">Interface preview · not a real launch</span>
+          <button class="icon-button" id="closeStartup" aria-label="Return to dashboard"><i class="ph ph-x"></i></button>
+        </div>
+        <article class="card startup-hero">
+          <div>
+            <span class="startup-kicker"><span class="status-dot" id="startupDot"></span><span id="startupKicker">Launch in progress</span></span>
+            <h1 class="startup-title" id="startupTitle">Starting the service.</h1>
+            <p class="startup-copy" id="startupCopy">Traffic reached an armed port, so Port Start is launching the managed command and waiting for its backend to accept connections.</p>
+          </div>
+          <div class="startup-timer"><strong id="startupTimer">0.0s</strong><span id="startupTimerLabel">elapsed</span></div>
+        </article>
+        <article class="terminal">
+          <div class="terminal-head"><span class="terminal-light"></span><span class="terminal-light"></span><span class="terminal-light"></span><strong>Startup output</strong><span class="live-indicator" id="startupStatus">connecting</span></div>
+          <div class="terminal-body" id="startupLogs" aria-live="polite">
+            <div class="terminal-empty"><div><i class="ph ph-terminal-window"></i><strong>No process output yet</strong><span>Output will appear here when the managed command writes to the terminal.</span></div></div>
+          </div>
+        </article>
+        <div class="startup-actions">
+          <button class="button compact" id="restartStartup"><i class="ph ph-arrow-counter-clockwise"></i>Restart</button>
+          <button class="button compact danger" id="cancelStartup"><i class="ph ph-x"></i>Cancel</button>
+          <button class="button compact ghost" data-startup-state="ready">Preview ready</button>
+          <button class="button compact ghost" data-startup-state="failed">Preview failure</button>
+          <button class="button compact ghost" data-startup-state="backoff">Preview backoff</button>
+          <span class="startup-note" id="startupNote">The original URL reloads automatically when the service is ready.</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="modal-backdrop" id="serviceModal" role="dialog" aria-modal="true" aria-labelledby="modalTitle" aria-hidden="true">
+    <div class="modal">
+      <div class="modal-head">
+        <div><h2 id="modalTitle">Register a service</h2><span class="muted" style="font-size:9px">One command · one advertised port</span></div>
+        <button class="icon-button" data-modal-close aria-label="Close"><i class="ph ph-x"></i></button>
+      </div>
+      <form id="serviceForm">
+        <div class="modal-body">
+          <div class="form-grid">
+            <div class="field"><label for="serviceName">Name</label><input class="input" id="serviceName" placeholder="Service name" required></div>
+            <div class="field"><label for="servicePort">Advertised port</label><input class="input mono" id="servicePort" placeholder="auto or a port number" required></div>
+            <fieldset class="field full mode-fieldset">
+              <legend>Managed port mode</legend>
+              <div class="mode-picker">
+                <label class="mode-card"><input type="radio" name="mode" checked><strong>Proxy</strong><span>Port Start owns the listener.</span></label>
+                <label class="mode-card"><input type="radio" name="mode"><strong>Handoff</strong><span>The command binds the public port.</span></label>
+              </div>
+            </fieldset>
+            <div class="field"><label for="protocol">Protocol hint</label><select class="input" id="protocol"><option>HTTP</option><option>HTTPS</option><option>TCP</option></select></div>
+            <div class="field"><label for="workingDirectory">Working directory</label><input class="input mono" id="workingDirectory" placeholder="Path inside the worktree"></div>
+            <div class="field full"><label for="command">Command</label><input class="input mono" id="command" placeholder="Command that starts the service" required></div>
+          </div>
+        </div>
+        <div class="modal-foot">
+          <button type="button" class="button compact" data-modal-close>Cancel</button>
+          <button class="button compact dark">Review service</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="flowModal" role="dialog" aria-modal="true" aria-label="Port Start" aria-hidden="true" data-flow="" data-flow-state="">
+    <aside class="flow-rail" aria-hidden="true">
+      <div class="rail-logo"><span class="brand-symbol"></span></div>
+      <div class="flow-rail-track"></div>
+    </aside>
+    <div class="modal flow-modal">
+      <div class="modal-head">
+        <div><span class="flow-kicker" id="flowKicker">Guided flow</span><h2 id="flowTitle">Port Start</h2></div>
+        <button class="icon-button" id="flowClose" data-flow-close aria-label="Close"><i class="ph ph-x"></i></button>
+      </div>
+      <div class="modal-body">
+        <section class="flow-panel" data-flow-panel="auth" hidden>
+          <div class="flow-state" data-flow-state-view="setup" data-flow-kicker="Administration access" data-flow-title="Set a password" hidden>
+            <span class="auth-kicker">Administration access</span>
+            <h1 class="auth-title">Set a password</h1>
+            <p class="flow-lead">Require a password for this dashboard and its API. Authenticated browser sessions last 24 hours.</p>
+            <form data-auth-form="setup">
+              <div class="flow-grid">
+                <div class="field"><label for="newPassword">New password</label><input class="input" id="newPassword" type="password" autocomplete="new-password" placeholder="Choose a password" data-autofocus required></div>
+                <div class="field"><label for="confirmPassword">Confirm password</label><input class="input" id="confirmPassword" type="password" autocomplete="new-password" placeholder="Repeat your password" required></div>
+              </div>
+              <div class="flow-alert danger" id="passwordMismatch" role="alert" hidden><i class="ph ph-warning-circle"></i><span>Passwords do not match. Try again.</span></div>
+              <div class="flow-actions-inline" style="margin-top:18px">
+                <button type="button" class="button compact" data-flow-close>Cancel</button>
+                <span class="flow-spacer"></span>
+                <button class="button compact dark">Set password</button>
+              </div>
+            </form>
+            <div class="prototype-links" aria-label="Authentication state previews">
+              <button class="prototype-link" data-flow-transition="signin">Preview sign-in</button>
+              <button class="prototype-link" data-flow-transition="expired">Preview expired session</button>
+            </div>
+          </div>
+
+          <div class="flow-state" data-flow-state-view="change" data-flow-kicker="Administration access" data-flow-title="Change password" hidden>
+            <span class="auth-kicker">Administration access</span>
+            <h1 class="auth-title">Change password</h1>
+            <p class="flow-lead">Update the password required for this dashboard and its API.</p>
+            <form data-auth-form="change">
+              <div class="flow-grid">
+                <div class="field"><label for="changePassword">New password</label><input class="input" id="changePassword" type="password" autocomplete="new-password" placeholder="Choose a new password" data-autofocus required></div>
+                <div class="field"><label for="changeConfirmPassword">Confirm password</label><input class="input" id="changeConfirmPassword" type="password" autocomplete="new-password" placeholder="Repeat your new password" required></div>
+              </div>
+              <div class="flow-alert danger" id="changePasswordMismatch" role="alert" hidden><i class="ph ph-warning-circle"></i><span>Passwords do not match. Try again.</span></div>
+              <div class="flow-actions-inline" style="margin-top:18px">
+                <button type="button" class="button compact" data-flow-close>Cancel</button>
+                <span class="flow-spacer"></span>
+                <button class="button compact dark" type="submit">Change password</button>
+              </div>
+            </form>
+          </div>
+
+          <div class="flow-state" data-flow-state-view="signin" data-flow-kicker="Administration access" data-flow-title="Welcome back" hidden>
+            <span class="auth-kicker">Port Start</span>
+            <h1 class="auth-title">Sign in to continue</h1>
+            <p class="flow-lead">Enter the Administration password to continue. Your managed services keep running while this dashboard is locked.</p>
+            <form data-auth-form="signin">
+              <div class="field"><label for="signInPassword">Password</label><input class="input" id="signInPassword" type="password" autocomplete="current-password" data-autofocus required></div>
+              <div class="flow-actions-inline" style="margin-top:18px">
+                <span class="flow-spacer"></span>
+                <button class="button compact dark">Sign in</button>
+              </div>
+            </form>
+            <div class="prototype-links" aria-label="Authentication state previews">
+              <button class="prototype-link" data-flow-transition="error">Preview invalid password</button>
+              <button class="prototype-link" data-flow-transition="expired">Preview expired session</button>
+              <button class="prototype-link" data-auth-preview-exit>Exit preview (prototype only)</button>
+            </div>
+          </div>
+
+          <div class="flow-state" data-flow-state-view="error" data-flow-kicker="Administration access" data-flow-title="Try that password again" hidden>
+            <span class="auth-kicker">Port Start</span>
+            <h1 class="auth-title">Try that password again</h1>
+            <div class="flow-alert danger" role="alert"><i class="ph ph-warning-circle"></i><span>That password didn’t match. Try again.</span></div>
+            <form data-auth-form="signin">
+              <div class="field"><label for="errorPassword">Password</label><input class="input" id="errorPassword" type="password" autocomplete="current-password" aria-invalid="true" data-autofocus required></div>
+              <div class="flow-actions-inline" style="margin-top:18px">
+                <span class="flow-spacer"></span>
+                <button class="button compact dark">Sign in</button>
+              </div>
+            </form>
+            <div class="prototype-links" aria-label="Authentication state previews">
+              <button class="prototype-link" data-flow-transition="signin">Return to sign-in</button>
+              <button class="prototype-link" data-auth-preview-exit>Exit preview (prototype only)</button>
+            </div>
+          </div>
+
+          <div class="flow-state" data-flow-state-view="expired" data-flow-kicker="Session expired" data-flow-title="Sign in again to continue" hidden>
+            <span class="auth-kicker">Session ended</span>
+            <h1 class="auth-title">Sign in again</h1>
+            <div class="flow-alert"><i class="ph ph-clock"></i><span>Your 24-hour session ended. Your services are still running, and no work was interrupted.</span></div>
+            <p class="flow-lead">Return to the sign-in screen to unlock Administration.</p>
+            <div class="flow-actions-inline">
+              <button class="button compact dark" data-flow-transition="signin" data-autofocus>Continue to sign in</button>
+            </div>
+            <div class="prototype-links" aria-label="Authentication state previews">
+              <button class="prototype-link" data-auth-preview-exit>Exit preview (prototype only)</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="flow-panel" data-flow-panel="manifest" hidden>
+          <div class="flow-state" data-flow-state-view="input" data-flow-kicker="Worktree manifest" data-flow-title="Apply .port-start.yaml" hidden>
+            <p class="flow-lead">Choose a worktree manifest, add any one-time port overrides, then preview the complete reconciliation plan.</p>
+            <div class="form-grid">
+              <div class="field full"><label for="manifestSource">Source</label><input class="input mono" id="manifestSource" placeholder="Path to the worktree manifest" data-autofocus required></div>
+              <div class="field full"><label for="manifestYaml">Manifest YAML</label><textarea class="input flow-code" id="manifestYaml" placeholder="Paste a version 1 manifest to review" required></textarea></div>
+              <div class="field"><label for="overrideService">Port override</label><input class="input mono" id="overrideService" placeholder="Optional service and port"></div>
+              <div class="field"><label>Planning mode</label><label class="mode-card"><input type="checkbox" checked><strong>Dry run first</strong><span>Preview every change before applying.</span></label></div>
+            </div>
+            <div class="flow-actions-inline" style="margin-top:18px">
+              <button class="button compact" data-flow-close>Cancel</button>
+              <span class="flow-spacer"></span>
+              <button class="button compact dark" data-flow-transition="dry-run">Preview changes</button>
+            </div>
+          </div>
+
+          <div class="flow-state" data-flow-state-view="dry-run" data-flow-kicker="Dry-run plan" data-flow-title="Reconciliation preview" hidden>
+            <div class="flow-summary"><i class="ph ph-eye"></i><span><strong>Manifest results appear here.</strong><br>Port Start shows every proposed registration, update, and removal before any change is applied.</span></div>
+            <div class="card empty-panel">
+              <span class="mini-icon"><i class="ph ph-file-dashed"></i></span>
+              <h3>No reconciliation results</h3>
+              <p>Return to the manifest form to provide the worktree source and version 1 YAML.</p>
+            </div>
+            <div class="flow-actions-inline" style="margin-top:18px">
+              <button class="button compact" data-flow-transition="input">Back</button>
+              <span class="flow-spacer"></span>
+              <button class="button compact dark" data-flow-close data-autofocus>Done</button>
+            </div>
+          </div>
+        </section>
+
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status"><i class="ph ph-check-circle"></i><span id="toastText">Updated</span></div>
+
+  <script>
+    (() => {
+      const root = document.documentElement;
+      const appFrame = document.querySelector(".app-frame");
+      const views = [...document.querySelectorAll("[data-view]")];
+      const viewControls = [...document.querySelectorAll("[data-view-target]")];
+      const modal = document.getElementById("serviceModal");
+      const flowModal = document.getElementById("flowModal");
+      const flowPanels = [...flowModal.querySelectorAll("[data-flow-panel]")];
+      const flowTitle = document.getElementById("flowTitle");
+      const flowKicker = document.getElementById("flowKicker");
+      const flowClose = document.getElementById("flowClose");
+      const accessBanner = document.getElementById("accessBanner");
+      const startup = document.getElementById("startup");
+      const toast = document.getElementById("toast");
+      const toastText = document.getElementById("toastText");
+      const themeIcon = document.getElementById("themeIcon");
+      const newPassword = document.getElementById("newPassword");
+      const confirmPassword = document.getElementById("confirmPassword");
+      const passwordMismatch = document.getElementById("passwordMismatch");
+      const changePassword = document.getElementById("changePassword");
+      const changeConfirmPassword = document.getElementById("changeConfirmPassword");
+      const changePasswordMismatch = document.getElementById("changePasswordMismatch");
+      const adminPasswordStatus = document.getElementById("adminPasswordStatus");
+      const adminPasswordAction = document.getElementById("adminPasswordAction");
+      let toastTimer;
+      let startupInterval;
+      let startupStartedAt = 0;
+      let modalOpener = null;
+      let flowOpener = null;
+      let startupOpener = null;
+      const focusableSelector = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+      function syncAccessBannerHeight() {
+        root.style.setProperty(
+          "--access-banner-height",
+          accessBanner.hidden ? "0px" : `${accessBanner.offsetHeight}px`,
+        );
+      }
+
+      new ResizeObserver(syncAccessBannerHeight).observe(accessBanner);
+      window.addEventListener("resize", syncAccessBannerHeight);
+      syncAccessBannerHeight();
+
+      function setView(name) {
+        views.forEach(view => view.classList.toggle("active", view.dataset.view === name));
+        viewControls.forEach(control => {
+          const isActive = control.dataset.viewTarget === name;
+          if (control.classList.contains("tab") || control.classList.contains("rail-button")) {
+            control.classList.toggle("active", isActive);
+            if (isActive) control.setAttribute("aria-current", "page");
+            else control.removeAttribute("aria-current");
+          }
+        });
+        document.querySelector(".workspace-scroll").scrollTo({ top: 0, behavior: "smooth" });
+        history.replaceState(null, "", "#" + name);
+      }
+
+      function focusPrimaryViewControl(name) {
+        document.querySelector(`.tab[data-view-target="${name}"]`)?.focus();
+      }
+
+      function showToast(message, icon = "ph-check-circle") {
+        toastText.textContent = message;
+        toast.querySelector("i").className = "ph " + icon;
+        toast.classList.add("show");
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => toast.classList.remove("show"), 2600);
+      }
+
+      function setTheme(theme) {
+        root.dataset.theme = theme;
+        localStorage.setItem("port-start-prototype-theme", theme);
+        themeIcon.className = theme === "dark" ? "ph ph-sun" : "ph ph-moon-stars";
+      }
+
+      function updateBackgroundInert() {
+        appFrame.inert =
+          modal.classList.contains("open") ||
+          flowModal.classList.contains("open") ||
+          startup.classList.contains("open");
+      }
+
+      function clearPasswordMismatch(
+        alert = passwordMismatch,
+        confirmation = confirmPassword,
+      ) {
+        alert.hidden = true;
+        confirmation.removeAttribute("aria-invalid");
+        confirmation.removeAttribute("aria-describedby");
+      }
+
+      function clearAuthenticationState(state) {
+        const stateView = flowModal.querySelector(
+          `[data-flow-panel="auth"] [data-flow-state-view="${state}"]`,
+        );
+        stateView?.querySelectorAll('input[type="password"]').forEach(input => {
+          input.value = "";
+        });
+        if (state === "setup") clearPasswordMismatch();
+        if (state === "change") {
+          clearPasswordMismatch(changePasswordMismatch, changeConfirmPassword);
+        }
+      }
+
+      function clearAuthenticationFields() {
+        ["setup", "change", "signin", "error"].forEach(clearAuthenticationState);
+      }
+
+      function restoreFlowFocus(opener) {
+        if (
+          opener?.isConnected &&
+          !opener.disabled &&
+          opener.getClientRects().length > 0
+        ) {
+          opener.focus();
+          return;
+        }
+        const activeView = views.find(view => view.classList.contains("active"));
+        focusPrimaryViewControl(activeView?.dataset.view || "overview");
+      }
+
+      function openServiceModal(trigger) {
+        modalOpener = trigger;
+        modal.classList.add("open");
+        modal.setAttribute("aria-hidden", "false");
+        updateBackgroundInert();
+        requestAnimationFrame(() => document.getElementById("serviceName").focus());
+      }
+
+      function closeServiceModal({ restoreFocus = true } = {}) {
+        if (!modal.classList.contains("open")) return;
+        modal.classList.remove("open");
+        modal.setAttribute("aria-hidden", "true");
+        updateBackgroundInert();
+
+        const opener = modalOpener;
+        modalOpener = null;
+        if (restoreFocus && opener?.isConnected) opener.focus();
+      }
+
+      function trapModalFocus(event) {
+        trapFocus(modal, event);
+      }
+
+      function trapFocus(container, event) {
+        const controls = [...container.querySelectorAll(focusableSelector)]
+          .filter(control => control.getClientRects().length > 0);
+        const first = controls[0];
+        const last = controls.at(-1);
+        if (!first || !last) return;
+
+        if (event.shiftKey && document.activeElement === first) {
+          event.preventDefault();
+          last.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault();
+          first.focus();
+        }
+      }
+
+      function setFlowState(flow, state) {
+        const previousFlow = flowModal.dataset.flow;
+        const previousState = flowModal.dataset.flowState;
+        if (
+          previousFlow === "auth" &&
+          previousState &&
+          (flow !== previousFlow || state !== previousState)
+        ) {
+          clearAuthenticationState(previousState);
+        }
+        flowModal.dataset.flow = flow;
+        flowModal.dataset.flowState = state;
+        if (flow === "auth" && state === "setup") clearPasswordMismatch();
+        if (flow === "auth" && state === "change") {
+          clearPasswordMismatch(changePasswordMismatch, changeConfirmPassword);
+        }
+        flowModal.dataset.authLocked = String(
+          flow === "auth" && ["signin", "error", "expired"].includes(state),
+        );
+        flowClose.hidden = flowModal.dataset.authLocked === "true";
+        if (flowModal.dataset.authLocked === "true" && !accessBanner.hidden) {
+          flowModal.dataset.restoreAccessWarning = "true";
+          accessBanner.hidden = true;
+          syncAccessBannerHeight();
+        }
+        flowPanels.forEach(panel => {
+          const activePanel = panel.dataset.flowPanel === flow;
+          panel.hidden = !activePanel;
+          panel.querySelectorAll("[data-flow-state-view]").forEach(view => {
+            view.hidden = !activePanel || view.dataset.flowStateView !== state;
+          });
+        });
+
+        const activeState = flowModal.querySelector(
+          `[data-flow-panel="${flow}"] [data-flow-state-view="${state}"]`,
+        );
+        if (!activeState) return;
+        flowTitle.textContent = activeState.dataset.flowTitle;
+        flowKicker.textContent = activeState.dataset.flowKicker;
+        flowModal.setAttribute("aria-label", activeState.dataset.flowTitle);
+        setTimeout(() => {
+          const preferred = activeState.querySelector("[data-autofocus]");
+          const fallback = flowModal.querySelector("[data-flow-close]");
+          (preferred || fallback)?.focus();
+        }, 0);
+      }
+
+      function openFlow(trigger) {
+        flowOpener = trigger;
+        setFlowState(trigger.dataset.flowOpen, trigger.dataset.flowState);
+        flowModal.classList.add("open");
+        flowModal.setAttribute("aria-hidden", "false");
+        updateBackgroundInert();
+      }
+
+      function closeFlow({ restoreFocus = true, force = false } = {}) {
+        if (!flowModal.classList.contains("open")) return;
+        if (flowModal.dataset.authLocked === "true" && !force) return;
+        const closingFlow = flowModal.dataset.flow;
+        flowModal.classList.remove("open");
+        flowModal.setAttribute("aria-hidden", "true");
+        updateBackgroundInert();
+
+        const opener = flowOpener;
+        flowOpener = null;
+        if (
+          force &&
+          flowModal.dataset.restoreAccessWarning === "true" &&
+          !flowModal.dataset.authResolved
+        ) {
+          accessBanner.hidden = false;
+          syncAccessBannerHeight();
+        }
+        delete flowModal.dataset.restoreAccessWarning;
+        delete flowModal.dataset.authResolved;
+        if (closingFlow === "auth") clearAuthenticationFields();
+        if (restoreFocus) restoreFlowFocus(opener);
+      }
+
+      document.getElementById("themeToggle").addEventListener("click", () => {
+        setTheme(root.dataset.theme === "dark" ? "light" : "dark");
+      });
+      setTheme(root.dataset.theme);
+
+      document.addEventListener("click", event => {
+        const viewTarget = event.target.closest("[data-view-target]");
+        if (viewTarget) {
+          const targetName = viewTarget.dataset.viewTarget;
+          const sourceWillHide = Boolean(
+            viewTarget.closest("[data-view]") || viewTarget.closest("#flowModal"),
+          );
+          setView(targetName);
+          if (viewTarget.hasAttribute("data-flow-close")) {
+            closeFlow({ restoreFocus: false });
+          }
+          if (sourceWillHide) {
+            requestAnimationFrame(() => focusPrimaryViewControl(targetName));
+          }
+        }
+
+        const flowTrigger = event.target.closest("[data-flow-open]");
+        if (flowTrigger) {
+          openFlow(flowTrigger);
+          return;
+        }
+
+        const flowTransition = event.target.closest("[data-flow-transition]");
+        if (flowTransition) {
+          setFlowState(flowModal.dataset.flow, flowTransition.dataset.flowTransition);
+          return;
+        }
+
+        const flowClose = event.target.closest("[data-flow-close]");
+        if (flowClose) closeFlow();
+
+        const modalTrigger = event.target.closest("[data-modal-open]");
+        if (modalTrigger) openServiceModal(modalTrigger);
+        if (event.target.closest("[data-modal-close]")) closeServiceModal();
+
+        const actionTarget = event.target.closest("[data-action]");
+        const action = actionTarget?.dataset.action;
+        if (!action) return;
+        if (action === "open-startup") {
+          const opener = flowModal.classList.contains("open")
+            ? flowOpener
+            : event.target.closest("[data-action]");
+          closeFlow({ restoreFocus: false });
+          return openStartup(opener);
+        }
+        if (action === "preview-access-warning") {
+          accessBanner.hidden = false;
+          syncAccessBannerHeight();
+          accessBanner.querySelector("button")?.focus();
+          return;
+        }
+        const messages = {
+          "help": ["Open Port Start guides and troubleshooting", "ph-book-open"]
+        };
+        if (messages[action]) showToast(...messages[action]);
+      });
+
+      document.querySelectorAll("[data-filter]").forEach(input => {
+        input.addEventListener("input", () => {
+          const query = input.value.toLowerCase().trim();
+          input.closest(".view").querySelectorAll("[data-filter-item]").forEach(item => {
+            const searchableText =
+              `${item.dataset.filterItem} ${item.textContent}`.toLowerCase();
+            item.hidden = query.length > 0 && !searchableText.includes(query);
+          });
+        });
+      });
+
+      document.getElementById("logSearchForm").addEventListener("submit", event => {
+        event.preventDefault();
+        showToast("Log search updated across retained output", "ph-magnifying-glass");
+      });
+
+      function resetStartupVisuals() {
+        document.getElementById("startupTitle").textContent = "Starting the service.";
+        document.getElementById("startupCopy").textContent = "Traffic reached an armed port, so Port Start is launching the managed command and waiting for its backend to accept connections.";
+        document.getElementById("startupKicker").textContent = "Launch in progress";
+        document.getElementById("startupStatus").textContent = "connecting";
+        document.getElementById("startupTimer").textContent = "0.0s";
+        document.getElementById("startupTimerLabel").textContent = "elapsed";
+        document.getElementById("startupNote").textContent = "The original URL reloads automatically when the service is ready.";
+        document.getElementById("startupDot").className = "status-dot";
+        document.getElementById("startupTrack").style.height = "12%";
+        document.getElementById("startupLogs").innerHTML =
+          '<div class="terminal-empty"><div><i class="ph ph-terminal-window"></i><strong>No process output yet</strong><span>Output will appear here when the managed command writes to the terminal.</span></div></div>';
+      }
+
+      function beginStartup() {
+        clearInterval(startupInterval);
+        startupStartedAt = performance.now();
+        resetStartupVisuals();
+        startupInterval = setInterval(() => {
+          const elapsed = (performance.now() - startupStartedAt) / 1000;
+          document.getElementById("startupTimer").textContent = elapsed.toFixed(1) + "s";
+          document.getElementById("startupTrack").style.height =
+            Math.min(88, 12 + elapsed * 5) + "%";
+        }, 100);
+      }
+
+      function openStartup(trigger) {
+        startupOpener = trigger;
+        startup.classList.add("open");
+        startup.setAttribute("aria-hidden", "false");
+        updateBackgroundInert();
+        beginStartup();
+        setTimeout(() => document.getElementById("closeStartup").focus(), 0);
+      }
+
+      function closeStartup({ restoreFocus = true } = {}) {
+        if (!startup.classList.contains("open")) return;
+        clearInterval(startupInterval);
+        startup.classList.remove("open");
+        startup.setAttribute("aria-hidden", "true");
+        updateBackgroundInert();
+
+        const opener = startupOpener;
+        startupOpener = null;
+        if (restoreFocus && opener?.isConnected) opener.focus();
+      }
+
+      function showStartupState(state) {
+        clearInterval(startupInterval);
+        const title = document.getElementById("startupTitle");
+        const copy = document.getElementById("startupCopy");
+        const kicker = document.getElementById("startupKicker");
+        const status = document.getElementById("startupStatus");
+        const note = document.getElementById("startupNote");
+        const dot = document.getElementById("startupDot");
+        const timerLabel = document.getElementById("startupTimerLabel");
+        dot.className = "status-dot";
+        document.getElementById("startupLogs").innerHTML =
+          '<div class="terminal-empty"><div><i class="ph ph-terminal-window"></i><strong>No process output yet</strong><span>Output will appear here when the managed command writes to the terminal.</span></div></div>';
+
+        if (state === "ready") {
+          title.textContent = "The service is ready.";
+          copy.textContent = "The backend accepted a connection. Port Start can now forward queued traffic and return to the original request.";
+          kicker.textContent = "Port is accepting traffic";
+          status.textContent = "ready";
+          note.textContent = "Close the preview to return to the dashboard.";
+          timerLabel.textContent = "elapsed";
+          document.getElementById("startupTrack").style.height = "100%";
+        } else if (state === "failed") {
+          title.textContent = "The service didn't start.";
+          copy.textContent = "The command exited before accepting connections. Review available output, then restart when the service is ready to try again.";
+          kicker.textContent = "Launch failed";
+          status.textContent = "failed";
+          note.textContent = "The service remains armed for a future request.";
+          dot.className = "status-dot warn";
+          timerLabel.textContent = "elapsed";
+          document.getElementById("startupTrack").style.height = "58%";
+        } else if (state === "backoff") {
+          title.textContent = "Waiting before trying again.";
+          copy.textContent = "The last attempt failed, so Port Start is pausing before it retries automatically.";
+          kicker.textContent = "Startup backoff";
+          status.textContent = "cooling down";
+          note.textContent = "Explicit Restart resets the backoff.";
+          dot.className = "status-dot warn";
+          timerLabel.textContent = "elapsed";
+          document.getElementById("startupTrack").style.height = "28%";
+        } else if (state === "canceled") {
+          title.textContent = "Startup canceled.";
+          copy.textContent = "The active launch was stopped. The advertised port is idle and remains armed for the next request.";
+          kicker.textContent = "Service idle";
+          status.textContent = "canceled";
+          note.textContent = "It is safe to return to the dashboard.";
+          dot.className = "status-dot warn";
+          timerLabel.textContent = "elapsed";
+          document.getElementById("startupTrack").style.height = "32%";
+        }
+      }
+
+      document.getElementById("restartStartup").addEventListener("click", beginStartup);
+      document.getElementById("cancelStartup").addEventListener("click", () => showStartupState("canceled"));
+      document.getElementById("closeStartup").addEventListener("click", () => closeStartup());
+      document.querySelectorAll("[data-startup-state]").forEach(button => {
+        button.addEventListener("click", () => showStartupState(button.dataset.startupState));
+      });
+
+      [newPassword, confirmPassword].forEach(input => {
+        input.addEventListener("input", () => clearPasswordMismatch());
+      });
+      [changePassword, changeConfirmPassword].forEach(input => {
+        input.addEventListener("input", () =>
+          clearPasswordMismatch(changePasswordMismatch, changeConfirmPassword),
+        );
+      });
+
+      flowModal.addEventListener("submit", event => {
+        const authForm = event.target.closest("[data-auth-form]");
+        if (!authForm) return;
+        event.preventDefault();
+        const authAction = authForm.dataset.authForm;
+        const setup = authAction === "setup";
+        const change = authAction === "change";
+        const password = change ? changePassword : newPassword;
+        const confirmation = change ? changeConfirmPassword : confirmPassword;
+        const mismatch = change ? changePasswordMismatch : passwordMismatch;
+        if ((setup || change) && password.value !== confirmation.value) {
+          mismatch.hidden = false;
+          confirmation.setAttribute("aria-invalid", "true");
+          confirmation.setAttribute("aria-describedby", mismatch.id);
+          confirmation.focus();
+          return;
+        }
+        flowModal.dataset.authResolved = "true";
+        if (setup || change) {
+          accessBanner.hidden = true;
+          adminPasswordStatus.textContent =
+            "A password is required for dashboard and API access.";
+          adminPasswordAction.textContent = "Change password";
+          adminPasswordAction.dataset.flowState = "change";
+          syncAccessBannerHeight();
+        }
+        closeFlow({ force: true });
+        showToast(
+          change
+            ? "Administration password changed"
+            : setup
+              ? "Administration password set"
+              : "Signed in for 24 hours",
+          setup || change ? "ph-lock-key" : "ph-check-circle",
+        );
+      });
+
+      document.getElementById("serviceForm").addEventListener("submit", event => {
+        event.preventDefault();
+        closeServiceModal({ restoreFocus: false });
+        setView("services");
+        document.querySelector('.tab[data-view-target="services"]').focus();
+        showToast("Service details are ready to review", "ph-plugs-connected");
+        event.currentTarget.reset();
+      });
+
+      modal.addEventListener("click", event => {
+        if (event.target === modal) closeServiceModal();
+      });
+      flowModal.addEventListener("click", event => {
+        if (event.target === flowModal) closeFlow();
+        if (event.target.closest("[data-auth-preview-exit]")) {
+          closeFlow({ force: true });
+        }
+      });
+
+      document.addEventListener("keydown", event => {
+        if (flowModal.classList.contains("open")) {
+          if (event.key === "Tab") {
+            trapFocus(flowModal, event);
+            return;
+          }
+          if (event.key === "Escape") {
+            closeFlow();
+            return;
+          }
+        }
+        if (modal.classList.contains("open")) {
+          if (event.key === "Tab") {
+            trapModalFocus(event);
+            return;
+          }
+          if (event.key === "Escape") {
+            closeServiceModal();
+            return;
+          }
+        }
+        if (startup.classList.contains("open")) {
+          if (event.key === "Tab") {
+            trapFocus(startup, event);
+            return;
+          }
+          if (event.key === "Escape") {
+            closeStartup();
+            return;
+          }
+        }
+        if (event.key === "Escape") {
+          closeStartup();
+        }
+      });
+
+      const initialView = location.hash.slice(1);
+      if (views.some(view => view.dataset.view === initialView)) setView(initialView);
+    })();
+  </script>
+</body>
+</html>

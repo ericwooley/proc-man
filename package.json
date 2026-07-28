@@ -3,7 +3,13 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
-    "build": "node scripts/build.mjs"
+    "build": "node scripts/build.mjs",
+    "serve": "python3 -m http.server 4174 --bind 127.0.0.1 --directory prototype",
+    "test": "node --test",
+    "test:browser": "node test-ui/modal-focus.e2e.mjs"
   }
 }

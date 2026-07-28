@@ -1,2 +1,3 @@
 dist/
+tmp/
 *.site.tar.gz

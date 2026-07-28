@@ -1,55 +1,39 @@
-import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
+import { createAssetRecord, createWorkerSource } from "./build-core.mjs";
 
-const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
-const socialCard = await readFile(new URL("../public/og.png", import.meta.url));
-const encodedSocialCard = socialCard.toString("base64");
+const prototypeRoot = new URL("../prototype/", import.meta.url);
+const files = {};
 
-const worker = `
-const HTML = ${JSON.stringify(html)};
-const SOCIAL_CARD = ${JSON.stringify(encodedSocialCard)};
-
-function decodeBase64(value) {
-  const decoded = atob(value);
-  const bytes = new Uint8Array(decoded.length);
-
-  for (let index = 0; index < decoded.length; index += 1) {
-    bytes[index] = decoded.charCodeAt(index);
-  }
-
-  return bytes;
+async function addFile(route, sourceUrl) {
+  files[route] = createAssetRecord(sourceUrl.pathname, await readFile(sourceUrl));
 }
 
-export default {
-  async fetch(request) {
-    const url = new URL(request.url);
+async function addDirectory(directoryUrl, routePrefix) {
+  const entries = await readdir(directoryUrl, { withFileTypes: true });
+  entries.sort((left, right) => left.name.localeCompare(right.name));
 
-    if (url.pathname === "/og.png") {
-      return new Response(decodeBase64(SOCIAL_CARD), {
-        headers: {
-          "cache-control": "public, max-age=86400",
-          "content-type": "image/png"
-        }
-      });
+  for (const entry of entries) {
+    const sourceUrl = new URL(entry.name, directoryUrl);
+    const route = `${routePrefix}/${entry.name}`;
+
+    if (entry.isDirectory()) {
+      await addDirectory(new URL(`${entry.name}/`, directoryUrl), route);
+    } else if (entry.isFile()) {
+      await addFile(route, sourceUrl);
     }
-
-    if (request.method !== "GET" && request.method !== "HEAD") {
-      return new Response("Method Not Allowed", {
-        status: 405,
-        headers: { allow: "GET, HEAD" }
-      });
-    }
-
-    return new Response(request.method === "HEAD" ? null : HTML, {
-      headers: {
-        "cache-control": "no-cache",
-        "content-type": "text/html; charset=utf-8",
-        "referrer-policy": "no-referrer",
-        "x-content-type-options": "nosniff"
-      }
-    });
   }
-};
-`;
+}
+
+await addFile("/", new URL("index.html", prototypeRoot));
+files["/index.html"] = files["/"];
+await addFile(
+  "/logo-showcase.html",
+  new URL("logo-showcase.html", prototypeRoot),
+);
+await addDirectory(new URL("assets/", prototypeRoot), "/assets");
+await addFile("/og.png", new URL("../public/og.png", import.meta.url));
+
+const worker = createWorkerSource(files);
 
 await rm(new URL("../dist", import.meta.url), { recursive: true, force: true });
 await mkdir(new URL("../dist/server", import.meta.url), { recursive: true });
