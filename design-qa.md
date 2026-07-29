@@ -61,6 +61,9 @@ without changing its visual hierarchy.
    exercised rapid process actions. Worktree identity now remains tied to the
    normalized path while re-registration updates its current manifest, and a
    newer process action supersedes pending state-transition timers.
+7. Runs & logs was exercised while a process was still starting. Lifecycle and
+   command updates now refresh that view in place, so status and output do not
+   remain stuck at an earlier in-flight state.
 
 ## Verification
 

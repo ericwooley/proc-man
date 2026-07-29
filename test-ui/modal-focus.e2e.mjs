@@ -399,6 +399,36 @@ try {
     "an older start timer should not overwrite the newer stop result",
   );
 
+  await evaluate(
+    `document.querySelector('[data-proc="web"] [data-proc-action="start"]').click()`,
+  );
+  await evaluate(`document.querySelector('[data-view-target="logs"]').click()`);
+  assert.equal(
+    await evaluate(`(() => {
+      const row = [...document.querySelectorAll(".run-row")].find(candidate =>
+        candidate.textContent.includes("fix/auth-race-condition") &&
+        candidate.textContent.includes("process/web")
+      );
+      return row?.querySelector(".pill")?.textContent.trim();
+    })()`),
+    "starting",
+    "global runs should show an in-flight process on view entry",
+  );
+  await waitFor(
+    `[...document.querySelectorAll(".run-row")].find(candidate =>
+      candidate.textContent.includes("fix/auth-race-condition") &&
+      candidate.textContent.includes("process/web")
+    )?.querySelector(".pill")?.textContent.trim() === "running"`,
+    "global runs should refresh when an in-flight process finishes starting",
+    2_000,
+  );
+
+  await evaluate(`document.querySelector('[data-view-target="worktrees"]').click()`);
+  await evaluate(`document.querySelector('[data-open="wt2"]').click()`);
+  await waitFor(
+    `document.activeElement.id === "drawerClose"`,
+    "the command worktree should reopen after checking global runs",
+  );
   await evaluate(`document.querySelector('[data-tab="commands"]').click()`);
   await evaluate(
     `document.querySelector('[data-cmd="test"] [data-cmd-action="run"]').click()`,

@@ -945,6 +945,9 @@
   function processTransitionIsCurrent(p, transitionVersion) {
     return p.transitionVersion === transitionVersion;
   }
+  function refreshGlobalRunsIfVisible() {
+    if (activeView === 'logs') renderGlobalRuns();
+  }
   function runProcessAction(p, action) {
     const transitionVersion = supersedeProcessTransition(p);
     if (action === 'start') {
@@ -953,40 +956,47 @@
       showToast(`Starting process/${p.name}`, 'play');
       renderDrawerPanes();
       renderGrid();
+      refreshGlobalRunsIfVisible();
       setTimeout(() => {
         if (!processTransitionIsCurrent(p, transitionVersion)) return;
         p.state = 'running';
         delete p.error;
         if (activeWt) renderDrawerPanes();
         renderGrid();
+        refreshGlobalRunsIfVisible();
       }, 1100);
     } else if (action === 'stop') {
       p.state = 'stopping';
       showToast(`Stopping process/${p.name}`, 'stop-circle');
       renderDrawerPanes();
       renderGrid();
+      refreshGlobalRunsIfVisible();
       setTimeout(() => {
         if (!processTransitionIsCurrent(p, transitionVersion)) return;
         p.state = 'stopped';
         clearActivePorts(p);
         if (activeWt) renderDrawerPanes();
         renderGrid();
+        refreshGlobalRunsIfVisible();
       }, 900);
     } else if (action === 'restart') {
       p.state = 'stopping';
       showToast(`Restarting process/${p.name}`, 'arrows-clockwise');
       renderDrawerPanes();
+      refreshGlobalRunsIfVisible();
       setTimeout(() => {
         if (!processTransitionIsCurrent(p, transitionVersion)) return;
         snapshotConfiguredPorts(p);
         p.state = 'starting';
         if (activeWt) renderDrawerPanes();
+        refreshGlobalRunsIfVisible();
         setTimeout(() => {
           if (!processTransitionIsCurrent(p, transitionVersion)) return;
           p.state = 'running';
           delete p.error;
           if (activeWt) renderDrawerPanes();
           renderGrid();
+          refreshGlobalRunsIfVisible();
         }, 900);
       }, 700);
     }
@@ -1001,11 +1011,13 @@
       c.runs.unshift(run);
       showToast(`Running command/${c.name}`, 'play');
       renderDrawerPanes();
+      refreshGlobalRunsIfVisible();
       setTimeout(() => {
         const current = c.runs.find(candidate => candidate.id === run.id);
         if (!current || current.state !== 'running') return;
         Object.assign(current, { state: 'exited', code: 0, when: 'just now' });
         if (activeWt) renderDrawerPanes();
+        refreshGlobalRunsIfVisible();
       }, 1400);
     } else if (action === 'cancel') {
       const run = c.runs.find(candidate => candidate.id === runId);
@@ -1013,6 +1025,7 @@
       Object.assign(run, { state: 'canceled', when: 'just now' });
       showToast(`Canceled command/${c.name}`, 'stop-circle');
       renderDrawerPanes();
+      refreshGlobalRunsIfVisible();
     }
   }
 
