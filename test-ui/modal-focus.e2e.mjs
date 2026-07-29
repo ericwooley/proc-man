@@ -25,6 +25,11 @@ function cssColorToRgb(value) {
   throw new Error(`Unsupported computed color: ${value}`);
 }
 
+function cssColorAlpha(value) {
+  const numbers = value.match(/\d*\.?\d+/g)?.map(Number) ?? [];
+  return numbers[3] ?? 1;
+}
+
 function relativeLuminance(color) {
   return cssColorToRgb(color)
     .map(channel => channel / 255)
@@ -263,6 +268,75 @@ try {
     `document.readyState === "complete" && document.querySelectorAll(".wt-tile").length === 6`,
     "prototype should load its populated worktree state",
   );
+  const renderedStateSamples = await evaluate(`(() => {
+    const fixture = document.createElement("div");
+    fixture.style.cssText =
+      "position:fixed;left:-10000px;top:0;display:grid;gap:4px";
+    const surfaces = ["surface", "surface-quiet", "surface-soft"];
+    const states = [
+      ["tile", "running"],
+      ["tile", "mixed"],
+      ["tile", "stopped"],
+      ["tile", "stale"],
+      ["run", "running"],
+      ["run", "succeeded"],
+      ["run", "starting"],
+      ["run", "stopping"],
+      ["run", "failed"],
+      ["run", "stopped"],
+      ["run", "canceled"]
+    ];
+    for (const surface of surfaces) {
+      const surfaceElement = document.createElement("div");
+      surfaceElement.dataset.surface = surface;
+      surfaceElement.style.background = "var(--" + surface + ")";
+      for (const [context, state] of states) {
+        const contextElement = document.createElement("div");
+        if (context === "tile") contextElement.className = "tile-foot";
+        const pill = document.createElement("span");
+        pill.className = "pill " + state;
+        pill.dataset.context = context;
+        pill.dataset.state = state;
+        pill.textContent = state;
+        contextElement.append(pill);
+        surfaceElement.append(contextElement);
+      }
+      fixture.append(surfaceElement);
+    }
+    document.body.append(fixture);
+
+    const samples = [];
+    for (const theme of ["light", "dark"]) {
+      document.documentElement.dataset.theme = theme;
+      for (const pill of fixture.querySelectorAll(".pill")) {
+        const style = getComputedStyle(pill);
+        samples.push({
+          theme,
+          surface: pill.closest("[data-surface]").dataset.surface,
+          context: pill.dataset.context,
+          state: pill.dataset.state,
+          color: style.color,
+          background: style.backgroundColor
+        });
+      }
+    }
+    fixture.remove();
+    document.documentElement.dataset.theme = "light";
+    return samples;
+  })()`);
+  for (const sample of renderedStateSamples) {
+    const label =
+      `${sample.theme} ${sample.context} ${sample.state} on ${sample.surface}`;
+    assert.equal(
+      cssColorAlpha(sample.background),
+      1,
+      `${label} should use an opaque background`,
+    );
+    assert.ok(
+      contrastRatio(sample.color, sample.background) >= 4.5,
+      `${label} should meet 4.5:1 contrast`,
+    );
+  }
   await evaluate(`document.documentElement.dataset.theme = "light"`);
   assert.deepEqual(
     await evaluate(`({

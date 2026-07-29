@@ -161,7 +161,8 @@ without changing its visual hierarchy.
 26. State labels now use opaque theme tokens, so their contrast remains stable
     on worktree cards, quiet command rows, and selected run rows. Deterministic
     checks cover every colored state against all three authored surfaces in
-    light and dark themes.
+    light and dark themes. The browser suite also measures the computed opacity
+    and contrast for tile and run labels across that matrix.
 
 ## Verification
 

@@ -68,9 +68,26 @@ function statePillStyleErrors(html) {
   ]);
   const styleSource = [...html.matchAll(/<style(?:\s[^>]*)?>([\s\S]*?)<\/style>/gi)]
     .map(match => match[1])
-    .join("\n");
+    .join("\n")
+    .replace(/\/\*[\s\S]*?\*\//g, "");
   const seenClasses = new Set();
   const errors = new Set();
+
+  for (const state of ["good", "warning", "danger"]) {
+    const tokens = [
+      ...styleSource.matchAll(
+        new RegExp(`--badge-${state}-bg\\s*:\\s*([^;}]+)`, "gi"),
+      ),
+    ].map(match => match[1].trim());
+    if (
+      tokens.length !== 2 ||
+      tokens.some(token => !/^#[0-9a-f]{6}$/i.test(token))
+    ) {
+      errors.add(
+        `${state} state background should have exactly two opaque theme tokens`,
+      );
+    }
+  }
 
   for (const rule of styleSource.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
     const selectors = rule[1]
@@ -441,16 +458,39 @@ test("state-pill contrast guard rejects translucent tokens and later overrides",
     }
     </style>`,
   );
+  const commentPrefixedOverride = html.replace(
+    "</style>",
+    `.pill.succeeded {
+      /* theme override */
+      background-color: var(--badge-good-ink);
+    }
+    </style>`,
+  );
+  const laterTokenOverride = html.replace(
+    "</style>",
+    `:root {
+      --badge-good-bg: #267052;
+    }
+    </style>`,
+  );
 
   assert.deepEqual(
     {
       translucentToken: cssToken(translucentTokenBlock, "badge-good-bg"),
       laterOverrideErrors: statePillStyleErrors(laterTranslucentOverride),
+      commentOverrideErrors: statePillStyleErrors(commentPrefixedOverride),
+      tokenOverrideErrors: statePillStyleErrors(laterTokenOverride),
     },
     {
       translucentToken: undefined,
       laterOverrideErrors: [
         "good state pills should use an opaque background token",
+      ],
+      commentOverrideErrors: [
+        "good state pills should use an opaque background token",
+      ],
+      tokenOverrideErrors: [
+        "good state background should have exactly two opaque theme tokens",
       ],
     },
   );
