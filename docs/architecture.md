@@ -72,6 +72,11 @@ Port declarations are validated for name, host, numeric range, protocol, and URL
 shape. They are stored as configuration rather than acquired resources.
 Registration therefore succeeds independently of current socket availability.
 
+Re-registration may change a definition while one of its runs is active. The
+active run continues with its immutable launch snapshot; the new definition
+becomes the configuration for the next run. Control-plane responses expose both
+values whenever they differ.
+
 ## Process execution
 
 Process and command definitions use either an argv array or an explicit shell
@@ -84,11 +89,15 @@ parsing semantics.
 
 Before launch, the daemon sets the working directory and expands:
 
-- `{worktree_root}` and `PORT_START_WORKTREE_ROOT`;
 - `{definition_id}` and `PORT_START_DEFINITION_ID`;
 - `{run_id}` and `PORT_START_RUN_ID`;
 - a named port such as `{port.http}` and its normalized environment variable,
   such as `PORT_START_PORT_HTTP`.
+
+For worktree-associated definitions it also expands `{worktree_root}` and sets
+`PORT_START_WORKTREE_ROOT`. Standalone definitions omit that environment
+variable and reject `{worktree_root}` during validation; their configured `cwd`
+remains the explicit execution location.
 
 Definitions may map a declared port into an application-specific variable:
 

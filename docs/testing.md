@@ -19,7 +19,11 @@ Bug fixes begin with a failing regression test.
 ### Domain and lifecycle
 
 - Every valid and invalid process/run state transition.
-- Concurrent Start coalescing.
+- Start from stopped, failed, starting, running, stopping, and stale states.
+- Concurrent Start coalescing for starting and running processes.
+- Stop and Restart behavior from every process state, including concurrent
+  requests during stopping.
+- Concurrent Restart requests coalescing into one replacement run.
 - Stop, Restart, process exit, launch failure, cancel, and interruption.
 - Command invocation independence from process state.
 - Stale-worktree grace and restoration using a fake clock.
@@ -35,6 +39,8 @@ Bug fixes begin with a failing regression test.
 - Commands containing spaces, quotes, Unicode, empty arguments, and shell
   metacharacters.
 - Manifest removal without affecting imperative definitions.
+- Re-registration during an active run preserving the run snapshot while
+  exposing next-run configuration.
 - Manifest-owned update rejection.
 - Dry-run plans matching committed reconciliation.
 
@@ -72,7 +78,11 @@ Required cases:
 - independent and overlapping one-shot command invocations;
 - command timeout and cancellation;
 - named port placeholder and environment expansion;
+- standalone definition worktree-root placeholder rejection and environment
+  omission;
 - declared-port persistence without socket acquisition;
+- imperative update during an active run preserving active links and exposing
+  pending next-run links;
 - daemon restart marking unfinished runs interrupted without relaunching them;
 - PID-reuse protection during recovery;
 - log follow reconnect by sequence and retention-gap reporting;

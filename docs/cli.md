@@ -92,7 +92,9 @@ port-start worktree prune --missing-for 24h
 
 `register` returns repository and worktree identity, process definitions,
 command definitions, declared ports and links, and created, updated, or removed
-results. A worktree-creation hook can use the JSON form safely and repeatedly.
+results. When re-registration changes an active process, the result distinguishes
+the active run's current links from configuration pending its next start. A
+worktree-creation hook can use the JSON form safely and repeatedly.
 
 `deregister` stops active runs and removes current definitions. Historical runs
 remain under their retention policies unless `--purge-logs` is supplied.
@@ -144,9 +146,13 @@ port-start process restart proc_01...
 port-start process status web --json
 ```
 
-Start coalesces with an existing active run. Stop terminates the process group.
-Restart replaces an active run with a new one. No lifecycle command is triggered
-by traffic to a declared port.
+Start creates a run from `stopped` or `failed`, returns the existing run from
+`starting` or `running`, returns `invalid_state` from `stopping`, and returns
+`worktree_stale` from `stale`. Stop is idempotent and joins an in-progress stop.
+Restart waits for any active run to terminate and creates exactly one new run;
+concurrent Restart requests join that operation. Restart returns
+`worktree_stale` from `stale`. No lifecycle command is triggered by traffic to a
+declared port.
 
 Worktree-wide operations are:
 
@@ -178,12 +184,20 @@ port-start process status web
 port-start open my-worktree/web:http
 ```
 
-Process status prints every declared endpoint alongside process state. `open`
-selects a named HTTP(S) declaration and launches the user's browser. It reports a
-copyable address for TCP declarations.
+Process status prints every declared endpoint alongside process state. While a
+process is active, it prints and opens endpoints from the run's launch snapshot.
+If the stored definition has changed, status also labels the next-run endpoints
+as pending. When no run is active, it uses the stored definition.
+
+`open` selects a named HTTP(S) declaration and launches the user's browser. It
+reports a copyable address for TCP declarations.
 
 Declared ports come from registration. CLI commands do not allocate, reserve, or
 change them.
+
+Standalone definitions omit `PORT_START_WORKTREE_ROOT`. Supplying
+`{worktree_root}` for a standalone process or command is a validation error;
+`--cwd` remains its explicit execution root.
 
 ## Logs
 

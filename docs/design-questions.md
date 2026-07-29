@@ -20,7 +20,9 @@ shape the process-management product.
 | How are worktrees deregistered? | An explicit removal-hook command stops active runs and removes current definitions. |
 | What happens to missing worktrees? | Stop active runs immediately; delete the registration and logs after 24 hours if still missing. |
 | How are commands represented? | Argv by default, explicit shell string as opt-in, both using the login shell environment. |
-| Can a process have several active runs? | No. Start coalesces with its single active run. |
+| Can a process have several active runs? | No. Start returns the existing run while starting or running, and rejects the stopping state. |
+| What happens when registration changes a running process? | The active run keeps its launch snapshot; the new definition is labeled as pending for the next run. |
+| What does a standalone definition use as its worktree root? | It has none: the root variable is omitted, its placeholder is invalid, and `cwd` is the execution location. |
 | Can command invocations overlap? | Yes. Each one-shot invocation is an independent run. |
 | Does an exited process restart automatically? | No. Every new run follows an explicit action. |
 | Where are logs stored? | Tagged segmented files with metadata in SQLite. |

@@ -106,13 +106,24 @@ The observable state set is:
 - `stale`: the owning worktree path is missing and new starts are blocked.
 
 At most one active run exists for a process definition. Concurrent Start actions
-join the existing start rather than launching duplicates.
+for a process that is `starting` or `running` return the existing run rather
+than launching duplicates.
 
 ### Process actions
 
-- **Start** launches the process or joins an existing start.
-- **Stop** terminates an active run and returns the definition to `stopped`.
-- **Restart** terminates any active run and launches a new one.
+- **Start** behaves by current state:
+  - from `stopped` or `failed`, create a new run;
+  - from `starting` or `running`, return the existing run unchanged;
+  - from `stopping`, return `invalid_state` so the caller can retry after the
+    process reaches `stopped`;
+  - from `stale`, return `worktree_stale`.
+- **Stop** begins termination from `starting` or `running`, returns the existing
+  stop operation from `stopping`, and succeeds without changing state from
+  `stopped`, `failed`, or `stale`.
+- **Restart** creates a new run from `stopped` or `failed`; from `starting`,
+  `running`, or `stopping`, it waits for termination and then creates one new
+  run; concurrent Restart requests for the same current run join that one
+  restart operation; from `stale`, Restart returns `worktree_stale`.
 - **Deregister** stops the process and removes its active definition.
 
 ### Command actions
@@ -123,6 +134,23 @@ join the existing start rather than launching duplicates.
   command definition.
 
 Command invocations do not change a process definition's state.
+
+## Configuration changes during a run
+
+Every run uses the configuration snapshot taken when it launched. Updating an
+imperative definition or re-registering a manifest-owned definition stores the
+configuration for the next run and does not alter or stop an active run.
+
+While a process is active, status responses expose both:
+
+- `active_run.configuration`, including the ports and command used by the
+  running process; and
+- `configured`, the definition that the next run will use.
+
+CLI and dashboard links use the active run's declared ports while a process is
+`starting`, `running`, or `stopping`. They use the configured definition while
+the process is `stopped`, `failed`, or `stale`. When the values differ, clients
+label the configured values as pending the next start.
 
 ## Run states
 
@@ -177,3 +205,5 @@ After 24 hours the registration and retained logs are removed.
 7. Every run snapshots its command, working directory, declared ports, and
    relevant environment overrides.
 8. Deregistering a worktree stops every active run associated with it.
+9. Updating a definition never changes the configuration snapshot of an active
+   run.

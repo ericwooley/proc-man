@@ -194,6 +194,8 @@ Manifest ownership is recorded on every created definition.
 
 - Re-registration updates matching definitions by worktree identity, kind, and
   name.
+- When a matching definition has an active run, that run keeps its launch
+  snapshot and the updated definition applies to its next run.
 - Definitions removed from the manifest are stopped, if active, and
   deregistered.
 - Existing run history remains subject to retention.

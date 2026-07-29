@@ -25,8 +25,9 @@ changing fields requires a new API version.
 
 Registration accepts the canonical worktree candidate path, manifest YAML, and
 `dry_run`. The response is a complete reconciliation plan or result with
-processes, commands, declared ports, and links. Repeating the same registration
-is idempotent.
+processes, commands, declared ports, and links. For changed active processes, it
+returns both active-run links and configured next-run values. Repeating the same
+registration is idempotent.
 
 ### Processes
 
@@ -34,10 +35,10 @@ is idempotent.
 | --- | --- |
 | `GET /api/v1/processes` | Filter and list process definitions. |
 | `POST /api/v1/processes` | Create an imperative process definition. |
-| `GET /api/v1/processes/{id}` | Get effective config, state, ports, and latest run. |
+| `GET /api/v1/processes/{id}` | Get configured values, state, and active-run snapshot. |
 | `PATCH /api/v1/processes/{id}` | Update an imperative process definition. |
 | `DELETE /api/v1/processes/{id}` | Stop and deregister a process. |
-| `POST /api/v1/processes/{id}/start` | Start or join its active run. |
+| `POST /api/v1/processes/{id}/start` | Start or return its starting/running run. |
 | `POST /api/v1/processes/{id}/stop` | Stop its active run. |
 | `POST /api/v1/processes/{id}/restart` | Replace its active run. |
 
@@ -54,6 +55,18 @@ is idempotent.
 
 Updating a manifest-owned process or command returns `409 manifest_owned` with
 its manifest path, definition kind, and key.
+
+An imperative update or worktree re-registration does not mutate an active
+run. Process responses include `configured` and `active_run.configuration`.
+When they differ, `configured` is the next-run value. Clients use active-run
+ports for links until that run becomes terminal.
+
+Process Start creates a run from `stopped` or `failed`, returns the existing run
+from `starting` or `running`, returns `409 invalid_state` from `stopping`, and
+returns `409 worktree_stale` from `stale`. Stop is idempotent and joins an
+in-progress stop. Restart waits for an active run to terminate and creates
+exactly one new run; concurrent Restart requests join that restart operation.
+Restart returns `409 worktree_stale` from `stale`.
 
 ### Runs and logs
 
