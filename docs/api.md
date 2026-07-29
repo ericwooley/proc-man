@@ -16,43 +16,52 @@ changing fields requires a new API version.
 
 | Method and path | Purpose |
 | --- | --- |
-| `GET /api/v1/worktrees` | List worktrees with aggregate service state. |
-| `GET /api/v1/worktrees/{id}` | Get worktree, Git metadata, and services. |
-| `POST /api/v1/worktrees/apply` | Validate and reconcile a manifest. |
-| `DELETE /api/v1/worktrees/{id}` | Stop and remove a worktree registration. |
-| `POST /api/v1/worktrees/{id}/start` | Start all enabled services concurrently. |
-| `POST /api/v1/worktrees/{id}/stop` | Stop all running services concurrently. |
+| `GET /api/v1/worktrees` | List worktrees with aggregate process and command state. |
+| `GET /api/v1/worktrees/{id}` | Get worktree, Git metadata, definitions, and declared ports. |
+| `POST /api/v1/worktrees/register` | Validate and reconcile a worktree manifest. |
+| `DELETE /api/v1/worktrees/{id}` | Stop and deregister a worktree. |
+| `POST /api/v1/worktrees/{id}/processes/start` | Start all processes concurrently. |
+| `POST /api/v1/worktrees/{id}/processes/stop` | Stop all active processes concurrently. |
 
-Apply accepts the canonical worktree candidate path, manifest YAML, optional
-service-port overrides, and `dry_run`. The response is a complete reconciliation
-plan/result with assigned ports and links. Repeating the same apply is
-idempotent.
+Registration accepts the canonical worktree candidate path, manifest YAML, and
+`dry_run`. The response is a complete reconciliation plan or result with
+processes, commands, declared ports, and links. Repeating the same registration
+is idempotent.
 
-### Services
+### Processes
 
 | Method and path | Purpose |
 | --- | --- |
-| `GET /api/v1/services` | Filter and list services. |
-| `POST /api/v1/services` | Create an imperative service. |
-| `GET /api/v1/services/{id}` | Get effective config, state, and latest run. |
-| `PATCH /api/v1/services/{id}` | Update an imperative service. |
-| `DELETE /api/v1/services/{id}` | Deregister a service. |
-| `POST /api/v1/services/{id}/start` | Start or join an existing launch. |
-| `POST /api/v1/services/{id}/stop` | Stop and return to armed idle. |
-| `POST /api/v1/services/{id}/restart` | Restart immediately. |
-| `POST /api/v1/services/{id}/cancel` | Cancel startup and return to idle. |
-| `POST /api/v1/services/{id}/enable` | Arm the service listener. |
-| `POST /api/v1/services/{id}/disable` | Stop and disarm the service. |
+| `GET /api/v1/processes` | Filter and list process definitions. |
+| `POST /api/v1/processes` | Create an imperative process definition. |
+| `GET /api/v1/processes/{id}` | Get effective config, state, ports, and latest run. |
+| `PATCH /api/v1/processes/{id}` | Update an imperative process definition. |
+| `DELETE /api/v1/processes/{id}` | Stop and deregister a process. |
+| `POST /api/v1/processes/{id}/start` | Start or join its active run. |
+| `POST /api/v1/processes/{id}/stop` | Stop its active run. |
+| `POST /api/v1/processes/{id}/restart` | Replace its active run. |
 
-Updating a manifest-owned service returns `409 manifest_owned` with its manifest
-path and service key.
+### Commands
+
+| Method and path | Purpose |
+| --- | --- |
+| `GET /api/v1/commands` | Filter and list command definitions. |
+| `POST /api/v1/commands` | Create an imperative command definition. |
+| `GET /api/v1/commands/{id}` | Get effective config and recent runs. |
+| `PATCH /api/v1/commands/{id}` | Update an imperative command definition. |
+| `DELETE /api/v1/commands/{id}` | Deregister a command definition. |
+| `POST /api/v1/commands/{id}/runs` | Start one invocation and return its run. |
+
+Updating a manifest-owned process or command returns `409 manifest_owned` with
+its manifest path, definition kind, and key.
 
 ### Runs and logs
 
 | Method and path | Purpose |
 | --- | --- |
-| `GET /api/v1/services/{id}/runs` | Paginate run history. |
+| `GET /api/v1/runs` | Filter and paginate runs across definitions and worktrees. |
 | `GET /api/v1/runs/{id}` | Get one run and terminal information. |
+| `POST /api/v1/runs/{id}/cancel` | Terminate an active command invocation. |
 | `GET /api/v1/runs/{id}/logs` | Paginate or search retained records. |
 | `GET /api/v1/runs/{id}/logs/events` | Follow logs using SSE and a sequence cursor. |
 | `GET /api/v1/runs/{id}/logs/download` | Stream text or NDJSON with attachment headers. |
@@ -63,12 +72,12 @@ validation errors rather than an empty result.
 
 ### Events
 
-`GET /api/v1/events` is an authenticated SSE stream for worktree, service, run,
-and listener-state changes. Events carry monotonically increasing connection
+`GET /api/v1/events` is an authenticated SSE stream for worktree, definition,
+run, and log-state changes. Events carry monotonically increasing connection
 cursors and resource versions. Reconnecting clients send `Last-Event-ID`.
 
-Slow consumers receive a gap event and must refetch current resource state. The
-daemon does not allow one subscriber to block lifecycle processing.
+Slow consumers receive a gap event and refetch current resource state. One
+subscriber cannot block lifecycle processing.
 
 ### Authentication and settings
 
@@ -82,30 +91,14 @@ daemon does not allow one subscriber to block lifecycle processing.
 | `GET /api/v1/settings` | Read effective non-secret settings. |
 
 The SPA session is an opaque, HttpOnly, SameSite=Strict cookie. Session token
-hashes and expiry are stored in SQLite. SPA sessions expire after 24 hours.
-CLI login sessions expire after five minutes and exist only for the invoking
+hashes and expiry are stored in SQLite. SPA sessions expire after 24 hours. CLI
+login sessions expire after five minutes and exist only for the invoking
 command. Password changes revoke all sessions. State-changing
 cookie-authenticated requests require an exact same-origin `Origin` header or a
 CSRF token.
 
 The password is hashed with Argon2id and never returned. When password
 authentication is disabled, loopback clients proceed without a session.
-
-### Startup-page capability
-
-The HTTP startup interstitial uses a separate bearer capability:
-
-| Method and path | Purpose |
-| --- | --- |
-| `GET /api/v1/startup/state` | Read the scoped service/current run state. |
-| `GET /api/v1/startup/events` | Stream scoped state and log events. |
-| `POST /api/v1/startup/restart` | Restart the scoped service. |
-| `POST /api/v1/startup/cancel` | Cancel the scoped launch. |
-
-These endpoints accept only the short-lived capability token, ignore admin
-cookies, expose no other services, and return an exact allow-origin value for
-the page that received the capability. Capabilities expire ten minutes after
-issuance or 60 seconds after terminal startup state, whichever is earlier.
 
 ## Errors
 
@@ -115,10 +108,11 @@ Non-2xx responses use:
 {
   "error": {
     "code": "manifest_owned",
-    "message": "service configuration is owned by .port-start.yaml",
+    "message": "process configuration is owned by .port-start.yaml",
     "details": {
       "manifest": "/workspace/.port-start.yaml",
-      "service": "web"
+      "kind": "process",
+      "name": "web"
     }
   }
 }
@@ -131,9 +125,9 @@ Required stable error codes include:
 - `not_found`;
 - `ambiguous_selector`;
 - `manifest_owned`;
-- `port_conflict`;
+- `already_running`;
 - `invalid_state`;
-- `startup_backoff`;
+- `worktree_stale`;
 - `authentication_required`;
 - `authentication_failed`;
 - `retention_gap`;
@@ -144,9 +138,9 @@ Secrets, full environments, and passwords are excluded.
 
 ## Health
 
-- `GET /healthz` reports that the process is alive.
-- `GET /readyz` succeeds only after SQLite migrations, recovery, and listener
-  reconciliation have completed.
+- `GET /healthz` reports that the daemon process is alive.
+- `GET /readyz` succeeds after SQLite migrations, run recovery, and registration
+  loading have completed.
 
 Health responses contain no sensitive configuration and do not require
 authentication.

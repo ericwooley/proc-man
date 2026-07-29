@@ -5,12 +5,16 @@
 ```text
 Repository
 └── Worktree
-    └── Service (one command, one advertised port)
+    ├── Process definition
+    │   ├── Declared port
+    │   └── Run
+    │       └── Log record
+    └── Command definition
         └── Run
             └── Log record
 ```
 
-Imperative services may exist without a worktree.
+Standalone imperative definitions may exist without a worktree.
 
 ## Entities
 
@@ -27,34 +31,46 @@ manifest path, and display label are observed metadata.
 
 A worktree is `active`, `missing`, or `deleting`.
 
-### Service
+### Process definition
 
-The durable desired configuration for one command and one advertised TCP port.
+The durable configuration for one named, supervised, long-running command.
 Important attributes are:
 
 - stable identifier and unique name within its worktree;
 - configuration source: `manifest` or `imperative`;
-- requested and assigned port;
-- listen host;
-- mode: `proxy` or `handoff`;
-- protocol hint: `tcp`, `http`, or `https`;
-- optional URL/path metadata;
 - command kind and value;
 - working directory and environment overrides;
-- enablement and timeouts;
-- log-retention configuration.
+- zero or more named declared ports;
+- stop timeout and log-retention configuration.
 
-Manifest-owned configuration cannot be edited through service update endpoints.
-Lifecycle actions remain allowed.
+Manifest-owned configuration changes through worktree registration.
+Lifecycle actions remain available from every client.
+
+### Command definition
+
+The durable configuration for a named one-shot action such as `test`, `migrate`,
+or `seed`. It contains a command, working directory, environment overrides,
+optional execution timeout, and log-retention policy. Each invocation creates an
+independent run and may be canceled while active.
+
+### Declared port
+
+A named endpoint that a process is configured to use. It records an explicit
+port number, host, protocol hint (`tcp`, `http`, or `https`), and optional URL
+path.
+
+The declaration supports discovery, links, and launch-time substitution. Socket
+availability and ownership remain properties of the launched application and
+operating system.
 
 ### Run
 
-One attempt to launch a service. A run snapshots the effective command and
-execution configuration so history remains intelligible after an imperative
-service is edited or a manifest is reapplied.
+One process start or command invocation. A run snapshots the effective command,
+working directory, environment overrides, declared ports, and execution
+configuration so history remains intelligible after re-registration.
 
-It records the trigger, timestamps, backend port if any, PID/process group,
-readiness, exit code, error, log metadata, and terminal reason.
+It records the trigger, timestamps, PID/process group, exit code, error, terminal
+reason, and log metadata.
 
 ### Log record
 
@@ -62,117 +78,100 @@ One tagged process-output record with a run-local monotonically increasing
 sequence number, timestamp, stream (`stdout` or `stderr`), text, and partial-line
 indicator when applicable.
 
-## Service states
+## Process states
 
 ```text
-                  enable
- disabled ─────────────────▶ idle
-     ▲                        │  ▲
-     │ disable                │  │ stop, exit, cancel,
-     │                        │  │ startup failure
-     │                      trigger
-     │                        ▼  │
-     └──────────────────── starting
-                                │
-                              ready
-                                ▼
-                             running
-                                │
-                              stop
-                                ▼
-                             stopping
+                         start
+ stopped ─────────────────────────────────▶ starting
+    ▲                                           │
+    │                         child created     │ launch error
+    │                                           ▼
+    │              process exit             failed
+    │                   ┌───────────────────────┘
+    │                   │
+    │                running
+    │                   │
+    │                  stop
+    │                   ▼
+    └─────────────── stopping
 ```
 
-The observable service state set is:
+The observable state set is:
 
-- `disabled`: no listener and no automatic trigger;
-- `idle`: armed and waiting for traffic or manual start;
+- `stopped`: registered with no active run;
 - `starting`: one launch is in progress;
-- `running`: the run is ready;
+- `running`: the managed process group is alive;
 - `stopping`: termination is in progress;
-- `failed`: the latest launch failed and relaunch backoff is active;
-- `conflict`: the advertised port cannot be bound safely;
-- `stale`: the owning worktree path is missing.
+- `failed`: the latest launch could not create a running process;
+- `stale`: the owning worktree path is missing and new starts are blocked.
 
-Only one run may be starting or running for a service. Concurrent triggers join
-the existing startup rather than creating more processes.
+At most one active run exists for a process definition. Concurrent Start actions
+join the existing start rather than launching duplicates.
 
-### Actions
+### Process actions
 
-- **Start** launches immediately, coalescing with an existing launch.
-- **Stop** terminates the active run and returns to `idle`.
-- **Restart** terminates any active run and launches again, bypassing failure
-  backoff.
-- **Cancel** terminates the current startup and returns to `idle`.
-- **Disable** terminates any active run, closes/disarms the listener, and enters
-  `disabled`.
-- **Enable** binds the advertised listener and enters `idle`, or `conflict` if
-  binding fails.
-- **Deregister** stops the service and releases its port. Historical runs remain
-  subject to retention unless an explicit purge is requested.
+- **Start** launches the process or joins an existing start.
+- **Stop** terminates an active run and returns the definition to `stopped`.
+- **Restart** terminates any active run and launches a new one.
+- **Deregister** stops the process and removes its active definition.
+
+### Command actions
+
+- **Run** creates a new command invocation.
+- **Cancel** terminates one active invocation.
+
+Command invocations do not change a process definition's state.
 
 ## Run states
 
 A run moves through:
 
 - `starting`;
-- `ready`;
+- `running`;
 - `stopping`;
 - one terminal state: `exited`, `failed`, `canceled`, or `interrupted`.
 
-Readiness is successful TCP connection establishment to the command's bind port
-within the startup timeout. The default timeout is 60 seconds.
+Successful child creation moves a run to `running`. A normal process exit records
+its exit code and returns a process definition to `stopped`. A launch error
+creates a failed run. Port declarations do not determine run state.
 
-If the command exits before readiness, fails to bind, or exceeds the timeout,
-the run is `failed`. Request-driven relaunch uses exponential backoff beginning
-at two seconds and capped at 60 seconds. A successful readiness transition or an
-explicit Restart resets the backoff.
-
-The daemon never performs an unattended always-restart loop.
+The daemon does not relaunch a process after exit. A new run always follows an
+explicit action.
 
 ## Worktree reconciliation
 
-`worktree apply` is idempotent for the tuple:
+`worktree register` is idempotent for the tuple:
 
 ```text
 canonical Git common directory
 + canonical worktree root
-+ service name
++ definition kind
++ definition name
 ```
 
-Applying a manifest:
+Registration:
 
-1. validates the complete document;
+1. validates the complete manifest;
 2. resolves the worktree and relative working directories;
-3. computes the desired set;
-4. creates or updates manifest-owned services;
-5. retains previous auto-assigned ports for matching services;
-6. deregisters manifest-owned services no longer present;
-7. leaves imperative services unchanged;
-8. reports all changes in human-readable or JSON form.
-
-CLI port overrides are part of that one apply operation. They do not create a
-separate persistent override layer.
+3. computes the desired process, command, and declared-port set;
+4. creates or updates matching manifest-owned definitions;
+5. stops and deregisters manifest-owned definitions no longer present;
+6. leaves imperative definitions unchanged;
+7. reports all changes in human-readable or JSON form.
 
 The daemon periodically checks registered worktree roots. A missing root is
-marked `missing`, its processes are stopped, and its listeners are released. If
-it returns within 24 hours, the prior enablement state is restored when its ports
-can be rebound. After 24 hours the worktree registrations and their logs are
-removed.
+marked `missing` and its managed processes and command invocations are stopped.
+If it returns within 24 hours, the prior registration becomes active again.
+After 24 hours the registration and retained logs are removed.
 
 ## Invariants
 
-1. At most one active service owns a given listen-host/advertised-port pair.
-2. At most one non-terminal run exists for a service.
-3. A proxy-mode daemon owns the advertised listener in `idle`, `starting`, and
-   `running`.
-4. A handoff-mode daemon does not own the advertised listener while the child is
-   expected to own it.
-5. A manifest-owned service's configuration changes only through manifest
-   reconciliation.
+1. At most one non-terminal run exists for a process definition.
+2. Every process port name is unique within that process.
+3. Every declared port is explicit; registration does not synthesize a value.
+4. Process state follows the managed process group rather than endpoint state.
+5. A manifest-owned definition changes only through worktree registration.
 6. CLI and SPA actions go through the daemon API.
-7. A public auto-assigned port remains stable until deregistration or explicit
-   manifest change.
-8. The login shell, working directory, expanded ports, command, and relevant
-   environment are snapshotted on each run.
-
+7. Every run snapshots its command, working directory, declared ports, and
+   relevant environment overrides.
+8. Deregistering a worktree stops every active run associated with it.

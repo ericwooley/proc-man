@@ -2,95 +2,103 @@
 
 ## Purpose
 
-Port Start makes local development services available at stable, discoverable
-ports without requiring every worktree's processes to run continuously.
+Port Start makes agent-created development worktrees easy to find and operate.
+A worktree registers its named processes, optional one-shot commands, and the
+ports each process expects to use. The registration becomes a durable inventory
+available from a CLI, HTTP API, and browser dashboard.
 
-A developer registers a port and launch command. Port Start listens while the
-command is stopped. Traffic to the port starts the command, presents useful
-startup feedback when possible, and eventually reaches the command. A permanent
-administration server exposes the same controls through a CLI, HTTP API, and
-React single-page application.
-
-Git worktrees are a first-class use case. A worktree can declaratively advertise
-its services, including automatically allocated ports, so its links appear in
-the dashboard immediately and start with one click.
+Developers can start, stop, and restart supervised processes; run registered
+commands; inspect current state; open declared HTTP endpoints; and search,
+follow, or download captured output without first reconstructing how a
+worktree was configured.
 
 ## Users
 
 The primary user is a developer running Port Start as their own operating-system
-user on a Linux or macOS workstation. V1 is single-user and single-host; it is
-not a multi-tenant process scheduler.
+user on a Linux or macOS workstation. Automated coding agents and worktree
+creation scripts are first-class clients. V1 is single-user and single-host.
 
 ## Required capabilities
 
-### Managed services
+### Worktree registration
 
-- Register, inspect, update, enable, disable, and deregister a command associated
-  with one advertised TCP port.
-- Allocate an exact port or an available port automatically.
-- Start a command from incoming traffic or an explicit control-plane action.
-- Support arbitrary TCP traffic, with optional HTTP or HTTPS metadata for links
-  and HTTP-specific startup behavior.
-- Support both permanent TCP proxying and literal port handoff. Proxying is the
-  default.
-- Start, stop, restart, and cancel processes and show their current state.
-- Re-arm a stopped or exited service instead of restarting it continuously.
-- Start or stop all services belonging to a worktree concurrently.
+- Register a Git worktree from a checked-in `.port-start.yaml`.
+- Make registration idempotent so creation hooks can call it repeatedly.
+- Deregister a worktree explicitly from its removal hook.
+- Group registered processes, commands, declared ports, runs, and logs by Git
+  repository and worktree.
+- Detect missing worktree paths, stop their active processes, and remove their
+  registration after a 24-hour grace period.
+- Support standalone imperative registrations for tools that are not associated
+  with a Git worktree.
 
-### Worktrees
+### Managed processes
 
-- Apply a checked-in `.port-start.yaml` manifest idempotently.
-- Discover and group services by Git repository and worktree.
-- Keep automatically chosen ports stable across manifest reapplication and
-  daemon restart.
-- Detect missing worktree paths, stop and disarm their services, and delete them
-  after a 24-hour grace period.
-- Allow imperative registrations outside a manifest without making
-  manifest-managed configuration mutable.
+- Register, inspect, update, start, stop, restart, and deregister a named
+  long-running process.
+- Execute each process in its configured worktree directory and login-shell
+  environment.
+- Run each process in its own process group and terminate the group predictably.
+- Keep at most one active run for a process definition.
+- Report process state independently of declared-port state.
+- Start processes only through an explicit CLI, API, or dashboard action.
+- Start or stop all processes belonging to a worktree concurrently.
 
-### Startup experience
+### Registered commands
 
-- For an idle plain-HTTP service, show a self-contained startup page for browser
-  navigation requests.
-- Stream current startup logs and state to that page.
-- Allow Restart and Cancel from the page.
-- Reload the originally requested URL after the service accepts connections.
-- Do not replace API requests, POST requests, TLS, or arbitrary TCP traffic with
-  HTML.
+- Register named one-shot commands such as `test`, `migrate`, or `seed`.
+- Execute and cancel a command from the CLI, API, or dashboard.
+- Preserve each invocation as a distinct run with its own status and logs.
+- Allow independent command invocations without changing long-running process
+  state.
+
+### Declared ports
+
+- Allow each process to declare zero or more named TCP ports.
+- Require explicit port numbers; registration does not allocate ports.
+- Store host, protocol, and optional URL path metadata for discoverability.
+- Display copyable addresses and browser links in the CLI and dashboard.
+- Expose declared values to the launched process through explicit placeholders
+  and environment variables.
+- Treat declarations as process configuration: the launched process remains the
+  socket owner and determines whether each endpoint is available.
 
 ### Administration
 
 - Provide a permanent administration server at `127.0.0.1:13337` by default.
 - Serve a React/Vite SPA and a documented, versioned JSON API.
-- Provide a scriptable Go CLI with stable JSON output and unusually complete
-  help text suitable for both humans and automated agents.
+- Provide a scriptable Go CLI with stable JSON output and complete help suitable
+  for humans and automated agents.
 - Support an optional administration password and configurable bind host.
 - Install and operate as a systemd user service on Linux or a LaunchAgent on
   macOS.
 
 ### Logs
 
-- Capture stdout and stderr with ordering metadata.
+- Capture stdout and stderr for every managed process and registered-command
+  invocation with ordering metadata.
 - Stream current output, search retained output with literal or regular
   expression matching, and download it as text or structured records.
-- Retain multiple process runs and support configurable size, count, age, and
-  unlimited retention policies.
+- Retain multiple runs and support configurable size, count, age, and unlimited
+  retention policies.
 
 ## Success criteria
 
 Port Start is successful when all of the following are true:
 
-1. A newly created worktree can run one idempotent CLI command and appear in the
-   dashboard with working links.
-2. Clicking an idle HTTP service link displays live startup output and then loads
-   the service without another manual navigation.
-3. A raw TCP client can trigger and use a proxy-mode service without protocol
-   translation.
-4. A command that must bind its advertised port can run in handoff mode.
-5. Process state and historical logs are visible and controllable from both the
-   CLI and SPA.
-6. A daemon restart restores enabled listeners and stable assigned ports without
-   silently remapping them.
+1. A worktree-creation hook can run one idempotent registration command and
+   receive its worktree, process, command, and declared-port inventory as JSON.
+2. A developer can identify and open the HTTP endpoint for any registered
+   worktree without inspecting its scripts or environment.
+3. A developer can start, stop, and restart a worktree process from both the CLI
+   and dashboard.
+4. A developer can run a registered one-shot command and inspect its result.
+5. Current and historical logs remain visible and searchable from the CLI and
+   dashboard.
+6. A worktree-removal hook can deregister the worktree, stop its managed
+   processes, and release its durable configuration.
+7. A daemon restart restores registrations and run history while accurately
+   marking previously active runs as interrupted.
 
 ## Non-goals for V1
 
@@ -98,10 +106,10 @@ Port Start is successful when all of the following are true:
 - Multi-user isolation or permissions.
 - Remote orchestration across machines.
 - Containers, Kubernetes, or production workload scheduling.
-- UDP or Unix-domain-socket triggers.
-- Dependency graphs or ordered startup among worktree services.
-- Automatic restart without a new request or explicit user action.
-- TLS termination for managed services or the administration server.
-- Editing manifest-owned service configuration from the SPA or direct service
-  update commands.
-
+- Process dependency graphs or ordered worktree startup.
+- Automatic restart policies.
+- Attaching to processes that were started outside Port Start.
+- Port allocation, listener ownership, traffic handling, or application
+  readiness inference.
+- TLS termination for managed endpoints or the administration server.
+- Editing manifest-owned definitions from the SPA or direct update commands.

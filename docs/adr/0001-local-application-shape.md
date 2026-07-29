@@ -1,13 +1,17 @@
 # ADR 0001: Local application shape
 
 - Status: Accepted
-- Date: 2026-07-24
+- Date: 2026-07-29
 
 ## Context
 
-The application is a local development tool. It must reserve registered ports,
-start commands on demand, expose permanent administration through a CLI and web
-application, persist configuration, and retain process logs.
+Port Start is a local development tool for registering and operating processes
+associated with Git worktrees. It must provide permanent administration through
+a CLI and web application, supervise process groups, persist configuration, and
+retain process logs.
+
+The same lifecycle rules must apply whether an action comes from a person,
+worktree hook, coding agent, CLI script, or browser session.
 
 ## Decision
 
@@ -15,36 +19,34 @@ application, persist configuration, and retain process logs.
 - Persist durable application data in SQLite.
 - Implement the administration UI as a React application built with Vite and
   served as a single-page application.
-- Reserve one permanent administration port independently of the managed ports.
+- Reserve one permanent administration port for the control plane.
 - Embed the production frontend and SQLite migrations in the Go binary.
-- Make the daemon the sole owner of process and lifecycle state. The CLI and SPA
-  are clients of one documented administration API.
+- Make the daemon the sole owner of managed-process and run state.
+- Make the CLI and SPA clients of one documented administration API.
 - Support Linux and macOS as a per-user local-development service.
 
 ## Consequences
 
-- The Go daemon is the authority for process and port state.
-- The CLI and SPA should use the same administration API rather than owning
-  separate control paths.
-- A single installed binary can serve the complete application.
-- High-volume process output is not required to be stored in SQLite; ADR 0005
-  defines the log boundary.
-- Windows and multi-user scheduling are not V1 targets.
+- Process supervision and log capture continue when the interactive dashboard
+  and launching CLI session close.
+- The CLI and SPA observe the same validation and lifecycle behavior.
+- A single installed binary serves the complete application.
+- High-volume process output is stored outside SQLite according to ADR 0005.
+- Windows and multi-user scheduling remain outside V1.
 
 ## Alternatives considered
 
 ### Separate daemon, CLI, and frontend distributions
 
-This allows independent release cycles but makes local installation, version
-compatibility, and service management more complicated.
+Independent release cycles add local installation and version-compatibility
+work without improving the single-user workflow.
 
-### Electron or another desktop application
+### Desktop application as the lifecycle authority
 
-A desktop shell could own process state, but it would couple supervision to an
-interactive session and weaken CLI-first automation.
+An interactive desktop session would make background process supervision and
+CLI-first worktree hooks less reliable.
 
 ### CLI access directly to SQLite
 
-This removes an HTTP round trip but creates multiple lifecycle authorities and
-cannot safely coordinate in-memory listeners and processes.
-
+Direct database writes create several lifecycle authorities and cannot safely
+coordinate active process groups or live log streams.

@@ -4,14 +4,14 @@
 
 The canonical manifest name is `.port-start.yaml`.
 
-`port-start worktree apply` searches from the current directory upward to the
+`port-start worktree register` searches from the current directory upward to the
 Git worktree root and reads `<worktree-root>/.port-start.yaml`. `--file` may
 select another file, but every relative path in that file still resolves from
 the detected worktree root.
 
-The manifest is declarative. A successful apply makes the manifest-owned service
-set match the file. Imperatively registered services are not part of that
-reconciliation.
+The manifest is declarative. A successful registration makes the worktree's
+manifest-owned process and command definitions match the file. Imperatively
+registered definitions are outside that reconciliation.
 
 ## Version 1
 
@@ -19,21 +19,24 @@ reconciliation.
 version: 1
 
 defaults:
-  listen_host: 127.0.0.1
-  mode: proxy
-  protocol: tcp
-  startup_timeout: 60s
   stop_timeout: 10s
   retention:
     max_bytes_per_run: 50MiB
     max_runs: 20
 
-services:
+processes:
   - name: web
-    port: auto
-    protocol: http
-    url_path: /
     cwd: .
+    ports:
+      - name: http
+        host: 127.0.0.1
+        port: 4310
+        protocol: http
+        path: /
+      - name: inspector
+        host: 127.0.0.1
+        port: 9310
+        protocol: tcp
     command:
       argv:
         - npm
@@ -43,19 +46,21 @@ services:
         - --host
         - 127.0.0.1
         - --port
-        - "{port}"
+        - "{port.http}"
     env:
       NODE_ENV: development
 
-  - name: fixed-port-app
-    port: 4100
-    mode: handoff
-    protocol: http
-    cwd: apps/fixed-port-app
+commands:
+  - name: test
+    cwd: .
     command:
-      shell: exec ./run-dev-server --port "$PORT"
-    retention:
-      max_age: 14d
+      argv: ["npm", "test"]
+
+  - name: migrate
+    cwd: apps/api
+    command:
+      shell: exec ./scripts/migrate
+    timeout: 5m
 ```
 
 Unknown fields are errors. This protects checked-in configuration from silent
@@ -66,75 +71,103 @@ misspellings.
 | Field | Required | Meaning |
 | --- | --- | --- |
 | `version` | Yes | Schema version. V1 accepts only integer `1`. |
-| `defaults` | No | Values inherited by each service. |
-| `services` | Yes | List of service definitions. An empty list removes all manifest-owned services. |
+| `defaults` | No | Shared stop-timeout and retention defaults. |
+| `processes` | No | Long-running process definitions. Defaults to an empty list. |
+| `commands` | No | One-shot command definitions. Defaults to an empty list. |
 
-Service names must be unique in one manifest.
+At least one process or command is required. Names must be unique within their
+definition kind. A process and command may share a display name because selectors
+always include their kind.
 
-## Service fields
+## Common definition fields
 
 | Field | Required | Default | Meaning |
 | --- | --- | --- | --- |
-| `name` | Yes | — | Stable service key matching `[a-zA-Z0-9][a-zA-Z0-9._-]{0,62}`. |
-| `port` | Yes | — | Integer `1..65535` or string `auto`. |
-| `listen_host` | No | `127.0.0.1` | Address on which the daemon advertises the service. |
-| `mode` | No | `proxy` | `proxy` or `handoff`. |
-| `protocol` | No | `tcp` | `tcp`, `http`, or `https`. |
-| `url_path` | No | `/` | Dashboard link path for HTTP(S); must begin with `/`. |
-| `cwd` | No | `.` | Worktree-relative command directory. It must resolve inside the worktree. |
+| `name` | Yes | — | Stable key matching `[a-zA-Z0-9][a-zA-Z0-9._-]{0,62}`. |
+| `cwd` | No | `.` | Worktree-relative execution directory, constrained to the worktree. |
 | `command` | Yes | — | Exactly one of `argv` or `shell`. |
 | `env` | No | `{}` | String-to-string environment overrides. |
-| `startup_timeout` | No | `60s` | Positive duration allowed for readiness. |
 | `stop_timeout` | No | `10s` | Duration between SIGTERM and SIGKILL. |
 | `retention` | No | global/default | Log-retention constraints. |
 
-`url_path` is invalid for `tcp`. HTTPS is raw TLS passthrough; it does not
-receive the HTTP startup page.
+Command definitions additionally accept `timeout`, an optional positive maximum
+duration for one invocation. Process definitions additionally accept `ports`.
 
-### Command
+### Command representation
 
 Argv form:
 
 ```yaml
 command:
-  argv: ["npm", "run", "dev", "--", "--port", "{port}"]
+  argv: ["npm", "run", "dev"]
 ```
 
 Shell form:
 
 ```yaml
 command:
-  shell: exec npm run dev -- --port "$PORT"
+  shell: exec npm run dev
 ```
 
 Argv is preferred because argument boundaries remain explicit. Both forms use
 the configured user login shell environment. Shell form opts into expansion,
 pipes, redirection, and compound-command semantics.
 
+## Declared ports
+
+A process may declare zero or more ports:
+
+| Field | Required | Default | Meaning |
+| --- | --- | --- | --- |
+| `name` | Yes | — | Unique port key within the process. |
+| `host` | No | `127.0.0.1` | Host shown in addresses and links. |
+| `port` | Yes | — | Explicit integer from `1` through `65535`. |
+| `protocol` | No | `tcp` | `tcp`, `http`, or `https`. |
+| `path` | No | `/` | Link path for HTTP(S), beginning with `/`. |
+
+`path` is invalid for `tcp`. Port Start stores these declarations for discovery,
+links, launch configuration, and run snapshots. The launched process binds its
+own sockets.
+
+Two registered processes may declare the same host and port. Registration
+returns a warning listing the overlapping definitions so worktree tooling can
+surface likely configuration mistakes without treating metadata as a lock.
+
 ### Substitutions and environment
 
-The following placeholders are expanded in argv elements, shell strings, and
+Named port placeholders are expanded in argv elements, shell strings, and
 environment values:
 
 | Placeholder | Meaning |
 | --- | --- |
-| `{port}` | Port the command must bind: backend in proxy mode, advertised in handoff mode. |
-| `{public_port}` | Persisted advertised port. |
+| `{port.<name>}` | Numeric value of the named declared port. |
+| `{host.<name>}` | Host value of the named declared port. |
 | `{worktree_root}` | Canonical worktree root. |
-| `{service_id}` | Stable service identifier. |
+| `{definition_id}` | Stable process or command identifier. |
+| `{run_id}` | Identifier of the new run. |
 
-The daemon also sets:
+For a port named `http`, the daemon also sets:
 
-- `PORT` and `PORT_START_PORT`;
-- `PORT_START_PUBLIC_PORT`;
-- `PORT_START_MODE`;
-- `PORT_START_SERVICE_ID`;
-- `PORT_START_WORKTREE_ROOT`.
+- `PORT_START_PORT_HTTP`;
+- `PORT_START_HOST_HTTP`;
+- `PORT_START_URL_HTTP` when the protocol is HTTP or HTTPS.
 
-Port Start's values win over conflicting manifest environment values for these
-reserved names.
+Every launch also receives `PORT_START_WORKTREE_ROOT`,
+`PORT_START_DEFINITION_ID`, and `PORT_START_RUN_ID`. Names are normalized to
+uppercase ASCII with non-alphanumeric characters replaced by underscores.
+Collisions after normalization are validation errors.
 
-### Retention
+Application-specific variables remain explicit:
+
+```yaml
+env:
+  PORT: "{port.http}"
+```
+
+Port Start's values win over conflicting manifest values for reserved
+`PORT_START_*` names.
+
+## Retention
 
 Retention constraints may be combined:
 
@@ -145,8 +178,8 @@ retention:
   max_age: 30d
 ```
 
-Omitted constraints are unbounded. The explicit form below disables all
-automatic deletion for the service:
+Omitted constraints are unbounded. The explicit form below disables automatic
+deletion for the definition:
 
 ```yaml
 retention:
@@ -155,39 +188,20 @@ retention:
 
 `unlimited: true` cannot be combined with another retention field.
 
-## Port allocation
-
-An exact numeric port is a requirement. Apply fails with a conflict if another
-enabled registration or operating-system process owns the address. Port Start
-never silently remaps it.
-
-For `auto`, the daemon binds an operating-system-selected available public port
-as part of the apply operation, then persists it. Reapplying the same service
-retains that port. A restart also attempts to reuse it; a collision becomes a
-visible `conflict` state rather than causing another allocation.
-
-Apply-time overrides support worktree creation scripts:
-
-```sh
-port-start worktree apply --port web=4310 --port api=auto --json
-```
-
-Overrides affect that applied manifest snapshot. A later apply without the
-override returns to the manifest value. There is no hidden persistent override
-layer.
-
 ## Reconciliation and ownership
 
-Manifest ownership is recorded on every created service.
+Manifest ownership is recorded on every created definition.
 
-- Reapply updates matching services by worktree identity and service name.
-- Services removed from the manifest are deregistered.
+- Re-registration updates matching definitions by worktree identity, kind, and
+  name.
+- Definitions removed from the manifest are stopped, if active, and
+  deregistered.
 - Existing run history remains subject to retention.
-- Imperative services are not modified.
-- The SPA and direct service update commands reject configuration edits to a
-  manifest-owned service and point to the manifest path.
-- Start, stop, restart, enable, disable, logs, and deregistration remain
-  available as operational actions.
+- Imperative definitions are unchanged.
+- The SPA and direct update commands direct configuration changes for
+  manifest-owned definitions to the manifest path.
+- Process lifecycle, command execution, logs, and explicit worktree
+  deregistration remain available as operational actions.
 
 The CLI exposes the embedded schema through:
 
@@ -196,5 +210,5 @@ port-start schema manifest
 port-start schema manifest --format json
 ```
 
-`worktree apply --dry-run` performs discovery, parsing, validation, port
-conflict checks, and reconciliation planning without writing state.
+`worktree register --dry-run` performs discovery, parsing, validation, overlap
+analysis, and reconciliation planning without writing state.

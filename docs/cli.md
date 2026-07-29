@@ -33,22 +33,33 @@ port-start
 │   ├── restart
 │   └── status
 ├── worktree
-│   ├── apply
-│   ├── remove
+│   ├── register
+│   ├── deregister
 │   ├── list
 │   └── prune
-├── register
-├── update
-├── deregister
-├── list
-├── status
-├── start
-├── stop
-├── restart
-├── enable
-├── disable
-├── logs
-│   └── download
+├── process
+│   ├── register
+│   ├── update
+│   ├── deregister
+│   ├── list
+│   ├── status
+│   ├── start
+│   ├── stop
+│   ├── restart
+│   └── logs
+├── command
+│   ├── register
+│   ├── update
+│   ├── deregister
+│   ├── list
+│   ├── run
+│   ├── cancel
+│   └── logs
+├── run
+│   ├── status
+│   └── logs
+│       └── download
+├── open
 ├── auth
 │   ├── set-password
 │   └── clear-password
@@ -68,100 +79,128 @@ port-start
 systemd service or LaunchAgent and starts it. `--now=false` installs without
 starting. Uninstall keeps application data unless `--purge` is given.
 
-## Worktree commands
+## Worktree registration
 
 ```sh
-port-start worktree apply
-port-start worktree apply --file ./config/dev-services.yaml
-port-start worktree apply --port web=auto --dry-run --json
-port-start worktree remove /path/to/worktree
+port-start worktree register
+port-start worktree register --file ./config/dev-processes.yaml
+port-start worktree register --dry-run --json
+port-start worktree deregister /path/to/worktree
 port-start worktree list --json
 port-start worktree prune --missing-for 24h
 ```
 
-`apply` returns the repository/worktree identity, service IDs, effective public
-ports, links, and created/updated/removed results. This output is sufficient for
-a worktree-creation script to advertise or print links.
+`register` returns repository and worktree identity, process definitions,
+command definitions, declared ports and links, and created, updated, or removed
+results. A worktree-creation hook can use the JSON form safely and repeatedly.
+
+`deregister` stops active runs and removes current definitions. Historical runs
+remain under their retention policies unless `--purge-logs` is supplied.
 
 ## Imperative registration
 
-Argv command:
+Long-running process:
 
 ```sh
-port-start register web \
-  --port 3000 \
-  --mode proxy \
-  --protocol http \
+port-start process register web \
+  --port http=http://127.0.0.1:4310/ \
   --cwd "$PWD" \
-  -- npm run dev -- --host 127.0.0.1 --port '{port}'
+  -- npm run dev -- --host 127.0.0.1 --port 4310
 ```
 
-Shell command:
+One-shot command:
 
 ```sh
-port-start register api \
-  --port auto \
-  --mode proxy \
-  --protocol http \
+port-start command register test \
   --cwd "$PWD" \
-  --shell 'exec ./scripts/dev-api --port "$PORT"'
+  -- npm test
 ```
 
-When run inside a Git worktree, imperative registration associates the service
-with that worktree for display unless `--standalone` is supplied. It remains
+Shell strings use an explicit flag:
+
+```sh
+port-start command register migrate \
+  --cwd "$PWD/apps/api" \
+  --shell 'exec ./scripts/migrate'
+```
+
+When run inside a Git worktree, an imperative definition is associated with
+that worktree for display unless `--standalone` is supplied. It remains
 imperatively owned and editable.
 
-`update` accepts the same configuration flags but rejects manifest-owned
-services. `deregister` stops the process, releases the port, and retains runs
-under their retention policy. `--purge-logs` removes retained logs as part of
-deregistration.
+## Process lifecycle
 
-## Lifecycle
-
-Services may be selected by stable ID, unambiguous name, `worktree/name`, or
-advertised port:
+Processes may be selected by stable ID, unambiguous name, or
+`worktree/name`:
 
 ```sh
-port-start start my-worktree/web
-port-start stop 4310
-port-start restart svc_01...
-port-start disable web
-port-start enable web
+port-start process start my-worktree/web
+port-start process stop web
+port-start process restart proc_01...
+port-start process status web --json
 ```
 
-`stop` returns to armed `idle`. `disable` disarms. Explicit restart bypasses
-failed-launch backoff.
+Start coalesces with an existing active run. Stop terminates the process group.
+Restart replaces an active run with a new one. No lifecycle command is triggered
+by traffic to a declared port.
 
 Worktree-wide operations are:
 
 ```sh
-port-start start --worktree /path/to/worktree
-port-start stop --worktree /path/to/worktree
+port-start process start --worktree /path/to/worktree
+port-start process stop --worktree /path/to/worktree
 ```
 
-They execute services concurrently and return a result for every service rather
-than failing fast after the first error.
+They operate concurrently and return a result for every process rather than
+failing fast after the first error.
+
+## Registered command execution
+
+```sh
+port-start command run my-worktree/test
+port-start command run migrate --json
+port-start command cancel run_01...
+```
+
+Each invocation receives its own run ID, exit result, and logs. A command run
+can outlive the invoking CLI unless `--wait` is supplied. With `--wait`, stdout
+and stderr stream to the terminal and the CLI exits with the registered
+command's result mapped to the stable Port Start exit contract.
+
+## Ports and links
+
+```sh
+port-start process status web
+port-start open my-worktree/web:http
+```
+
+Process status prints every declared endpoint alongside process state. `open`
+selects a named HTTP(S) declaration and launches the user's browser. It reports a
+copyable address for TCP declarations.
+
+Declared ports come from registration. CLI commands do not allocate, reserve, or
+change them.
 
 ## Logs
 
 ```sh
-port-start logs web --run latest
-port-start logs web --follow
-port-start logs web --grep 'ready|error' --regex --ignore-case
-port-start logs web --stream stderr --since 15m
-port-start logs download web --run latest --format text --output web.log
-port-start logs download web --all-runs --format ndjson --output web-logs.ndjson
+port-start process logs web --run latest
+port-start process logs web --follow
+port-start command logs test --run latest
+port-start run logs run_01... --grep 'ready|error' --regex --ignore-case
+port-start run logs run_01... --stream stderr --since 15m
+port-start run logs download run_01... --format ndjson --output run.ndjson
 ```
 
-Without `--follow`, `logs` exits after the retained result. Follow mode resumes
-by sequence number after transient API disconnects and reports any retention gap
+Without `--follow`, logs exit after the retained result. Follow mode resumes by
+sequence number after transient API disconnects and reports retention gaps
 explicitly.
 
 ## Authentication
 
 `port-start auth set-password` reads and confirms a password from a TTY or reads
-one value from `--password-file`. A plaintext `--password` argument is not
-provided because process listings may expose it.
+one value from `--password-file`. A plaintext `--password` argument is omitted
+because process listings may expose it.
 
 When authentication is active, ordinary CLI commands resolve credentials from:
 
@@ -190,9 +229,11 @@ Errors use:
 {
   "ok": false,
   "error": {
-    "code": "port_conflict",
-    "message": "127.0.0.1:3000 is already in use",
-    "details": {}
+    "code": "already_running",
+    "message": "process web already has an active run",
+    "details": {
+      "run_id": "run_01..."
+    }
   }
 }
 ```
@@ -204,14 +245,14 @@ Stable exit codes:
 | `0` | Success |
 | `2` | Invalid invocation or validation failure |
 | `3` | Resource not found or ambiguous selector |
-| `4` | Port or lifecycle conflict |
+| `4` | Lifecycle conflict |
 | `5` | Authentication or authorization failure |
 | `6` | Daemon unavailable |
 | `7` | Operation attempted but failed |
 
 ## Help requirements
 
-Every command's `--help` must contain:
+Every command's `--help` contains:
 
 - a one-sentence purpose and lifecycle effect;
 - complete argument and flag semantics, including defaults;
@@ -222,8 +263,7 @@ Every command's `--help` must contain:
 - expected exit codes and common errors;
 - a “next commands” section.
 
-The root help includes a complete first-run path: install daemon, apply a
-manifest, list services, open the dashboard, follow logs, and remove a worktree.
-The embedded manifest JSON Schema and OpenAPI document make the CLI
-self-describing to automated agents.
-
+The root help includes a complete first-run path: install the daemon, register a
+worktree, list its processes and commands, start a process, open a declared
+endpoint, follow logs, and deregister the worktree. The embedded manifest JSON
+Schema and OpenAPI document make the CLI self-describing to automated agents.

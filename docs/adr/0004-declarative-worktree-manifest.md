@@ -1,60 +1,62 @@
-# ADR 0004: Declarative worktree manifest
+# ADR 0004: Declarative worktree registration
 
 - Status: Accepted
-- Date: 2026-07-24
+- Date: 2026-07-29
 
 ## Context
 
-Git worktrees need to advertise several commands and ports through scripts.
-Imperative registration alone makes configuration hard to share, review, and
-reapply consistently. The same repository may have many worktrees, so exact
-ports commonly collide.
+Agent-created Git worktrees need a repeatable way to advertise their processes,
+commands, declared ports, and execution directories. Creation and removal hooks
+must be able to register and deregister a worktree without an interactive
+session.
 
-At the same time, Port Start must support ad hoc services that do not belong in
-a repository manifest.
+Imperative registration alone makes configuration difficult to share, review,
+and reapply. A manifest-only product would make ad hoc and standalone tools
+awkward.
 
 ## Decision
 
 - Define a checked-in, versioned `.port-start.yaml`.
 - Identify a worktree by canonical Git common directory plus canonical worktree
-  root, and identify its services by name.
-- Make `worktree apply` validate and reconcile manifests idempotently.
-- Allow exact ports or `auto`. Exact conflicts fail; auto ports are allocated,
-  persisted, and retained across reapply/restart.
-- Permit apply-time port overrides for worktree creation scripts without
-  creating a hidden persistent override layer.
-- Mark manifest-created services as manifest-owned. Reject direct configuration
-  edits through CLI/API/SPA; direct users to the source file.
-- Keep imperative registration as a separate editable ownership mode.
-- If a worktree path disappears, stop and disarm it immediately. Delete its
-  registrations and logs after 24 hours if it does not return.
+  root.
+- Identify definitions within a worktree by kind (`process` or `command`) and
+  name.
+- Make `worktree register` validate and reconcile the manifest idempotently.
+- Make `worktree deregister` stop active runs and remove current definitions.
+- Allow every process to contain zero or more explicit named port declarations.
+- Mark manifest-created definitions as manifest-owned. Route their
+  configuration changes through the manifest and re-registration.
+- Keep imperative process and command registration as a separate editable
+  ownership mode.
+- If a worktree path disappears, stop its runs immediately and delete its
+  registration and logs after 24 hours if it does not return.
 
 ## Consequences
 
-- Configuration remains reviewable and reproducible in Git.
+- Worktree configuration remains reviewable and reproducible in Git.
+- Creation hooks can call registration repeatedly and consume stable JSON.
+- Removal hooks have one command that closes the worktree's managed lifecycle.
 - The daemon needs a reconciliation engine and source-ownership metadata.
-- Dashboard editing is intentionally limited for manifest services.
-- Auto-assigned links remain stable instead of changing silently after restart.
+- Dashboard editing is intentionally limited for manifest-owned definitions.
 - Temporary filesystem loss does not immediately destroy configuration.
 
 ## Alternatives considered
 
 ### Imperative CLI only
 
-Simple to implement, but creation scripts become the undocumented source of
-truth and drift is difficult to detect.
+Creation scripts become the undocumented source of truth and drift is difficult
+to detect.
 
 ### Manifest only
 
-Consistent, but prevents temporary or non-repository services.
+This prevents temporary, generated, and non-repository definitions.
 
-### Persistent UI/CLI override layer
+### Persistent UI or CLI override layer
 
-Flexible, but makes effective configuration difficult to explain and lets local
-state invisibly diverge from the checked-in manifest.
+A hidden override layer makes effective worktree configuration difficult to
+explain and lets local state silently diverge from the checked-in manifest.
 
-### Silently remap exact port conflicts
+### Registration starts every process
 
-Keeps apply successful but violates the meaning of an explicitly requested port
-and breaks printed/bookmarked links.
-
+Separating registration from execution lets a new worktree appear immediately
+without consuming resources and keeps each launch intentional.

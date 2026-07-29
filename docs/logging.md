@@ -2,8 +2,9 @@
 
 ## Goals
 
-Process logs must remain useful during startup, after failure, and across daemon
-restart without turning SQLite into a high-volume append log.
+Logs make every managed process and registered-command invocation inspectable
+during execution and after completion without turning SQLite into a
+high-volume append log.
 
 Port Start captures both stdout and stderr, tags their source, assigns a
 run-local sequence number in receive order, and timestamps each record.
@@ -29,19 +30,19 @@ Fields:
   reader's record size.
 
 Invalid UTF-8 is replaced for the structured representation. The replacement is
-reported in run metadata; byte-exact binary-process output is not a V1 log
+reported in run metadata; byte-exact binary output is outside the V1 log
 contract.
 
 ## Files and metadata
 
 Each run owns a directory of numbered append-only NDJSON segments. A segment
 targets 5 MiB and completes after the first whole record that crosses that
-target. SQLite stores the run-to-segment relationship, first/last sequence, byte
-count, and truncation flags.
+target. SQLite stores the run-to-segment relationship, first and last sequence,
+byte count, and truncation flags.
 
 Segments are written through a bounded, non-blocking fan-out:
 
-1. stdout/stderr must always be drained so the child cannot block;
+1. stdout and stderr are always drained so the child can continue;
 2. durable writes receive every record until retention limits require rotation;
 3. live subscribers receive records through bounded buffers;
 4. a slow subscriber gets a gap event and can resume from disk if the sequence
@@ -59,12 +60,11 @@ Server-side search supports:
 - Go RE2 regular expressions;
 - case-sensitive or case-insensitive matching;
 - stdout, stderr, or both;
-- run and timestamp filters;
+- process, command, worktree, run, and timestamp filters;
 - cursor-based pagination.
 
 Search scans retained segments in sequence order. V1 does not maintain a
-full-text index. The bounded default log size keeps scans acceptable and avoids
-an index synchronization path.
+full-text index. The bounded default log size keeps scans predictable.
 
 ## Streaming
 
@@ -95,35 +95,31 @@ memory.
 Global defaults are:
 
 - maximum 50 MiB retained for one run;
-- newest 20 runs retained per service;
+- newest 20 runs retained per definition;
 - no age limit.
 
-Services may override any constraint or set unlimited retention. Constraints are
-combined: data is eligible for removal when it violates any configured maximum.
+Definitions may override any constraint or set unlimited retention. Constraints
+are combined: data is eligible for removal when it violates any configured
+maximum.
 
 Retention runs:
 
 - during segment rotation;
 - after a run reaches a terminal state;
-- after manifest reconciliation or service update;
+- after worktree registration or imperative definition update;
 - periodically for age limits;
 - during startup recovery.
 
-Deregistered service history remains until its retention policy deletes it,
+Deregistered-definition history remains until its retention policy deletes it,
 unless deregistration explicitly requests log purge. Automatic deletion of a
 worktree after the 24-hour missing-path grace period purges that worktree's
 logs.
 
 ## Daemon logs
 
-Daemon operational logs are separate from managed-process logs. They are
-structured and include request IDs, service/run identifiers, transitions,
-listener conflicts, and process exits.
+Daemon operational logs are separate from managed-run logs. They are structured
+and include request IDs, worktree/definition/run identifiers, lifecycle
+transitions, and process exits.
 
-They must never include:
-
-- passwords or session/capability tokens;
-- full inherited environments;
-- log contents unless an internal decoding error requires a bounded redacted
-  sample;
-- manifest environment values marked or named like secrets.
+They exclude passwords, session tokens, full inherited environments, and
+manifest environment values marked or named like secrets.

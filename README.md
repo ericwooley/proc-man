@@ -1,19 +1,27 @@
 # Port Start
 
-Port Start is a local development service supervisor. It reserves advertised TCP
-ports, starts a configured command when traffic arrives, and gives developers a
-single dashboard and CLI for worktree-specific services and process logs.
+Port Start is a local process manager for development worktrees. A worktree
+registers its long-running processes, useful one-shot commands, and the ports
+those processes expect to use. Port Start then provides one dashboard and CLI
+for starting and stopping processes, running commands, opening declared
+endpoints, and reading current or historical logs.
 
-This repository currently contains the product and architecture specification.
-Application implementation is intentionally out of scope for this phase.
+The primary use case is agent-created Git worktrees. Registration gives people
+and automation a durable answer to three questions:
+
+- Which commands belong to this worktree?
+- Which development processes are running?
+- Which ports and logs belong to each process?
+
+This repository currently contains the product and architecture specification
+plus a static UI prototype. Application implementation is intentionally out of
+scope for this phase.
 
 ## UI prototype
 
-The canonical static prototype lives in [`prototype/`](prototype/). It includes
-the full product flow, loading states, Administration, the selected Twin Listener
-mark, and a light/dark theme. It opens in an honest first-run state with no
-fabricated worktrees, services, metrics, logs, or system-health records. Generic
-startup states remain available from **Preview startup**.
+The canonical static prototype lives in [`prototype/`](prototype/). It shows the
+worktree, process, command, declared-port, and log-management experience in light
+and dark themes.
 
 Run the prototype with the repository's simple Python HTTP server:
 
@@ -24,9 +32,8 @@ npm run serve
 Then open <http://127.0.0.1:4174/>. The logo exploration is available at
 <http://127.0.0.1:4174/logo-showcase.html>.
 
-Use `npm test` for the generated-worker and deterministic UI checks. The browser
-keyboard-flow check requires Node.js 22 or newer, its global `WebSocket`, and
-Google Chrome:
+Use `npm test` for deterministic UI checks. The browser keyboard-flow check
+requires Node.js 22 or newer, its global `WebSocket`, and Google Chrome:
 
 ```sh
 npm run test:browser

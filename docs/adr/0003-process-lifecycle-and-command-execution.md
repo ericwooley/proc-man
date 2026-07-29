@@ -1,71 +1,78 @@
-# ADR 0003: Process lifecycle and command execution
+# ADR 0003: Explicit process lifecycle and command execution
 
 - Status: Accepted
-- Date: 2026-07-24
+- Date: 2026-07-29
 
 ## Context
 
-Development servers often spawn child processes, use shell-initialized
-toolchains, and exit or temporarily release their port. Port Start must remain
-predictable when commands fail, users stop them, the daemon upgrades, or a
-worktree disappears.
+Development worktrees contain both long-running processes and useful one-shot
+commands. They often spawn child processes and rely on shell-initialized
+toolchains. Port Start must make both execution styles easy to invoke and
+diagnose while keeping lifecycle behavior predictable.
 
 The daemon normally starts from a user service manager, whose environment may
 not contain the toolchain paths configured by the developer's shell.
 
 ## Decision
 
-- Model one command and one advertised port as one service.
-- Launch on demand from traffic or explicit action.
-- Do not restart automatically after exit. Re-arm and wait for new traffic or
-  an explicit start.
-- Apply failed-launch exponential backoff from two to 60 seconds.
-- Define Stop as termination followed by armed idle; define Disable as
-  termination and disarming.
-- Run every command in its own process group.
-- On stop, send SIGTERM, wait ten seconds by default, then SIGKILL.
-- Terminate all managed process groups on intentional daemon shutdown.
-- Start and stop worktree services concurrently, without dependency ordering.
+- Model a named long-running executable as a process definition.
+- Model a named one-shot executable as a command definition.
+- Start every process and command only through an explicit control-plane action.
+- Permit at most one active run for a process definition and coalesce concurrent
+  Start requests.
+- Give every command invocation an independent run.
+- Do not restart a process automatically after exit or daemon recovery.
+- Define Stop as termination of an active process run.
+- Define Restart as termination followed by a new process run.
+- Define Cancel as termination of one command invocation.
+- Run every child in its own process group.
+- On termination, send SIGTERM, wait ten seconds by default, then SIGKILL.
+- Terminate managed process groups on intentional daemon shutdown.
+- Start and stop worktree processes concurrently, without dependency ordering.
 - Run through the user's login shell. Preserve argv boundaries with an
-  `exec "$@"` wrapper; permit shell parsing only through an explicit shell-string
-  command.
-- Expose the selected bind port through `{port}` and `PORT`, plus namespaced
-  execution variables.
-- For handoff, reclaim a previously ready port after it remains free for three
-  seconds, even if a wrapper process remains alive.
+  `exec "$@"` wrapper and permit shell parsing only through an explicit
+  shell-string command.
+- Expose worktree, definition, run, and named declared-port values through
+  explicit placeholders and namespaced environment variables.
 
 ## Consequences
 
-- User actions have separate, unsurprising meanings: Stop does not permanently
-  disable one-click startup.
-- Process groups cover ordinary child trees without requiring command-specific
-  adapters.
-- Double-forked or independently daemonized children are outside the supported
-  supervision contract.
+- A process never starts because another application contacted one of its
+  declared endpoints.
+- One-shot tasks receive the same log capture, cancellation, and history as
+  long-running processes.
+- Process groups cover ordinary child trees without requiring
+  command-specific adapters.
+- Double-forked or independently daemonized children remain outside the
+  supported supervision contract.
 - Login-shell initialization makes language version managers available but can
-  add output or delay; broken interactive-only profiles surface in the run log.
-- Worktree Start All may partially succeed, so aggregate actions must report a
-  result for every service.
+  add output or delay; profile failures surface in the run log.
+- Worktree-wide operations may partially succeed, so aggregate actions report a
+  result for every process.
 
 ## Alternatives considered
 
-### Always restart
+### Long-running processes only
 
-Useful for production supervisors, but conflicts with on-demand local resource
-use and can create unattended crash loops.
+This handles development servers but leaves tests, migrations, and setup tasks
+outside the worktree inventory and log experience.
 
-### Stop also disables
+### Execute one-shot commands directly in the CLI
 
-Reduces the action set but makes a normal process stop unexpectedly remove
-on-demand behavior.
+Direct execution loses durable run identity, shared cancellation, background
+operation, and consistent log access from the dashboard.
+
+### Automatic restart
+
+Production-style restart policies can create unattended crash loops and obscure
+the explicit local-development action that produced a run.
 
 ### Inherit only the service-manager environment
 
-More deterministic, but frequently omits `node`, `npm`, language managers, and
-other tools a developer expects from their login environment.
+The daemon's stable environment frequently omits language runtimes and tools a
+developer expects from their login environment.
 
-### Snapshot the applying CLI's environment
+### Snapshot the registering CLI's environment
 
-Improves immediate fidelity but persists secrets and stale environment values in
-the database.
-
+Persisting the caller's environment captures secrets and becomes stale as the
+developer changes shell configuration.

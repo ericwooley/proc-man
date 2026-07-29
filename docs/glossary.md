@@ -5,115 +5,68 @@ API, CLI, and architecture decision records.
 
 ## Administration server
 
-The long-running HTTP server on a permanently reserved port. It serves the
-administration API and the React/Vite single-page application. The CLI also uses
-this API.
-
-## Managed port
-
-The advertised TCP port associated with one service. Port Start owns it
-permanently in proxy mode and while idle in handoff mode.
-
-## Service
-
-The durable configuration and lifecycle for one launch command and one managed
-port. A service is either manifest-owned or imperative.
-
-## Launch command
-
-The argv array or explicit shell string started for a service. It runs through
-the user's login shell in the configured working directory.
-
-## Managed process
-
-The process group started for one run and supervised by the daemon.
-
-## Trigger request
-
-The connection or HTTP request that causes an idle service to launch.
-
-## Port takeover
-
-The transition in handoff mode where the daemon releases the advertised listener
-and the managed process binds it.
-
-## Proxy mode
-
-The default service mode. The daemon permanently owns the advertised port,
-launches the command on an assigned backend port, and forwards raw TCP.
-
-## Handoff mode
-
-The service mode for commands that must bind the advertised port. The daemon
-releases the listener before launching the command and reclaims it after the
-command stops.
-
-## Backend port
-
-The run-specific loopback port assigned to a proxy-mode command. It is not a
-durable or user-facing address.
-
-## Advertised port
-
-The stable public-facing port shown in the CLI and dashboard. It may be exact or
-automatically allocated.
-
-## Armed
-
-A service state in which Port Start owns the idle advertised listener and new
-traffic may trigger launch.
-
-## Startup interstitial
-
-The self-contained HTML page served to eligible plain-HTTP browser navigations
-while a service starts. It displays live logs and state and reloads into the
-service at readiness.
-
-## Readiness
-
-Successful TCP connection establishment to the port the managed command was
-instructed to bind.
-
-## Run
-
-One launch attempt for a service, including its snapshotted command, process
-identity, timestamps, terminal result, and logs.
+The long-running HTTP server on a permanently configured control-plane port. It
+serves the administration API and React/Vite single-page application. The CLI
+also uses this API.
 
 ## Worktree registration
 
-A Git worktree and its manifest-owned services as known to Port Start.
+The durable inventory of a Git worktree's process definitions, command
+definitions, declared ports, runs, and logs.
 
-## Manifest-owned service
+## Process definition
 
-A service whose desired configuration comes from `.port-start.yaml`. Direct
-configuration edits are rejected; operational lifecycle actions remain allowed.
+The durable configuration for one named long-running command that Port Start can
+start, stop, restart, supervise, and log.
 
-## Imperative service
+## Command definition
 
-A service created directly through the CLI/API/SPA and editable through those
-interfaces.
+The durable configuration for one named one-shot command that Port Start can
+run, cancel, and log.
+
+## Managed process
+
+The process group launched and supervised by Port Start for a process definition
+or command invocation.
+
+## Declared port
+
+A named host, explicit TCP port, protocol hint, and optional URL path associated
+with a process definition. It is used for discovery and launch configuration.
+
+## Launch command
+
+The argv array or explicit shell string started for a process or command
+definition. It runs through the user's login shell in the configured working
+directory.
+
+## Run
+
+One process start or command invocation, including its snapshotted execution
+configuration, process identity, timestamps, terminal result, and logs.
+
+## Manifest-owned definition
+
+A process or command whose desired configuration comes from
+`.port-start.yaml`. Operational actions remain available, while configuration
+changes flow through worktree registration.
+
+## Imperative definition
+
+A process or command created directly through the CLI or API and editable
+through those interfaces.
 
 ## Process log
 
-The tagged stdout/stderr record stream captured for a run and retained in
+The tagged stdout/stderr record stream captured for one run and retained in
 segmented files.
 
 ## Reconciliation
 
-The idempotent operation that compares a worktree manifest with stored
-manifest-owned services and creates, updates, or deregisters them to match.
-
-## Listener conflict
-
-A state in which an enabled service's persisted advertised address cannot be
-bound. Exact and persisted auto ports are not silently remapped.
+The idempotent operation that compares a worktree manifest with its stored
+manifest-owned definitions and updates the registration to match.
 
 ## Stale worktree
 
-A registered worktree whose root path is missing. Its services are stopped and
-disarmed while the 24-hour deletion grace period runs.
-
-## Capability token
-
-A random, short-lived bearer secret embedded in a startup interstitial and
-scoped only to that service's startup state, logs, Restart, and Cancel.
+A registered worktree whose root path is missing. Its active runs are stopped
+while the 24-hour deletion grace period runs.
