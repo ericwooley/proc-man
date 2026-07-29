@@ -578,6 +578,16 @@
     const normalized = path.trim().replace(/\/+/g, '/');
     return normalized.length > 1 ? normalized.replace(/\/+$/, '') : normalized;
   }
+  function refreshExistingRegistration(worktree, { path, manifest }) {
+    const wasMissing = worktree.status === 'missing';
+    Object.assign(worktree, { path, manifest, status: 'active' });
+    if (!wasMissing) return;
+    delete worktree.missingSince;
+    worktree.processes.forEach(process => {
+      if (process.state === 'stale') process.state = 'stopped';
+      clearActivePorts(process);
+    });
+  }
   function logStateForRunState(state) {
     if (state === 'exited') return 'process-exited';
     if (['canceled', 'interrupted'].includes(state)) return 'stopped';
@@ -1656,7 +1666,7 @@
       normalizeWorktreePath(worktree.path) === path,
     );
     if (existingRegistration) {
-      Object.assign(existingRegistration, { branch, path, manifest, status: 'active' });
+      refreshExistingRegistration(existingRegistration, { path, manifest });
     } else {
       WORKTREES.unshift({
         id: `wt${Date.now()}`,

@@ -1643,6 +1643,50 @@ try {
     "a missing worktree should block new associated command runs",
   );
   await evaluate(`document.getElementById("drawerClose").click()`);
+
+  await evaluate(`document.getElementById("registerOpen").click()`);
+  await waitFor(
+    `document.activeElement.id === "worktreePath"`,
+    "missing-worktree recovery should open the registration dialog",
+  );
+  await evaluate(`(() => {
+    document.getElementById("worktreePath").value =
+      "~/code/storefront/.worktrees/upgrade-deps";
+    document.getElementById("registerForm").requestSubmit();
+  })()`);
+  await evaluate(`document.querySelector('[data-open="wt4"]').click()`);
+  await waitFor(
+    `document.activeElement.id === "drawerClose"`,
+    "the returned worktree should open after re-registration",
+  );
+  await evaluate(`document.querySelector('[data-tab="processes"]').click()`);
+  assert.deepEqual(
+    await evaluate(`({
+      missingBanner: Boolean(document.querySelector(".banner.warn")),
+      processState: document.querySelector('[data-proc="web"] .pill').textContent.trim(),
+      startDisabled: document.querySelector(
+        '[data-proc="web"] [data-proc-action="start"]'
+      ).disabled
+    })`),
+    {
+      missingBanner: false,
+      processState: "stopped",
+      startDisabled: false,
+    },
+    "re-registering a returned worktree should restore an operable stopped process",
+  );
+  await evaluate(`document.querySelector('[data-tab="logs"]').click()`);
+  assert.equal(
+    await evaluate(
+      `document.querySelector(
+        '[data-pane="logs"] [data-log-target^="process:web:"]'
+      ).dataset.logState`,
+    ),
+    "interrupted",
+    "re-registering a returned worktree should retain its interrupted run",
+  );
+  await evaluate(`document.getElementById("drawerClose").click()`);
+
   await evaluate(`document.querySelector('[data-view-target="admin"]').click()`);
   await evaluate(`document.getElementById("accessPreview").click()`);
   assert.equal(

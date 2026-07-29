@@ -145,6 +145,10 @@ without changing its visual hierarchy.
 22. Per-worktree and global run selectors now expose their selected state to
     assistive technology with `aria-pressed`. The semantic state moves with the
     visible output and remains exclusive when another run is selected.
+23. Re-registering a worktree whose path has returned now clears its missing
+    state and restores stale process definitions to `stopped`, with Start
+    available again. Its interrupted run remains discoverable in the worktree
+    log history.
 
 ## Verification
 
