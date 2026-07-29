@@ -87,10 +87,14 @@ without changing its visual hierarchy.
 14. A newly registered process now shows “Nothing has been run yet” until its
     first real start creates a run ID. Its first run is retained without a
     fabricated pre-start history entry.
+15. Process definition state and run outcome are presented independently:
+    stopping a definition records an `interrupted` run, while a normal command
+    completion records `exited`. Global search indexes retained output as well
+    as metadata, and a selected run downloads as NDJSON.
 
 ## Verification
 
-- `npm test`: 26 tests passed
+- `npm test`: 27 tests passed
 - `npm run test:browser`: worktree, process, command, log, and focus behavior passed
 - External icons: local Phosphor icon font
 - Product artwork: external `port-matrix.svg`; no inline or handcrafted SVG in

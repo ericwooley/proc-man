@@ -266,3 +266,16 @@ test("CLI contract gives agents a worktree-scoped discovery path", async () => {
     assert.match(cli, new RegExp(followUp.replaceAll(" ", "\\s+")));
   }
 });
+
+test("API contract supports retained run discovery and cross-run log search", async () => {
+  const api = await readFile(
+    new URL("../docs/api.md", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(api, /GET \/api\/v1\/runs/);
+  assert.match(api, /POST \/api\/v1\/run-search/);
+  assert.match(api, /include_deregistered/);
+  assert.match(api, /worktree_snapshot/);
+  assert.match(api, /next_cursor/);
+});

@@ -73,15 +73,30 @@ Restart returns `409 worktree_stale` from `stale`.
 | Method and path | Purpose |
 | --- | --- |
 | `GET /api/v1/runs` | Filter and paginate runs across definitions and worktrees. |
+| `POST /api/v1/run-search` | Search retained output across runs. |
 | `GET /api/v1/runs/{id}` | Get one run and terminal information. |
 | `POST /api/v1/runs/{id}/cancel` | Terminate an active command invocation. |
 | `GET /api/v1/runs/{id}/logs` | Paginate or search retained records. |
 | `GET /api/v1/runs/{id}/logs/events` | Follow logs using SSE and a sequence cursor. |
 | `GET /api/v1/runs/{id}/logs/download` | Stream text or NDJSON with attachment headers. |
 
-Log queries accept stream, literal query, RE2 expression, case sensitivity,
-timestamp range, sequence cursor, and limit. Invalid regular expressions return
-validation errors rather than an empty result.
+`GET /api/v1/runs` accepts `worktree`, `kind`, `name`, `state`, `since`,
+`until`, `include_deregistered`, `cursor`, and `limit`. Its response contains
+`runs` and `next_cursor`. Every run includes its definition snapshot and a
+`worktree_snapshot` with the worktree ID, path, repository, branch, and
+deregistration status captured for that run. This keeps retained history
+discoverable after current definitions have been removed.
+
+`POST /api/v1/run-search` accepts a literal query or RE2 expression, case
+sensitivity, stream, worktree, definition kind and name, run state, timestamp
+range, `include_deregistered`, cursor, and limit. Its response contains
+ordered `matches` and `next_cursor`; each match includes the run ID,
+`worktree_snapshot`, sequence, timestamp, stream, and message. Invalid regular
+expressions return validation errors rather than an empty result.
+
+Single-run log queries accept the same text, stream, timestamp, cursor, and
+limit semantics. Cross-run and single-run search scan the same retained
+records, so the SPA, CLI, and API return consistent results.
 
 ### Events
 

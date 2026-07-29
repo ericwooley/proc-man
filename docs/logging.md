@@ -66,6 +66,12 @@ Server-side search supports:
 Search scans retained segments in sequence order. V1 does not maintain a
 full-text index. The bounded default log size keeps scans predictable.
 
+The CLI and administration API expose the same search contract. Use
+`port-start run search` or `POST /api/v1/run-search` for output across runs,
+including retained runs from deregistered worktrees. Use
+`GET /api/v1/runs/{id}/logs` for one run. Both forms share stream, timestamp,
+query, and cursor filters.
+
 ## Streaming
 
 The SPA and CLI follow an SSE stream beginning after a supplied sequence.

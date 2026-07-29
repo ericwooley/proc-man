@@ -233,6 +233,7 @@
   .global-log { display: grid; grid-template-rows: auto minmax(0, 1fr); }
   .global-log-head { padding: 14px 16px; border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 10px; }
   .global-log-head strong { font-size: 12px; }
+  .global-log-head #globalLogDownload { margin-left: auto; }
   .global-log .log-console { margin: 14px; min-height: 380px; }
   .global-log .log-body { max-height: 430px; }
 
@@ -352,11 +353,11 @@
       </div>
       <div class="logs-layout">
         <div class="run-list">
-          <div class="run-list-head"><input id="globalRunSearch" type="search" placeholder="Filter by worktree, process, or command"></div>
+          <div class="run-list-head"><input id="globalRunSearch" type="search" placeholder="Search worktrees, runs, or output"></div>
           <div id="globalRunList"></div>
         </div>
         <div class="global-log">
-          <div class="global-log-head"><i class="ph ph-terminal-window"></i><strong id="globalLogTitle">feature/checkout-redesign · process/web</strong><span class="pill running" id="globalLogState">running</span></div>
+          <div class="global-log-head"><i class="ph ph-terminal-window"></i><strong id="globalLogTitle">feature/checkout-redesign · process/web</strong><span class="pill running" id="globalLogState">running</span><button class="btn sm" id="globalLogDownload"><i class="ph ph-download-simple"></i>Download logs</button></div>
           <div id="globalLogConsole"></div>
         </div>
       </div>
@@ -457,7 +458,7 @@
   const WORKTREES = [
     { id: 'wt1', branch: 'feature/checkout-redesign', repo: 'storefront', path: '~/code/storefront/.worktrees/checkout-redesign', status: 'active',
       processes: [
-        { name: 'web', source: 'manifest', state: 'running', currentRunId: 'run-web-105', runHistory: [{ id: 'run-web-103', state: 'stopped', logState: 'stopped', when: '18m ago' }], ports: [ { name: 'http', host: '127.0.0.1', port: 4310, protocol: 'http', path: '/' }, { name: 'inspector', host: '127.0.0.1', port: 9310, protocol: 'tcp' } ] },
+        { name: 'web', source: 'manifest', state: 'running', currentRunId: 'run-web-105', runHistory: [{ id: 'run-web-103', state: 'exited', logState: 'stopped', reason: 'process_exit', when: '18m ago' }], ports: [ { name: 'http', host: '127.0.0.1', port: 4310, protocol: 'http', path: '/' }, { name: 'inspector', host: '127.0.0.1', port: 9310, protocol: 'tcp' } ] },
         { name: 'api', source: 'manifest', state: 'running', ports: [ { name: 'http', host: '127.0.0.1', port: 4321, protocol: 'http', path: '/health' } ], activePorts: [{ name: 'http', host: '127.0.0.1', port: 4311, protocol: 'http', path: '/health' }] },
       ],
       commands: [ { name: 'test', runs: [{ id: 'run-test-104', state: 'exited', code: 0, when: '2m ago' }] }, { name: 'migrate', runs: [{ id: 'run-migrate-32', state: 'exited', code: 0, when: '1h ago' }] } ] },
@@ -487,6 +488,9 @@
   WORKTREES.forEach(worktree => {
     worktree.processes.forEach(process => {
       process.currentRunId ||= `run-${worktree.id}-${process.name}-latest`;
+      process.currentRunState ||= process.state === 'stopped'
+        ? 'exited'
+        : process.state;
     });
   });
 
@@ -524,13 +528,19 @@
     const normalized = path.trim().replace(/\/+/g, '/');
     return normalized.length > 1 ? normalized.replace(/\/+$/, '') : normalized;
   }
+  function logStateForRunState(state) {
+    return ['exited', 'canceled', 'interrupted'].includes(state)
+      ? 'stopped'
+      : state;
+  }
   function processRunEntries(process) {
     const current = process.currentRunId
       ? [{
           id: process.currentRunId,
-          state: process.state,
-          logState: process.state,
-          when: process.state === 'running' ? 'now' : 'latest run',
+          state: process.currentRunState,
+          logState: logStateForRunState(process.currentRunState),
+          reason: process.currentRunReason,
+          when: process.currentRunState === 'running' ? 'now' : 'latest run',
         }]
       : [];
     return [...current, ...(process.runHistory || [])];
@@ -543,12 +553,15 @@
     ) {
       process.runHistory.unshift({
         id: process.currentRunId,
-        state: process.state === 'failed' ? 'failed' : 'stopped',
-        logState: process.state === 'failed' ? 'failed' : 'stopped',
+        state: process.currentRunState,
+        logState: logStateForRunState(process.currentRunState),
+        reason: process.currentRunReason,
         when: 'just now',
       });
     }
     process.currentRunId = `run-${++invocationSequence}`;
+    process.currentRunState = 'starting';
+    delete process.currentRunReason;
   }
   function wtStatusDot(w) {
     if (w.status === 'stale') return 'stale';
@@ -872,12 +885,14 @@
       ...w.processes.flatMap(process => processRunEntries(process).map(run => ({
         key: `process:${process.name}:${run.id}`,
         label: `process/${process.name} · ${run.id.replace('run-', '#')}`,
-        state: run.logState || run.state,
+        state: run.state,
+        logState: run.logState || logStateForRunState(run.state),
       }))),
       ...w.commands.flatMap(command => command.runs.map(run => ({
         key: `command:${command.name}:${run.id}`,
         label: `command/${command.name} · ${run.id.replace('run-', '#')}`,
-        state: run.state === 'exited' ? 'stopped' : run.state,
+        state: run.state,
+        logState: logStateForRunState(run.state),
       }))),
     ];
     const previousSelection = logsPane.dataset.worktree === w.id
@@ -888,14 +903,14 @@
     logsPane.dataset.worktree = w.id;
     logsPane.dataset.sel = selectedTarget?.key || '';
     logsPane.innerHTML = targets.length ? `
-      <div class="run-picker">${targets.map(t => `<button class="${t.key===selectedTarget.key?'on':''}" data-log-target="${esc(t.key)}" data-log-state="${t.state}">${esc(t.label)}</button>`).join('')}</div>
-      <div class="log-console" id="logConsole">${logConsoleHtml(selectedTarget.state)}</div>
+      <div class="run-picker">${targets.map(t => `<button class="${t.key===selectedTarget.key?'on':''}" data-log-target="${esc(t.key)}" data-log-state="${t.state}" data-log-sample="${t.logState}">${esc(t.label)}</button>`).join('')}</div>
+      <div class="log-console" id="logConsole">${logConsoleHtml(selectedTarget.logState)}</div>
     ` : `<p class="muted" style="font-size:12.5px;">Nothing has been run yet in this worktree.</p>`;
     logsPane.querySelectorAll('[data-log-target]').forEach(btn => btn.addEventListener('click', () => {
       logsPane.querySelectorAll('[data-log-target]').forEach(b => b.classList.remove('on'));
       btn.classList.add('on');
       logsPane.dataset.sel = btn.dataset.logTarget;
-      document.getElementById('logConsole').innerHTML = logConsoleHtml(btn.dataset.logState);
+      document.getElementById('logConsole').innerHTML = logConsoleHtml(btn.dataset.logSample);
     }));
     if (focusedLogTarget) {
       [...logsPane.querySelectorAll('[data-log-target]')]
@@ -1046,6 +1061,7 @@
       setTimeout(() => {
         if (!processTransitionIsCurrent(p, transitionVersion)) return;
         p.state = 'running';
+        p.currentRunState = 'running';
         delete p.error;
         renderDrawerFor(worktree);
         renderGrid();
@@ -1053,6 +1069,7 @@
       }, 1100);
     } else if (action === 'stop') {
       p.state = 'stopping';
+      p.currentRunState = 'stopping';
       showToast(`Stopping process/${p.name}`, 'stop-circle');
       renderDrawerFor(worktree);
       renderGrid();
@@ -1060,6 +1077,8 @@
       setTimeout(() => {
         if (!processTransitionIsCurrent(p, transitionVersion)) return;
         p.state = 'stopped';
+        p.currentRunState = 'interrupted';
+        p.currentRunReason = 'user_stop';
         clearActivePorts(p);
         renderDrawerFor(worktree);
         renderGrid();
@@ -1077,6 +1096,7 @@
         setTimeout(() => {
           if (!processTransitionIsCurrent(p, transitionVersion)) return;
           p.state = 'running';
+          p.currentRunState = 'running';
           delete p.error;
           renderDrawerFor(worktree);
           renderGrid();
@@ -1085,12 +1105,15 @@
         return;
       }
       p.state = 'stopping';
+      p.currentRunState = 'stopping';
       showToast(`Restarting process/${p.name}`, 'arrows-clockwise');
       renderDrawerFor(worktree);
       renderGrid();
       refreshGlobalRunsIfVisible();
       setTimeout(() => {
         if (!processTransitionIsCurrent(p, transitionVersion)) return;
+        p.currentRunState = 'interrupted';
+        p.currentRunReason = 'restart';
         beginProcessRun(p);
         snapshotConfiguredPorts(p);
         p.state = 'starting';
@@ -1100,6 +1123,7 @@
         setTimeout(() => {
           if (!processTransitionIsCurrent(p, transitionVersion)) return;
           p.state = 'running';
+          p.currentRunState = 'running';
           delete p.error;
           renderDrawerFor(worktree);
           renderGrid();
@@ -1154,8 +1178,8 @@
         wt: w,
         kind: 'command',
         name: `${command.name} · ${run.id.replace('run-', '#')}`,
-        state: run.state === 'exited' && run.code === 0 ? 'succeeded' : run.state,
-        logState: run.state === 'exited' ? 'stopped' : run.state,
+        state: run.state,
+        logState: logStateForRunState(run.state),
         when: run.when,
       }))),
     ];
@@ -1169,9 +1193,19 @@
   }
 
   function globalPillClass(state) {
-    if (state === 'succeeded') return 'running';
-    if (state === 'canceled') return 'canceled';
+    if (['exited', 'canceled', 'interrupted'].includes(state)) return 'stopped';
     return state;
+  }
+
+  function runLogLines(run) {
+    return LOG_SAMPLES[run.logState || logStateForRunState(run.state)]
+      || LOG_SAMPLES.stopped;
+  }
+
+  function runSearchText(run) {
+    return runLogLines(run)
+      .map(line => `${line.t} ${line.s} ${line.m}`)
+      .join(' ');
   }
 
   function selectGlobalRun(run) {
@@ -1186,6 +1220,7 @@
     state.textContent = run.state;
     document.getElementById('globalLogConsole').innerHTML =
       `<div class="log-console">${logConsoleHtml(run.logState || run.state)}</div>`;
+    document.getElementById('globalLogDownload').disabled = false;
   }
 
   function clearGlobalRunSelection() {
@@ -1194,6 +1229,7 @@
     const state = document.getElementById('globalLogState');
     state.hidden = true;
     state.textContent = '';
+    document.getElementById('globalLogDownload').disabled = true;
     document.getElementById('globalLogConsole').innerHTML =
       `<div class="jr-empty">Change the filter to inspect run output.</div>`;
   }
@@ -1201,7 +1237,9 @@
   function renderGlobalRuns(query = document.getElementById('globalRunSearch').value) {
     const normalized = query.trim().toLowerCase();
     const runs = buildGlobalRuns().filter(run =>
-      `${run.wt.branch} ${run.wt.repo} ${run.kind} ${run.name}`.toLowerCase().includes(normalized),
+      `${run.wt.branch} ${run.wt.repo} ${run.kind} ${run.name} ${runSearchText(run)}`
+        .toLowerCase()
+        .includes(normalized),
     );
     const list = document.getElementById('globalRunList');
     const focusedRunId = document.activeElement?.dataset?.run;
@@ -1229,6 +1267,28 @@
   }
 
   document.getElementById('globalRunSearch').addEventListener('input', event => renderGlobalRuns(event.target.value));
+  document.getElementById('globalLogDownload').addEventListener('click', () => {
+    if (!activeGlobalRun) return;
+    const body = runLogLines(activeGlobalRun)
+      .map((line, index) => JSON.stringify({
+        run_id: activeGlobalRun.id,
+        sequence: index + 1,
+        timestamp: line.t,
+        stream: line.s,
+        message: line.m,
+      }))
+      .join('\n') + '\n';
+    const blob = new Blob([body], { type: 'application/x-ndjson' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${activeGlobalRun.id.replace(/[^a-z0-9._-]+/gi, '-')}.ndjson`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+    showToast('Downloaded run logs', 'download-simple');
+  });
 
   // ---- registration and administration ----
   function openRegisterModal() {
@@ -1296,7 +1356,13 @@
     if (!activeWt) return;
     const branch = activeWt.branch;
     activeWt.processes.forEach(process => {
-      if (processIsActive(process)) process.state = 'stopped';
+      if (processIsActive(process)) {
+        process.state = 'stopped';
+        if (process.currentRunId) {
+          process.currentRunState = 'interrupted';
+          process.currentRunReason = 'worktree_deregistered';
+        }
+      }
       clearActivePorts(process);
     });
     activeWt.commands.forEach(command => {

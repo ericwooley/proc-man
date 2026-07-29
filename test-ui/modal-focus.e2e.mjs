@@ -469,12 +469,14 @@ try {
     input.value = "saffron-puma";
     input.dispatchEvent(new Event("input", { bubbles: true }));
   })()`);
-  assert.equal(
-    await evaluate(
-      `document.querySelectorAll(".run-row").length === 1 &&
-       document.getElementById("globalLogTitle").textContent.includes("saffron-puma")`,
-    ),
-    true,
+  assert.deepEqual(
+    await evaluate(`({
+      retained:
+        document.querySelectorAll(".run-row").length === 1 &&
+        document.getElementById("globalLogTitle").textContent.includes("saffron-puma"),
+      state: document.getElementById("globalLogState").textContent
+    })`),
+    { retained: true, state: "interrupted" },
     "deregistering should retain completed run history in Runs & logs",
   );
   await evaluate(`document.getElementById("globalRunSearch").value = ""`);
@@ -546,6 +548,17 @@ try {
     "stopped",
     "an older start timer should not overwrite the newer stop result",
   );
+  await evaluate(`document.querySelector('[data-tab="logs"]').click()`);
+  assert.equal(
+    await evaluate(`[
+      ...document.querySelectorAll('[data-pane="logs"] [data-log-target]')
+    ].find(button =>
+      button.dataset.logTarget.startsWith("process:web:")
+    )?.dataset.logState`),
+    "interrupted",
+    "a user-stopped process should retain an interrupted run result",
+  );
+  await evaluate(`document.querySelector('[data-tab="processes"]').click()`);
 
   await evaluate(
     `document.querySelector('[data-proc="web"] [data-proc-action="start"]').click()`,
@@ -631,7 +644,7 @@ try {
   await waitFor(
     `[...document.querySelectorAll('[data-pane="logs"] [data-log-target]')]
       .find(button => button.dataset.logTarget === ${JSON.stringify(selectedCommandLog)})
-      ?.dataset.logState === "stopped"`,
+      ?.dataset.logState === "exited"`,
     "the selected command log should refresh when its run completes",
     2_000,
   );
@@ -783,6 +796,41 @@ try {
     })`),
     { selected: true, visibleLines: 1, matchingText: true },
     "historical process output should be searchable within the selected run",
+  );
+  await evaluate(`(() => {
+    window.__downloadedLog = null;
+    window.__downloadedBlob = null;
+    URL.createObjectURL = blob => {
+      window.__downloadedBlob = { size: blob.size, type: blob.type };
+      return "blob:port-start-log";
+    };
+    URL.revokeObjectURL = () => {};
+    HTMLAnchorElement.prototype.click = function() {
+      window.__downloadedLog = { download: this.download, href: this.href };
+    };
+    document.getElementById("globalLogDownload").click();
+  })()`);
+  assert.deepEqual(
+    await evaluate(`({
+      downloaded: Boolean(
+        window.__downloadedLog?.download.endsWith(".ndjson") &&
+        window.__downloadedLog?.href === "blob:port-start-log"
+      ),
+      nonempty: window.__downloadedBlob?.size > 0,
+      type: window.__downloadedBlob?.type
+    })`),
+    { downloaded: true, nonempty: true, type: "application/x-ndjson" },
+    "the selected historical run should download as nonempty NDJSON",
+  );
+  await evaluate(`(() => {
+    const input = document.getElementById("globalRunSearch");
+    input.value = "received SIGTERM";
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  })()`);
+  assert.equal(
+    await evaluate(`document.querySelectorAll(".run-row").length > 0`),
+    true,
+    "global Runs & logs search should find output content across runs",
   );
   await evaluate(`(() => {
     const input = document.getElementById("globalRunSearch");
