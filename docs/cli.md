@@ -56,6 +56,8 @@ port-start
 │   ├── cancel
 │   └── logs
 ├── run
+│   ├── list
+│   ├── search
 │   ├── status
 │   └── logs
 │       └── download
@@ -243,12 +245,43 @@ Standalone definitions omit `PORT_START_WORKTREE_ROOT`. Supplying
 ## Logs
 
 ```sh
+port-start run list --worktree "$PWD" --include-deregistered
+port-start run list --kind process --name web --state failed --since 24h
+port-start run list --worktree "$PWD" --include-deregistered --json
+port-start run search 'ready|error' --worktree "$PWD" --regex --ignore-case
 port-start process logs web --run latest
 port-start process logs web --follow
 port-start command logs test --run latest
 port-start run logs run_01... --grep 'ready|error' --regex --ignore-case
 port-start run logs run_01... --stream stderr --since 15m
 port-start run logs download run_01... --format ndjson --output run.ndjson
+```
+
+`run list` is the discovery path for current and retained history. It supports
+`--worktree`, `--kind process|command`, `--name`, `--state`, `--since`,
+`--until`, and `--include-deregistered`. The last flag includes retained runs
+whose process or command definition was removed by deregistration. Human output
+includes run ID, worktree snapshot, definition kind and name, state, start and
+end times, and retention deadline.
+
+Both human and JSON listings are newest-first and cursor-paginated. `--limit`
+defaults to 50 and is capped at 500; `--cursor` continues from the prior page.
+JSON returns `runs` and `next_cursor`. Each run contains `id`,
+`worktree_snapshot`, `definition_kind`, `definition_name`, `state`,
+`started_at`, `ended_at`, and `retained_until`. A missing `next_cursor` means
+the result is complete.
+
+`run search` searches retained stdout and stderr across the same filters. It
+accepts literal text by default plus `--regex`, `--ignore-case`, and `--stream`.
+Human matches include the run ID and a copyable follow-up command. JSON returns
+`matches` and `next_cursor`; each match contains `run_id`, `stream`, `sequence`,
+`timestamp`, and `line`.
+
+Discovery hands directly into status and logs:
+
+```sh
+port-start run status run_01...
+port-start run logs run_01... --grep 'ready|error' --regex --ignore-case
 ```
 
 Without `--follow`, logs exit after the retained result. Follow mode resumes by
@@ -334,6 +367,7 @@ port-start process start "$(basename "$PWD")/web"
 port-start open "$(basename "$PWD")/web:http"
 port-start process logs "$(basename "$PWD")/web" --follow
 port-start worktree deregister "$PWD"
+port-start run list --worktree "$PWD" --include-deregistered
 ```
 
 The embedded manifest JSON Schema and OpenAPI document make the CLI

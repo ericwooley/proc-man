@@ -435,6 +435,19 @@ try {
     `document.activeElement.id === "drawerClose"`,
     "the registered worktree should open",
   );
+  await evaluate(`document.querySelector('[data-tab="logs"]').click()`);
+  assert.deepEqual(
+    await evaluate(`({
+      empty: document.querySelector('[data-pane="logs"]').textContent.includes(
+        "Nothing has been run yet"
+      ),
+      targets: document.querySelectorAll(
+        '[data-pane="logs"] [data-log-target]'
+      ).length
+    })`),
+    { empty: true, targets: 0 },
+    "a newly registered process should have no run history before its first start",
+  );
   await evaluate(`document.querySelector('[data-tab="processes"]').click()`);
   await evaluate(
     `document.querySelector('[data-proc="web"] [data-proc-action="start"]').click()`,
@@ -458,7 +471,7 @@ try {
   })()`);
   assert.equal(
     await evaluate(
-      `document.querySelectorAll(".run-row").length > 0 &&
+      `document.querySelectorAll(".run-row").length === 1 &&
        document.getElementById("globalLogTitle").textContent.includes("saffron-puma")`,
     ),
     true,

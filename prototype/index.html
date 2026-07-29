@@ -484,6 +484,11 @@
       commands: [ { name: 'test', runs: [{ id: 'run-test-83', state: 'exited', code: 0, when: '40m ago' }] } ] },
   ];
   const RETAINED_RUNS = [];
+  WORKTREES.forEach(worktree => {
+    worktree.processes.forEach(process => {
+      process.currentRunId ||= `run-${worktree.id}-${process.name}-latest`;
+    });
+  });
 
   const LOG_SAMPLES = {
     running: [ { t: '18:41:02.114', s: 'stdout', m: 'compiled client bundle in 812ms' }, { t: '18:41:02.118', s: 'stdout', m: 'watching for file changes...' }, { t: '18:41:15.902', s: 'stdout', m: 'GET /api/cart 200 12ms' } ],
@@ -520,20 +525,24 @@
     return normalized.length > 1 ? normalized.replace(/\/+$/, '') : normalized;
   }
   function processRunEntries(process) {
-    const current = {
-      id: process.currentRunId || `run-${process.name}-latest`,
-      state: process.state,
-      logState: process.state,
-      when: process.state === 'running' ? 'now' : 'latest run',
-    };
-    return [current, ...(process.runHistory || [])];
+    const current = process.currentRunId
+      ? [{
+          id: process.currentRunId,
+          state: process.state,
+          logState: process.state,
+          when: process.state === 'running' ? 'now' : 'latest run',
+        }]
+      : [];
+    return [...current, ...(process.runHistory || [])];
   }
   function beginProcessRun(process) {
-    const previousId = process.currentRunId || `run-${process.name}-latest`;
     process.runHistory ||= [];
-    if (!process.runHistory.some(run => run.id === previousId)) {
+    if (
+      process.currentRunId &&
+      !process.runHistory.some(run => run.id === process.currentRunId)
+    ) {
       process.runHistory.unshift({
-        id: previousId,
+        id: process.currentRunId,
         state: process.state === 'failed' ? 'failed' : 'stopped',
         logState: process.state === 'failed' ? 'failed' : 'stopped',
         when: 'just now',

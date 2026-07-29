@@ -251,6 +251,10 @@ test("CLI contract gives agents a worktree-scoped discovery path", async () => {
 
   assert.match(cli, /port-start process list --worktree/);
   assert.match(cli, /port-start command list --worktree/);
+  assert.match(cli, /port-start run list --worktree/);
+  assert.match(cli, /port-start run search/);
+  assert.match(cli, /include-deregistered/);
+  assert.match(cli, /next_cursor/);
   assert.match(cli, /active_invocation_count/);
   assert.match(cli, /next_start/);
   for (const followUp of [

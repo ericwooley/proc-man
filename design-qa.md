@@ -84,6 +84,9 @@ without changing its visual hierarchy.
 13. Deregistration now removes active definitions while retaining completed run
     history in Runs & logs. Current and earlier process runs are independently
     selectable, and the selected run’s output supports in-place text filtering.
+14. A newly registered process now shows “Nothing has been run yet” until its
+    first real start creates a run ID. Its first run is retained without a
+    fabricated pre-start history entry.
 
 ## Verification
 
