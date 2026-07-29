@@ -67,6 +67,9 @@ without changing its visual hierarchy.
 8. Live Runs & logs refreshes now restore the focused run by stable ID, and a
    filter with no matches clears the previous detail before showing a direct
    empty-state prompt.
+9. Restart was verified from drawer initiation through the dashboard card’s
+   stopping, starting, and running states, including promotion of the configured
+   port snapshot while the drawer is closed.
 
 ## Verification
 

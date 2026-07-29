@@ -477,6 +477,40 @@ try {
   );
   await evaluate(`document.querySelector('[data-tab="processes"]').click()`);
   await evaluate(
+    `document.querySelector('[data-proc="api"] [data-proc-action="restart"]').click()`,
+  );
+  await evaluate(`document.getElementById("drawerClose").click()`);
+  assert.deepEqual(
+    await evaluate(`(() => {
+      const tile = document.querySelector('[data-worktree="wt1"]');
+      return {
+        running: tile.querySelector(".tile-foot .pill").textContent.trim(),
+        activePort: tile.textContent.includes("4311")
+      };
+    })()`),
+    { running: "1/2 running", activePort: true },
+    "the worktree card should reflect the stopping phase of a restart",
+  );
+  await waitFor(
+    `(() => {
+      const text = document.querySelector('[data-worktree="wt1"]').textContent;
+      return text.includes("4321") && !text.includes("4311");
+    })()`,
+    "the worktree card should refresh when restart snapshots configured ports",
+    1_100,
+  );
+  await waitFor(
+    `document.querySelector('[data-worktree="wt1"] .tile-foot .pill').textContent.trim() === "2/2 running"`,
+    "the worktree card should show restart completion",
+    2_000,
+  );
+  await evaluate(`document.querySelector('[data-open="wt1"]').click()`);
+  await waitFor(
+    `document.activeElement.id === "drawerClose"`,
+    "the restarted worktree should reopen",
+  );
+  await evaluate(`document.querySelector('[data-tab="processes"]').click()`);
+  await evaluate(
     `document.querySelector('[data-proc="api"] [data-proc-action="stop"]').click()`,
   );
   await waitFor(

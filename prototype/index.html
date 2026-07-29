@@ -983,12 +983,14 @@
       p.state = 'stopping';
       showToast(`Restarting process/${p.name}`, 'arrows-clockwise');
       renderDrawerPanes();
+      renderGrid();
       refreshGlobalRunsIfVisible();
       setTimeout(() => {
         if (!processTransitionIsCurrent(p, transitionVersion)) return;
         snapshotConfiguredPorts(p);
         p.state = 'starting';
         if (activeWt) renderDrawerPanes();
+        renderGrid();
         refreshGlobalRunsIfVisible();
         setTimeout(() => {
           if (!processTransitionIsCurrent(p, transitionVersion)) return;
