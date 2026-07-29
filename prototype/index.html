@@ -938,7 +938,15 @@
     }
   });
 
+  function supersedeProcessTransition(p) {
+    p.transitionVersion = (p.transitionVersion || 0) + 1;
+    return p.transitionVersion;
+  }
+  function processTransitionIsCurrent(p, transitionVersion) {
+    return p.transitionVersion === transitionVersion;
+  }
   function runProcessAction(p, action) {
+    const transitionVersion = supersedeProcessTransition(p);
     if (action === 'start') {
       snapshotConfiguredPorts(p);
       p.state = 'starting';
@@ -946,6 +954,7 @@
       renderDrawerPanes();
       renderGrid();
       setTimeout(() => {
+        if (!processTransitionIsCurrent(p, transitionVersion)) return;
         p.state = 'running';
         delete p.error;
         if (activeWt) renderDrawerPanes();
@@ -957,6 +966,7 @@
       renderDrawerPanes();
       renderGrid();
       setTimeout(() => {
+        if (!processTransitionIsCurrent(p, transitionVersion)) return;
         p.state = 'stopped';
         clearActivePorts(p);
         if (activeWt) renderDrawerPanes();
@@ -967,10 +977,12 @@
       showToast(`Restarting process/${p.name}`, 'arrows-clockwise');
       renderDrawerPanes();
       setTimeout(() => {
+        if (!processTransitionIsCurrent(p, transitionVersion)) return;
         snapshotConfiguredPorts(p);
         p.state = 'starting';
         if (activeWt) renderDrawerPanes();
         setTimeout(() => {
+          if (!processTransitionIsCurrent(p, transitionVersion)) return;
           p.state = 'running';
           delete p.error;
           if (activeWt) renderDrawerPanes();
@@ -1105,8 +1117,7 @@
     const manifest = document.getElementById('manifestPath').value.trim();
     const branch = path.split('/').filter(Boolean).at(-1) || 'new-worktree';
     const existingRegistration = WORKTREES.find(worktree =>
-      normalizeWorktreePath(worktree.path) === path &&
-      (worktree.manifest || '.port-start.yaml') === manifest,
+      normalizeWorktreePath(worktree.path) === path,
     );
     if (existingRegistration) {
       Object.assign(existingRegistration, { branch, path, manifest, status: 'active' });

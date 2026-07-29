@@ -321,6 +321,30 @@ try {
   );
 
   await evaluate(`(() => {
+    const opener = document.getElementById("registerOpen");
+    opener.focus();
+    opener.click();
+  })()`);
+  await waitFor(
+    `document.activeElement.id === "worktreePath"`,
+    "manifest reconciliation should open the registration dialog",
+  );
+  await evaluate(`(() => {
+    document.getElementById("worktreePath").value = "/tmp/agent/saffron-puma";
+    document.getElementById("manifestPath").value = "config/alternate.yaml";
+    document.getElementById("registerForm").requestSubmit();
+  })()`);
+  assert.deepEqual(
+    await evaluate(`({
+      cards: document.querySelectorAll(".wt-tile").length,
+      matches: [...document.querySelectorAll(".wt-tile .branch")]
+        .filter(branch => branch.textContent === "saffron-puma").length
+    })`),
+    { cards: 7, matches: 1 },
+    "re-registering a worktree with a new manifest should update one registration",
+  );
+
+  await evaluate(`(() => {
     const opener = document.querySelector(".wt-tile [data-open]");
     opener.focus();
     opener.click();
@@ -351,10 +375,28 @@ try {
     ),
     "starting",
   );
+  await evaluate(
+    `document.querySelector('[data-proc="web"] [data-proc-action="stop"]').click()`,
+  );
+  assert.equal(
+    await evaluate(
+      `document.querySelector('[data-proc="web"] .pill').textContent.trim()`,
+    ),
+    "stopping",
+    "a newer stop should supersede an in-flight start",
+  );
   await waitFor(
-    `document.querySelector('[data-proc="web"] .pill').textContent.trim() === "running"`,
-    "start should transition the process to running",
+    `document.querySelector('[data-proc="web"] .pill').textContent.trim() === "stopped"`,
+    "the superseding stop should transition the process to stopped",
     2_000,
+  );
+  await new Promise(resolve => setTimeout(resolve, 350));
+  assert.equal(
+    await evaluate(
+      `document.querySelector('[data-proc="web"] .pill').textContent.trim()`,
+    ),
+    "stopped",
+    "an older start timer should not overwrite the newer stop result",
   );
 
   await evaluate(`document.querySelector('[data-tab="commands"]').click()`);

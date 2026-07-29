@@ -57,6 +57,10 @@ without changing its visual hierarchy.
    drawer was recaptured at
    `/tmp/port-start-qa/implementation-commands-cdp.png` after the interaction
    model changed.
+6. Checkpoint re-review extended registration coverage to manifest changes and
+   exercised rapid process actions. Worktree identity now remains tied to the
+   normalized path while re-registration updates its current manifest, and a
+   newer process action supersedes pending state-transition timers.
 
 ## Verification
 
