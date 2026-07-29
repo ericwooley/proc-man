@@ -690,12 +690,12 @@
     hiIdx = currentMatches.length ? 0 : -1;
     paintResults();
   }
-  function iconFor(type) {
-    return type === 'port'
-      ? icon('arrow-square-out')
-      : type === 'process'
+  function iconFor(item) {
+    return item.type === 'port'
+      ? icon(item.port.protocol === 'tcp' ? 'copy' : 'arrow-square-out')
+      : item.type === 'process'
         ? icon('terminal-window')
-        : type === 'command'
+        : item.type === 'command'
           ? icon('code')
           : icon('git-branch');
   }
@@ -703,12 +703,12 @@
     if (!currentMatches.length) { jumpResults.innerHTML = `<div class="jr-empty">No matches. Try a worktree branch, process name, or port.</div>`; jumpResults.hidden = false; return; }
     jumpResults.innerHTML = `<div class="jr-group">Results</div>` + currentMatches.map((it, i) => `
       <button class="jr-item ${i === hiIdx ? 'hi' : ''}" data-match="${i}">
-        <span class="jr-ic">${iconFor(it.type)}</span>
+        <span class="jr-ic">${iconFor(it)}</span>
         <span class="jr-main">
           <span class="jr-title">${esc(it.label)}</span>
           <span class="jr-sub">${esc(it.sub)}</span>
         </span>
-        ${it.type === 'port' ? `<span class="jr-addr">Open →</span>` : ''}
+        ${it.type === 'port' ? `<span class="jr-addr">${it.port.protocol === 'tcp' ? 'Copy' : 'Open'} →</span>` : ''}
       </button>`).join('');
     jumpResults.hidden = false;
   }
@@ -737,6 +737,17 @@
 
   function selectMatch(it) {
     jumpResults.hidden = true; jumpInput.value = '';
+    if (it.type === 'port') {
+      const address = portUrl(it.port);
+      if (it.port.protocol === 'tcp') {
+        navigator.clipboard && navigator.clipboard.writeText(address).catch(()=>{});
+        showToast('Copied to clipboard', 'copy');
+      } else {
+        showToast(`Opening ${address}`, 'arrow-square-out');
+        window.open(address, '_blank', 'noopener');
+      }
+      return;
+    }
     openDrawer(
       it.wt.id,
       it.type === 'command'
@@ -996,6 +1007,23 @@
         refreshGlobalRunsIfVisible();
       }, 900);
     } else if (action === 'restart') {
+      if (p.state === 'stopped' || p.state === 'failed') {
+        snapshotConfiguredPorts(p);
+        p.state = 'starting';
+        showToast(`Restarting process/${p.name}`, 'arrows-clockwise');
+        renderDrawerFor(worktree);
+        renderGrid();
+        refreshGlobalRunsIfVisible();
+        setTimeout(() => {
+          if (!processTransitionIsCurrent(p, transitionVersion)) return;
+          p.state = 'running';
+          delete p.error;
+          renderDrawerFor(worktree);
+          renderGrid();
+          refreshGlobalRunsIfVisible();
+        }, 1100);
+        return;
+      }
       p.state = 'stopping';
       showToast(`Restarting process/${p.name}`, 'arrows-clockwise');
       renderDrawerFor(worktree);

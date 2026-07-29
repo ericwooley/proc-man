@@ -74,6 +74,10 @@ without changing its visual hierarchy.
     completion by stable target key. Deferred updates are scoped to the
     worktree that launched them, so an older timer cannot rerender another
     worktree’s open drawer.
+11. Search-result activation now opens HTTP(S) endpoints and copies TCP
+    addresses for both pointer and keyboard paths. Restart from stopped or
+    failed goes directly to starting a new run, while active restarts retain
+    their stopping phase.
 
 ## Verification
 

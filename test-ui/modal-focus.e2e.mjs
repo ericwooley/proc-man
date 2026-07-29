@@ -192,7 +192,55 @@ try {
     true,
     "declared ports should be searchable",
   );
+  await evaluate(`(() => {
+    window.__openedPort = null;
+    window.open = (url, target, features) => {
+      window.__openedPort = { url, target, features };
+      return null;
+    };
+  })()`);
   await press("Enter", "Enter");
+  assert.deepEqual(
+    await evaluate(`({
+      opened: window.__openedPort,
+      drawerHidden: document.getElementById("drawer").getAttribute("aria-hidden"),
+      toast: document.getElementById("toastText").textContent
+    })`),
+    {
+      opened: {
+        url: "http://127.0.0.1:4310/",
+        target: "_blank",
+        features: "noopener",
+      },
+      drawerHidden: "true",
+      toast: "Opening http://127.0.0.1:4310/",
+    },
+    "Enter on an HTTP search result should open that endpoint directly",
+  );
+
+  await evaluate(`(() => {
+    const input = document.getElementById("jump");
+    input.value = "9310";
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  })()`);
+  assert.equal(
+    await evaluate(
+      `document.getElementById("jumpResults").textContent.includes("Copy →")`,
+    ),
+    true,
+    "TCP search results should advertise a copy action",
+  );
+  await evaluate(`document.querySelector("#jumpResults .jr-item").click()`);
+  assert.deepEqual(
+    await evaluate(`({
+      drawerHidden: document.getElementById("drawer").getAttribute("aria-hidden"),
+      toast: document.getElementById("toastText").textContent
+    })`),
+    { drawerHidden: "true", toast: "Copied to clipboard" },
+    "clicking a TCP search result should copy its address without opening the drawer",
+  );
+
+  await evaluate(`document.querySelector('[data-open="wt1"]').click()`);
   await waitFor(
     `document.activeElement.id === "drawerClose"`,
     "opening a worktree should focus its detail drawer",
@@ -366,6 +414,34 @@ try {
     "the stopped-process worktree should open",
   );
   await evaluate(`document.querySelector('[data-tab="processes"]').click()`);
+  await evaluate(
+    `document.querySelector('[data-proc="web"] [data-proc-action="restart"]').click()`,
+  );
+  await evaluate(
+    `document.querySelector('[data-proc="api"] [data-proc-action="restart"]').click()`,
+  );
+  assert.deepEqual(
+    await evaluate(`({
+      stoppedRestart: document.querySelector('[data-proc="web"] .pill').textContent.trim(),
+      failedRestart: document.querySelector('[data-proc="api"] .pill').textContent.trim()
+    })`),
+    { stoppedRestart: "starting", failedRestart: "starting" },
+    "restart from stopped or failed should create a new run without a stopping phase",
+  );
+  await waitFor(
+    `document.querySelector('[data-proc="web"] .pill').textContent.trim() === "running" &&
+     document.querySelector('[data-proc="api"] .pill').textContent.trim() === "running"`,
+    "terminal-state restarts should finish their new runs",
+    2_000,
+  );
+  await evaluate(
+    `document.querySelector('[data-proc="web"] [data-proc-action="stop"]').click()`,
+  );
+  await waitFor(
+    `document.querySelector('[data-proc="web"] .pill').textContent.trim() === "stopped"`,
+    "the restarted web process should return to stopped for supersession coverage",
+    2_000,
+  );
   await evaluate(
     `document.querySelector('[data-proc="web"] [data-proc-action="start"]').click()`,
   );
