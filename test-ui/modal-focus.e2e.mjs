@@ -1713,6 +1713,51 @@ try {
     { busy: "false", status: "" },
     "leaving loading state should clear the busy announcement",
   );
+
+  await cdp.call("Emulation.setDeviceMetricsOverride", {
+    width: 390,
+    height: 844,
+    deviceScaleFactor: 1,
+    mobile: false,
+  });
+  await evaluate(`(() => {
+    document.querySelector('[data-view-target="logs"]').click();
+    const input = document.getElementById("globalRunSearch");
+    input.value = "";
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  })()`);
+  await waitFor(
+    `document.querySelectorAll(".run-row").length > 10`,
+    "the narrow log view should render its complete run inventory",
+  );
+  await evaluate(`(() => {
+    const rows = [...document.querySelectorAll(".run-row")];
+    rows.at(-1).scrollIntoView({ block: "nearest" });
+    rows.at(-1).click();
+  })()`);
+  assert.deepEqual(
+    await evaluate(`(() => {
+      const list = document.getElementById("globalRunList");
+      const detail = document.querySelector(".global-log");
+      const console = document.getElementById("globalLogConsole");
+      return {
+        listBounded: list.clientHeight < list.scrollHeight,
+        detailVisible:
+          detail.getBoundingClientRect().top >= 0 &&
+          detail.getBoundingClientRect().top < window.innerHeight,
+        outputVisible:
+          console.getBoundingClientRect().top >= 0 &&
+          console.getBoundingClientRect().top < window.innerHeight
+      };
+    })()`),
+    {
+      listBounded: true,
+      detailVisible: true,
+      outputVisible: true,
+    },
+    "selecting a run on a narrow screen should reveal its output beside a bounded inventory",
+  );
+
   await evaluate(`document.querySelector('[data-state="empty"]').click()`);
   assert.deepEqual(
     await evaluate(`({

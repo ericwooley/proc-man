@@ -149,6 +149,9 @@ without changing its visual hierarchy.
     state and restores stale process definitions to `stopped`, with Start
     available again. Its interrupted run remains discoverable in the worktree
     log history.
+24. On narrow screens, the run inventory now has its own bounded scroll region.
+    The selected row remains focused in that region while the corresponding
+    output stays visible directly below it.
 
 ## Verification
 
