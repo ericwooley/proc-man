@@ -126,11 +126,15 @@ stable ID, worktree, name, source, active invocation count, and latest run
 result.
 
 The JSON forms return the same inventory without display formatting.
-`process list --json` returns `worktree` and `processes`; each process contains
-`id`, `name`, `source`, `state`, `current_run_id`, and an `endpoints` array with
-`key`, `protocol`, `address`, and `lifecycle`. `command list --json` returns
-`worktree` and `commands`; each command contains `id`, `name`, `source`,
-`active_invocation_count`, and `latest_run`.
+`process list --json` returns `processes`; each process contains `id`, `name`,
+`source`, `state`, `current_run_id`, an `endpoints` array with `key`,
+`protocol`, `address`, and `lifecycle`, and a `worktree` object with the
+worktree's stable ID, canonical path, repository ID, and observed branch.
+`command list --json` returns `commands`; each command contains `id`, `name`,
+`source`, `active_invocation_count`, `latest_run`, and the same `worktree`
+object with its stable ID, canonical path, repository ID, and observed branch.
+The value is `null` for standalone imperative definitions. Supplying
+`--worktree` filters these arrays without changing their response shape.
 
 The discovery results feed directly into status, endpoint, execution, and log
 commands:

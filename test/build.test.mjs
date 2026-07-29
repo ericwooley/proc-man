@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
+import { access } from "node:fs/promises";
 import { before, test } from "node:test";
 
 const execFileAsync = promisify(execFile);
@@ -83,14 +84,15 @@ test("built worker returns a real 404 for missing assets", async () => {
   assert.doesNotMatch(await response.text(), /<!doctype html>/i);
 });
 
-test("build preserves the social card route and applies method checks first", async () => {
+test("build excludes the retired social card and applies method checks first", async () => {
   const getResponse = await fetchBuilt("/og.png");
-  const bytes = new Uint8Array(await getResponse.arrayBuffer());
   const postResponse = await fetchBuilt("/og.png", { method: "POST" });
+  const fallback = await getResponse.text();
 
   assert.equal(getResponse.status, 200);
-  assert.equal(getResponse.headers.get("content-type"), "image/png");
-  assert.deepEqual([...bytes.slice(0, 8)], [137, 80, 78, 71, 13, 10, 26, 10]);
+  assert.match(getResponse.headers.get("content-type"), /^text\/html/);
+  assert.doesNotMatch(fallback, /Stable ports|Ready on demand/);
   assert.equal(postResponse.status, 405);
   assert.equal(postResponse.headers.get("allow"), "GET, HEAD");
+  await assert.rejects(access(new URL("../public/og.png", import.meta.url)));
 });

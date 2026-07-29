@@ -3,11 +3,15 @@
 ## Visual target
 
 - Selected direction: Claude prototype B, “Jump to Endpoint”
-- Source capture: `/tmp/port-start-design-review.FATDfH/jump-to-endpoint.png`
-- Implemented capture: `/tmp/port-start-qa/implementation-desktop-final-v2.png`
-- Aggregate-process capture:
-  `/tmp/port-start-qa/implementation-processes-final-v2.png`
-- Combined comparison: `/tmp/port-start-qa/comparison-final-v2.png`
+  ([capture](docs/assets/design-qa/jump-to-endpoint.png))
+- Implemented dashboard
+  ([capture](docs/assets/design-qa/implementation-desktop.png))
+- Aggregate-process state
+  ([capture](docs/assets/design-qa/implementation-processes.png))
+- Command drawer
+  ([capture](docs/assets/design-qa/implementation-commands.png))
+- Combined comparison
+  ([capture](docs/assets/design-qa/comparison.png))
 - Comparison viewport: 1440 × 1000 CSS pixels
 
 The implemented dashboard preserves the selected target’s framed desktop shell,
@@ -56,9 +60,8 @@ without changing its visual hierarchy.
    overlapping command invocations, active-versus-configured port snapshots,
    endpoint keyboard behavior, and the closed drawer’s focus state. Each gap
    received a browser regression assertion before implementation. The command
-   drawer was recaptured at
-   `/tmp/port-start-qa/implementation-commands-cdp.png` after the interaction
-   model changed.
+   drawer was recaptured after the interaction model changed and retained with
+   the other repository-owned QA evidence.
 6. Checkpoint re-review extended registration coverage to manifest changes and
    exercised rapid process actions. Worktree identity now remains tied to the
    normalized path while re-registration updates its current manifest, and a
@@ -117,10 +120,16 @@ without changing its visual hierarchy.
     `missing`/`stale` projection used by the documentation. Aggregate batches
     retain dispatch-time no-op results and use a batch version so an older
     Start-all completion cannot overwrite a newer Stop-all result.
+19. Action-triggered drawer updates now restore keyboard focus by stable
+    process, command, and run identity. Start, Stop, Restart, Run, and Cancel
+    announce their settled outcomes through a persistent live region.
+    Machine-readable process and command inventories retain worktree identity
+    on every record, the obsolete social card is no longer packaged, and all
+    visual comparison evidence is retained in the repository.
 
 ## Verification
 
-- `npm test`: 28 tests passed
+- `npm test`: 30 tests passed
 - `npm run test:browser`: worktree, process, command, log, and focus behavior passed
 - External icons: local Phosphor icon font
 - Product artwork: external `port-matrix.svg`; no inline or handcrafted SVG in

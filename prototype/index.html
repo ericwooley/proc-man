@@ -190,7 +190,7 @@
   html[data-theme="dark"] .btn.danger { color: var(--acid-ink); }
   .pill { display: inline-flex; align-items: center; gap: 5px; font-size: 10.5px; font-weight: 700; padding: 3px 8px; border-radius: 999px; text-transform: uppercase; }
   .pill::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
-  .pill.running { color: var(--badge-good-ink); background: color-mix(in srgb, var(--good) 18%, transparent); }
+  .pill.running, .pill.succeeded { color: var(--badge-good-ink); background: color-mix(in srgb, var(--good) 18%, transparent); }
   .pill.stopped { color: var(--muted); background: var(--surface-soft); }
   .pill.starting, .pill.stopping { color: var(--badge-warning-ink); background: color-mix(in srgb, var(--warning) 18%, transparent); }
   .pill.failed { color: var(--badge-danger-ink); background: color-mix(in srgb, var(--danger) 16%, transparent); }
@@ -458,6 +458,7 @@
       </div>
     </div>
 
+    <div class="sr-only" id="actionStatus" role="status" aria-live="polite" aria-atomic="true"></div>
     <div class="toast" id="toast" role="status" aria-live="polite"><i class="ph ph-check-circle" aria-hidden="true"></i><span id="toastText"></span></div>
   </div>
 
@@ -638,6 +639,7 @@
   const jumpWrap = document.getElementById('jumpWrap');
   const toast = document.getElementById('toast');
   const toastText = document.getElementById('toastText');
+  const actionStatus = document.getElementById('actionStatus');
   const registerModal = document.getElementById('registerModal');
   const deregisterModal = document.getElementById('deregisterModal');
   const worktreeCount = document.getElementById('worktreeCount');
@@ -649,6 +651,9 @@
     toast.classList.add('show');
     clearTimeout(toastTimer);
     toastTimer = setTimeout(() => toast.classList.remove('show'), 1800);
+  }
+  function announceActionOutcome(message) {
+    actionStatus.textContent = message;
   }
   async function copyText(value) {
     try {
@@ -960,8 +965,72 @@
     });
   });
 
+  function captureDrawerActionFocus() {
+    const element = document.activeElement;
+    if (!element || !drawer.contains(element)) return null;
+
+    const processItem = element.closest('[data-proc]');
+    if (processItem) {
+      return {
+        kind: 'process',
+        name: processItem.dataset.proc,
+        action: element.dataset.procAction || null,
+      };
+    }
+
+    const commandItem = element.closest('[data-cmd]');
+    if (commandItem) {
+      const commandRun = element.closest('[data-command-run]');
+      return {
+        kind: 'command',
+        name: commandItem.dataset.cmd,
+        action: element.dataset.cmdAction || null,
+        runId: commandRun?.dataset.commandRun || element.dataset.runId || null,
+      };
+    }
+
+    return null;
+  }
+
+  function restoreDrawerActionFocus(focusedAction) {
+    if (!focusedAction || !drawer.classList.contains('open')) return;
+
+    if (focusedAction.kind === 'process') {
+      const processItem = [...document.querySelectorAll('[data-pane="processes"] [data-proc]')]
+        .find(item => item.dataset.proc === focusedAction.name);
+      const matchingAction = processItem && [...processItem.querySelectorAll('[data-proc-action]')]
+        .find(button =>
+          button.dataset.procAction === focusedAction.action && !button.disabled
+        );
+      (matchingAction || processItem)?.focus();
+      return;
+    }
+
+    const commandItem = [...document.querySelectorAll('[data-pane="commands"] [data-cmd]')]
+      .find(item => item.dataset.cmd === focusedAction.name);
+    if (!commandItem) return;
+
+    if (focusedAction.runId) {
+      const commandRun = [...commandItem.querySelectorAll('[data-command-run]')]
+        .find(run => run.dataset.commandRun === focusedAction.runId);
+      const matchingRunAction = commandRun && [...commandRun.querySelectorAll('[data-cmd-action]')]
+        .find(button =>
+          button.dataset.cmdAction === focusedAction.action && !button.disabled
+        );
+      (matchingRunAction || commandRun)?.focus();
+      return;
+    }
+
+    const matchingAction = [...commandItem.querySelectorAll('[data-cmd-action]')]
+      .find(button =>
+        button.dataset.cmdAction === focusedAction.action && !button.disabled
+      );
+    (matchingAction || commandItem).focus();
+  }
+
   function renderDrawerPanes() {
     const w = activeWt;
+    const focusedAction = captureDrawerActionFocus();
     document.querySelectorAll('.dr-pane').forEach(p => p.hidden = p.dataset.pane !== activeTab);
 
     const epPane = document.querySelector('[data-pane="endpoints"]');
@@ -1020,6 +1089,7 @@
         .find(button => button.dataset.logTarget === focusedLogTarget)
         ?.focus();
     }
+    restoreDrawerActionFocus(focusedAction);
   }
 
   function missingBanner(w) {
@@ -1077,7 +1147,7 @@
     const canStop = (p.state === 'running' || p.state === 'starting') && !disabledMissing;
     const canRestart = !disabledMissing;
     return `
-    <div class="proc-item" data-proc="${esc(p.name)}">
+    <div class="proc-item" data-proc="${esc(p.name)}" tabindex="-1" aria-label="Process ${esc(p.name)}">
       <div class="pi-top">
         <span class="pill ${p.state}">${p.state}</span>
         <span class="pi-name">${esc(p.name)}</span>
@@ -1097,14 +1167,14 @@
   }
 
   function commandRunPresentation(run) {
-    if (run.state === 'exited' && run.code === 0) return { css: 'running', label: 'succeeded' };
+    if (run.state === 'exited' && run.code === 0) return { css: 'succeeded', label: 'succeeded' };
     if (run.state === 'exited') return { css: 'failed', label: `exit ${run.code}` };
     return { css: run.state, label: run.state };
   }
 
   function cmdItem(w, c) {
     return `
-    <div class="cmd-item" data-cmd="${esc(c.name)}">
+    <div class="cmd-item" data-cmd="${esc(c.name)}" tabindex="-1" aria-label="Command ${esc(c.name)}">
       <div class="ci-top">
         <span class="ci-name">${icon('code')}${esc(c.name)}</span>
         <div class="ci-actions">
@@ -1114,7 +1184,7 @@
       <div class="cmd-runs">
         ${c.runs.length ? c.runs.slice(0, 4).map(run => {
           const presentation = commandRunPresentation(run);
-          return `<div class="cmd-run" data-command-run="${esc(run.id)}">
+          return `<div class="cmd-run" data-command-run="${esc(run.id)}" tabindex="-1" aria-label="Command ${esc(c.name)} run ${esc(run.id)}">
             <span class="pill ${presentation.css}">${esc(presentation.label)}</span>
             <span class="run-id">${esc(run.id)} · ${esc(run.when)}</span>
             ${run.state === 'running' ? `<button class="btn" data-cmd-action="cancel" data-run-id="${esc(run.id)}">Cancel</button>` : ''}
@@ -1180,12 +1250,13 @@
       p.currentRunState = 'failed';
       p.currentLogState = 'failed';
       p.error = "Launch failed: executable 'worker-dev' was not found.";
-      return;
+      return false;
     }
     p.state = 'running';
     p.currentRunState = 'running';
     p.currentLogState = 'running';
     delete p.error;
+    return true;
   }
   function runProcessAction(p, action) {
     const worktree = activeWt;
@@ -1200,10 +1271,15 @@
       refreshGlobalRunsIfVisible();
       setTimeout(() => {
         if (!processTransitionIsCurrent(p, transitionVersion)) return;
-        completeProcessLaunch(p);
+        const launched = completeProcessLaunch(p);
         renderDrawerFor(worktree);
         renderGrid();
         refreshGlobalRunsIfVisible();
+        announceActionOutcome(
+          launched
+            ? `Process ${p.name} is running.`
+            : `Process ${p.name} failed to start.`,
+        );
       }, 1100);
     } else if (action === 'stop') {
       p.state = 'stopping';
@@ -1223,6 +1299,7 @@
         renderDrawerFor(worktree);
         renderGrid();
         refreshGlobalRunsIfVisible();
+        announceActionOutcome(`Process ${p.name} stopped.`);
       }, 900);
     } else if (action === 'restart') {
       if (p.state === 'stopped' || p.state === 'failed') {
@@ -1235,12 +1312,17 @@
         refreshGlobalRunsIfVisible();
         setTimeout(() => {
           if (!processTransitionIsCurrent(p, transitionVersion)) return;
-          completeProcessLaunch(p);
+          const launched = completeProcessLaunch(p);
           renderDrawerFor(worktree);
           renderGrid();
           refreshGlobalRunsIfVisible();
+          announceActionOutcome(
+            launched
+              ? `Process ${p.name} restarted and is running.`
+              : `Process ${p.name} failed to restart.`,
+          );
         }, 1100);
-        return;
+        return transitionVersion;
       }
       p.state = 'stopping';
       p.currentRunState = 'stopping';
@@ -1262,10 +1344,15 @@
         refreshGlobalRunsIfVisible();
         setTimeout(() => {
           if (!processTransitionIsCurrent(p, transitionVersion)) return;
-          completeProcessLaunch(p);
+          const launched = completeProcessLaunch(p);
           renderDrawerFor(worktree);
           renderGrid();
           refreshGlobalRunsIfVisible();
+          announceActionOutcome(
+            launched
+              ? `Process ${p.name} restarted and is running.`
+              : `Process ${p.name} failed to restart.`,
+          );
         }, 900);
       }, 700);
     }
@@ -1367,6 +1454,7 @@
         Object.assign(current, { state: 'exited', code: 0, when: 'just now' });
         renderDrawerFor(worktree);
         refreshGlobalRunsIfVisible();
+        announceActionOutcome(`Command ${c.name} completed with exit code 0.`);
       }, 1400);
     } else if (action === 'cancel') {
       const run = c.runs.find(candidate => candidate.id === runId);
@@ -1375,6 +1463,7 @@
       showToast(`Canceled command/${c.name}`, 'stop-circle');
       renderDrawerFor(worktree);
       refreshGlobalRunsIfVisible();
+      announceActionOutcome(`Command ${c.name} run ${run.id} canceled.`);
     }
   }
 

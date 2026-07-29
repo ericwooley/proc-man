@@ -333,3 +333,44 @@ test("missing-worktree command and download contracts are consistent", async () 
   assert.doesNotMatch(logging, /Multi-run download/i);
   assert.match(logging, /one selected run/i);
 });
+
+test("cross-worktree machine inventories retain worktree attribution", async () => {
+  const [cli, api] = await Promise.all([
+    readFile(new URL("../docs/cli.md", import.meta.url), "utf8"),
+    readFile(new URL("../docs/api.md", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(
+    cli,
+    /each process[\s\S]*?`worktree`[\s\S]*?stable ID[\s\S]*?canonical path/i,
+  );
+  assert.match(
+    cli,
+    /each command[\s\S]*?`worktree`[\s\S]*?stable ID[\s\S]*?canonical path/i,
+  );
+  assert.match(
+    api,
+    /process and command list responses[\s\S]*?`worktree`[\s\S]*?stable ID[\s\S]*?canonical path/i,
+  );
+});
+
+test("design QA evidence is durable inside the repository", async () => {
+  const designQa = await readFile(
+    new URL("../design-qa.md", import.meta.url),
+    "utf8",
+  );
+
+  assert.doesNotMatch(designQa, /\/tmp\//);
+  for (const asset of [
+    "jump-to-endpoint.png",
+    "implementation-desktop.png",
+    "implementation-processes.png",
+    "comparison.png",
+    "implementation-commands.png",
+  ]) {
+    const bytes = await readFile(
+      new URL(`../docs/assets/design-qa/${asset}`, import.meta.url),
+    );
+    assert.ok(bytes.byteLength > 10_000, asset);
+  }
+});

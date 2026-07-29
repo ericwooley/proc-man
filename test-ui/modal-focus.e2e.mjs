@@ -569,12 +569,26 @@ try {
   );
   await evaluate(`document.querySelector('[data-tab="processes"]').click()`);
   await evaluate(
-    `document.querySelector('[data-proc="web"] [data-proc-action="start"]').click()`,
+    `document.querySelector('[data-proc="web"] [data-proc-action="start"]').focus()`,
+  );
+  await activateFocusedButton();
+  assert.equal(
+    await evaluate(`document.activeElement.dataset.proc`),
+    "web",
+    "Start should keep focus on its process when the action becomes unavailable",
   );
   await waitFor(
     `document.querySelector('[data-proc="web"] .pill').textContent.trim() === "running"`,
     "the registered process should create a run before deregistration",
     2_000,
+  );
+  assert.deepEqual(
+    await evaluate(`({
+      focus: document.activeElement.dataset.proc,
+      announcement: document.getElementById("actionStatus").textContent
+    })`),
+    { focus: "web", announcement: "Process web is running." },
+    "Start completion should preserve process focus and announce the settled state",
   );
   await evaluate(`document.getElementById("deregisterWorktree").click()`);
   await waitFor(
@@ -726,24 +740,45 @@ try {
     "an older Start All timer should not overwrite the newer Stop All result",
   );
   await evaluate(
-    `document.querySelector('[data-proc="web"] [data-proc-action="restart"]').click()`,
+    `document.querySelector('[data-proc="web"] [data-proc-action="restart"]').focus()`,
+  );
+  await activateFocusedButton();
+  assert.deepEqual(
+    await evaluate(`({
+      state: document.querySelector('[data-proc="web"] .pill').textContent.trim(),
+      focusAction: document.activeElement.dataset.procAction
+    })`),
+    { state: "starting", focusAction: "restart" },
+    "Restart should preserve focus on the stable Restart action",
+  );
+  await waitFor(
+    `document.querySelector('[data-proc="web"] .pill').textContent.trim() === "running"`,
+    "a stopped process should finish restarting",
+    2_000,
+  );
+  assert.deepEqual(
+    await evaluate(`({
+      focusAction: document.activeElement.dataset.procAction,
+      announcement: document.getElementById("actionStatus").textContent
+    })`),
+    {
+      focusAction: "restart",
+      announcement: "Process web restarted and is running.",
+    },
+    "Restart completion should retain focus and announce its outcome",
   );
   await evaluate(
     `document.querySelector('[data-proc="worker"] [data-proc-action="restart"]').click()`,
   );
-  assert.deepEqual(
-    await evaluate(`({
-      stoppedRestart: document.querySelector('[data-proc="web"] .pill').textContent.trim(),
-      failedRestart: document.querySelector('[data-proc="worker"] .pill').textContent.trim()
-    })`),
-    { stoppedRestart: "starting", failedRestart: "starting" },
-    "restart from stopped or failed should create a new run without a stopping phase",
-  );
   await waitFor(
-    `document.querySelector('[data-proc="web"] .pill').textContent.trim() === "running" &&
-     document.querySelector('[data-proc="worker"] .pill').textContent.trim() === "failed"`,
-    "terminal-state restarts should preserve each process launch result",
+    `document.querySelector('[data-proc="worker"] .pill').textContent.trim() === "failed"`,
+    "a failed process should retain its launch result after Restart",
     2_000,
+  );
+  assert.equal(
+    await evaluate(`document.getElementById("actionStatus").textContent`),
+    "Process worker failed to restart.",
+    "Restart launch failure should be announced",
   );
   await evaluate(`document.querySelector('[data-tab="logs"]').click()`);
   const processRunCountBeforeStoppingRestart = await evaluate(
@@ -785,12 +820,26 @@ try {
   );
   await evaluate(`document.querySelector('[data-tab="processes"]').click()`);
   await evaluate(
-    `document.querySelector('[data-proc="web"] [data-proc-action="stop"]').click()`,
+    `document.querySelector('[data-proc="web"] [data-proc-action="stop"]').focus()`,
+  );
+  await activateFocusedButton();
+  assert.equal(
+    await evaluate(`document.activeElement.dataset.proc`),
+    "web",
+    "Stop should keep focus on its process when the action becomes unavailable",
   );
   await waitFor(
     `document.querySelector('[data-proc="web"] .pill').textContent.trim() === "stopped"`,
     "the restarted web process should return to stopped for supersession coverage",
     2_000,
+  );
+  assert.deepEqual(
+    await evaluate(`({
+      focus: document.activeElement.dataset.proc,
+      announcement: document.getElementById("actionStatus").textContent
+    })`),
+    { focus: "web", announcement: "Process web stopped." },
+    "Stop completion should preserve process focus and announce the settled state",
   );
   await evaluate(
     `document.querySelector('[data-proc="web"] [data-proc-action="start"]').click()`,
@@ -881,6 +930,31 @@ try {
   );
   await evaluate(`document.querySelector('[data-tab="commands"]').click()`);
   await evaluate(
+    `document.querySelector('[data-cmd="test"] [data-cmd-action="run"]').focus()`,
+  );
+  await activateFocusedButton();
+  assert.equal(
+    await evaluate(`document.activeElement.dataset.cmdAction`),
+    "run",
+    "Run should preserve focus on the stable command action",
+  );
+  await waitFor(
+    `document.querySelector('[data-cmd="test"] [data-command-run] .pill').textContent.trim() === "succeeded"`,
+    "the focused command invocation should complete",
+    2_000,
+  );
+  assert.deepEqual(
+    await evaluate(`({
+      focusAction: document.activeElement.dataset.cmdAction,
+      announcement: document.getElementById("actionStatus").textContent
+    })`),
+    {
+      focusAction: "run",
+      announcement: "Command test completed with exit code 0.",
+    },
+    "Run completion should retain focus and announce its exit result",
+  );
+  await evaluate(
     `document.querySelector('[data-cmd="test"] [data-cmd-action="run"]').click()`,
   );
   await evaluate(
@@ -894,16 +968,28 @@ try {
     { running: 2, runDisabled: false },
     "one-shot command invocations should overlap independently",
   );
-  await evaluate(
-    `document.querySelector('[data-cmd="test"] [data-command-run] [data-cmd-action="cancel"]').click()`,
-  );
+  const canceledRunId = await evaluate(`(() => {
+    const cancel = document.querySelector(
+      '[data-cmd="test"] [data-command-run] [data-cmd-action="cancel"]'
+    );
+    cancel.focus();
+    return cancel.dataset.runId;
+  })()`);
+  await activateFocusedButton();
   assert.deepEqual(
     await evaluate(`({
       canceled: document.querySelectorAll('[data-cmd="test"] [data-command-run] .pill.canceled').length,
-      running: document.querySelectorAll('[data-cmd="test"] [data-command-run] .pill.running').length
+      running: document.querySelectorAll('[data-cmd="test"] [data-command-run] .pill.running').length,
+      focusRun: document.activeElement.dataset.commandRun,
+      announcement: document.getElementById("actionStatus").textContent
     })`),
-    { canceled: 1, running: 1 },
-    "cancel should target one active command invocation",
+    {
+      canceled: 1,
+      running: 1,
+      focusRun: canceledRunId,
+      announcement: `Command test run ${canceledRunId} canceled.`,
+    },
+    "Cancel should target one invocation, retain its focus context, and announce the outcome",
   );
   await evaluate(`document.querySelector('[data-tab="logs"]').click()`);
   const selectedCommandLog = await evaluate(`(() => {

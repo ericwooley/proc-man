@@ -56,6 +56,11 @@ registration is idempotent.
 Updating a manifest-owned process or command returns `409 manifest_owned` with
 its manifest path, definition kind, and key.
 
+Process and command list responses carry a `worktree` object on every record
+with the worktree's stable ID, canonical path, repository ID, and observed
+branch. The value is `null` for standalone imperative definitions. A worktree
+filter narrows the records without changing this response shape.
+
 An imperative update or worktree re-registration does not mutate an active
 run. Process responses include `configured` and `active_run.configuration`.
 When they differ, `configured` is the next-run value. Clients use active-run

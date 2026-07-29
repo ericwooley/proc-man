@@ -31,7 +31,6 @@ await addFile(
   new URL("logo-showcase.html", prototypeRoot),
 );
 await addDirectory(new URL("assets/", prototypeRoot), "/assets");
-await addFile("/og.png", new URL("../public/og.png", import.meta.url));
 
 const worker = createWorkerSource(files);
 
