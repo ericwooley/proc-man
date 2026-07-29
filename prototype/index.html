@@ -120,7 +120,7 @@
   .endpoint-list .ep { display: flex; align-items: center; gap: 7px; font-size: 12px; }
   .endpoint-list .ep .nm { color: var(--muted); min-width: 62px; }
   .endpoint-list .ep .addr { font-family: var(--mono); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .endpoint-list .ep button { border: 0; background: transparent; color: var(--muted); display: inline-flex; }
+  .endpoint-list .ep button { min-width: 32px; min-height: 32px; border: 0; border-radius: 9px; background: transparent; color: var(--muted); display: inline-flex; align-items: center; justify-content: center; }
   .endpoint-list .ep button:hover { color: var(--good); }
   .none-declared { font-size: 12px; color: var(--muted); font-style: normal; }
 
@@ -145,8 +145,8 @@
   /* drawer */
   .scrim { position: absolute; inset: 0; background: rgba(10,12,10,.35); opacity: 0; pointer-events: none; transition: opacity .2s ease; z-index: 50; }
   .scrim.open { opacity: 1; pointer-events: auto; }
-  .drawer { position: absolute; top: 0; right: 0; bottom: 0; width: 460px; max-width: 92%; background: var(--surface); box-shadow: -20px 0 50px rgba(0,0,0,.18); transform: translateX(100%); transition: transform .22s ease; z-index: 60; display: flex; flex-direction: column; }
-  .drawer.open { transform: translateX(0); }
+  .drawer { position: absolute; top: 0; right: 0; bottom: 0; width: 460px; max-width: 92%; background: var(--surface); box-shadow: -20px 0 50px rgba(0,0,0,.18); transform: translateX(calc(100% + 24px)); visibility: hidden; pointer-events: none; transition: transform .22s ease, visibility 0s linear .22s; z-index: 60; display: flex; flex-direction: column; }
+  .drawer.open { transform: translateX(0); visibility: visible; pointer-events: auto; transition-delay: 0s; }
   .drawer-head { padding: 18px 20px 12px; border-bottom: 1px solid var(--line); }
   .drawer-head .dh-top { display: flex; align-items: flex-start; gap: 10px; }
   .drawer-head h3 { margin: 0; font-size: 15px; font-weight: 800; font-family: var(--mono); }
@@ -176,7 +176,10 @@
   .btn { border: 1px solid var(--line); background: var(--surface); border-radius: 10px; padding: 7px 11px; font-weight: 700; font-size: 11.5px; display: inline-flex; align-items: center; gap: 6px; }
   .btn:hover:not([disabled]) { background: var(--surface-soft); }
   .btn.primary { background: var(--ink); color: var(--shell); border-color: var(--ink); }
+  .btn.danger { background: var(--danger); color: #fff; border-color: var(--danger); }
+  .btn.danger:hover:not([disabled]) { background: color-mix(in srgb, var(--danger) 86%, var(--ink)); }
   html[data-theme="dark"] .btn.primary { background: var(--acid); color: var(--acid-ink); border-color: var(--acid); }
+  html[data-theme="dark"] .btn.danger { color: var(--acid-ink); }
   .pill { display: inline-flex; align-items: center; gap: 5px; font-size: 10.5px; font-weight: 700; padding: 3px 8px; border-radius: 999px; text-transform: uppercase; }
   .pill::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
   .pill.running { color: var(--badge-good-ink); background: color-mix(in srgb, var(--good) 18%, transparent); }
@@ -298,6 +301,7 @@
   }
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+    .drawer { transition-delay: 0s !important; }
   }
 </style>
 </head>
@@ -322,17 +326,17 @@
         </div>
         <div class="top-actions">
           <button class="register-button" id="registerOpen" aria-label="Register worktree"><i class="ph ph-plus" aria-hidden="true"></i><span>Register worktree</span></button>
-          <button class="theme-toggle" id="themeToggle" aria-label="Toggle light and dark mode"><i class="ph ph-moon-stars" id="themeIcon"></i></button>
+          <button class="theme-toggle" id="themeToggle" aria-label="Toggle light and dark mode"><i class="ph ph-moon-stars" id="themeIcon" aria-hidden="true"></i></button>
         </div>
       </div>
       <nav class="primary-nav" aria-label="Primary navigation">
-        <button class="nav-button active" data-view-target="worktrees" aria-current="page"><i class="ph ph-git-branch"></i>Worktrees <span class="nav-count" id="worktreeCount">6</span></button>
-        <button class="nav-button" data-view-target="logs"><i class="ph ph-terminal-window"></i>Runs &amp; logs</button>
-        <button class="nav-button" data-view-target="admin"><i class="ph ph-sliders-horizontal"></i>Administration</button>
+        <button class="nav-button active" data-view-target="worktrees" aria-current="page"><i class="ph ph-git-branch" aria-hidden="true"></i>Worktrees <span class="nav-count" id="worktreeCount">6</span></button>
+        <button class="nav-button" data-view-target="logs"><i class="ph ph-terminal-window" aria-hidden="true"></i>Runs &amp; logs</button>
+        <button class="nav-button" data-view-target="admin"><i class="ph ph-sliders-horizontal" aria-hidden="true"></i>Administration</button>
       </nav>
       <div class="jump-wrap" id="jumpWrap">
         <div class="jump-field">
-          <i class="ph ph-magnifying-glass"></i>
+          <i class="ph ph-magnifying-glass" aria-hidden="true"></i>
           <input type="text" id="jump" placeholder="Jump to a worktree, process, command, or port…" autocomplete="off">
           <kbd>/</kbd>
         </div>
@@ -357,7 +361,7 @@
           <div id="globalRunList"></div>
         </div>
         <div class="global-log">
-          <div class="global-log-head"><i class="ph ph-terminal-window"></i><strong id="globalLogTitle">feature/checkout-redesign · process/web</strong><span class="pill running" id="globalLogState">running</span><button class="btn sm" id="globalLogDownload"><i class="ph ph-download-simple"></i>Download logs</button></div>
+          <div class="global-log-head"><i class="ph ph-terminal-window" aria-hidden="true"></i><strong id="globalLogTitle">feature/checkout-redesign · process/web</strong><span class="pill running" id="globalLogState">running</span><button class="btn sm" id="globalLogDownload"><i class="ph ph-download-simple" aria-hidden="true"></i>Download logs</button></div>
           <div id="globalLogConsole"></div>
         </div>
       </div>
@@ -367,7 +371,7 @@
       <div class="section-heading">
         <div><h2>Administration</h2><p>Effective configuration for this local process manager.</p></div>
       </div>
-      <div class="access-warning" id="accessBanner" role="alert" hidden><i class="ph ph-warning-circle"></i><strong>This dashboard is reachable from other devices without a password.</strong></div>
+      <div class="access-warning" id="accessBanner" role="alert" hidden><i class="ph ph-warning-circle" aria-hidden="true"></i><strong>This dashboard is reachable from other devices without a password.</strong></div>
       <div class="admin-grid">
         <article class="settings-card">
           <h3>Process manager</h3>
@@ -396,19 +400,19 @@
             <h3 id="drTitle"></h3>
             <div class="repo" id="drRepo"></div>
           </div>
-          <button class="drawer-close" id="drawerClose" aria-label="Close"><i class="ph ph-x"></i></button>
+          <button class="drawer-close" id="drawerClose" aria-label="Close"><i class="ph ph-x" aria-hidden="true"></i></button>
         </div>
         <div class="drawer-path">
           <span id="drPath"></span>
-          <button class="copy-btn" id="drPathCopy"><i class="ph ph-copy"></i>Copy</button>
-          <button class="copy-btn danger" id="deregisterWorktree"><i class="ph ph-trash"></i>Deregister</button>
+          <button class="copy-btn" id="drPathCopy"><i class="ph ph-copy" aria-hidden="true"></i>Copy</button>
+          <button class="copy-btn danger" id="deregisterWorktree"><i class="ph ph-trash" aria-hidden="true"></i>Deregister</button>
         </div>
       </div>
       <div class="dr-tabs" role="tablist">
-        <button class="dr-tab active" id="tabEndpoints" data-tab="endpoints" role="tab" aria-controls="paneEndpoints" aria-selected="true">Endpoints</button>
-        <button class="dr-tab" id="tabProcesses" data-tab="processes" role="tab" aria-controls="paneProcesses" aria-selected="false">Processes</button>
-        <button class="dr-tab" id="tabCommands" data-tab="commands" role="tab" aria-controls="paneCommands" aria-selected="false">Commands</button>
-        <button class="dr-tab" id="tabLogs" data-tab="logs" role="tab" aria-controls="paneLogs" aria-selected="false">Logs</button>
+        <button class="dr-tab active" id="tabEndpoints" data-tab="endpoints" role="tab" aria-controls="paneEndpoints" aria-selected="true" tabindex="0">Endpoints</button>
+        <button class="dr-tab" id="tabProcesses" data-tab="processes" role="tab" aria-controls="paneProcesses" aria-selected="false" tabindex="-1">Processes</button>
+        <button class="dr-tab" id="tabCommands" data-tab="commands" role="tab" aria-controls="paneCommands" aria-selected="false" tabindex="-1">Commands</button>
+        <button class="dr-tab" id="tabLogs" data-tab="logs" role="tab" aria-controls="paneLogs" aria-selected="false" tabindex="-1">Logs</button>
       </div>
       <div class="dr-body">
         <div class="dr-pane" id="paneEndpoints" data-pane="endpoints" role="tabpanel" aria-labelledby="tabEndpoints"></div>
@@ -422,7 +426,7 @@
       <form class="modal" id="registerForm">
         <div class="modal-head">
           <div><h2 id="registerTitle">Register a worktree</h2><p>Load process, command, and declared-port definitions from its manifest.</p></div>
-          <button class="modal-close" id="registerClose" type="button" aria-label="Close"><i class="ph ph-x"></i></button>
+          <button class="modal-close" id="registerClose" type="button" aria-label="Close"><i class="ph ph-x" aria-hidden="true"></i></button>
         </div>
         <div class="field"><label for="worktreePath">Worktree path</label><input id="worktreePath" name="worktreePath" placeholder="/path/to/worktree" required></div>
         <div class="field"><label for="manifestPath">Manifest</label><input id="manifestPath" name="manifestPath" value=".port-start.yaml" required></div>
@@ -431,7 +435,17 @@
       </form>
     </div>
 
-    <div class="toast" id="toast" role="status" aria-live="polite"><i class="ph ph-check-circle"></i><span id="toastText"></span></div>
+    <div class="modal-backdrop" id="deregisterModal" role="dialog" aria-modal="true" aria-labelledby="deregisterTitle" aria-describedby="deregisterMessage deregisterImpact" aria-hidden="true">
+      <div class="modal">
+        <div class="modal-head">
+          <div><h2 id="deregisterTitle">Deregister this worktree?</h2><p id="deregisterMessage"></p></div>
+        </div>
+        <div class="modal-note" id="deregisterImpact"></div>
+        <div class="modal-actions"><button class="btn" id="deregisterCancel" type="button">Keep registered</button><button class="btn danger" id="deregisterConfirm" type="button"><i class="ph ph-trash" aria-hidden="true"></i>Deregister worktree</button></div>
+      </div>
+    </div>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"><i class="ph ph-check-circle" aria-hidden="true"></i><span id="toastText"></span></div>
   </div>
 
 <script>
@@ -585,7 +599,9 @@
   const toast = document.getElementById('toast');
   const toastText = document.getElementById('toastText');
   const registerModal = document.getElementById('registerModal');
+  const deregisterModal = document.getElementById('deregisterModal');
   const worktreeCount = document.getElementById('worktreeCount');
+  let deregisterTarget = null;
 
   function showToast(message, iconName = 'check-circle') {
     toast.querySelector('i').className = `ph ph-${iconName}`;
@@ -816,6 +832,23 @@
   // ---- drawer ----
   const drawer = document.getElementById('drawer');
   const scrim = document.getElementById('scrim');
+  const drawerTabs = [...document.querySelectorAll('.dr-tab')];
+
+  function activateDrawerTab(tabName, { focus = false } = {}) {
+    const selected = drawerTabs.find(tab => tab.dataset.tab === tabName);
+    if (!selected) return;
+    activeTab = tabName;
+    drawerTabs.forEach(tab => {
+      const active = tab === selected;
+      tab.classList.toggle('active', active);
+      tab.setAttribute('aria-selected', active);
+      tab.tabIndex = active ? 0 : -1;
+    });
+    document.querySelectorAll('.dr-pane').forEach(pane => {
+      pane.hidden = pane.dataset.pane !== activeTab;
+    });
+    if (focus) selected.focus();
+  }
 
   function openDrawer(id, tab) {
     activeWt = WORKTREES.find(w => w.id === id);
@@ -826,7 +859,7 @@
     document.getElementById('drRepo').textContent = activeWt.repo;
     document.getElementById('drPath').textContent = activeWt.path;
     document.getElementById('drPathCopy').dataset.copy = activeWt.path;
-    document.querySelectorAll('.dr-tab').forEach(t => { const on = t.dataset.tab === activeTab; t.classList.toggle('active', on); t.setAttribute('aria-selected', on); });
+    activateDrawerTab(activeTab);
     renderDrawerPanes();
     setBackgroundInert(true);
     drawer.inert = false;
@@ -851,11 +884,22 @@
     if (event.key === 'Escape' && drawer.classList.contains('open')) closeDrawer();
   });
 
-  document.querySelectorAll('.dr-tab').forEach(t => t.addEventListener('click', () => {
-    activeTab = t.dataset.tab;
-    document.querySelectorAll('.dr-tab').forEach(x => { const on = x === t; x.classList.toggle('active', on); x.setAttribute('aria-selected', on); });
-    document.querySelectorAll('.dr-pane').forEach(p => p.hidden = p.dataset.pane !== activeTab);
-  }));
+  drawerTabs.forEach(tab => {
+    tab.addEventListener('click', () => activateDrawerTab(tab.dataset.tab));
+    tab.addEventListener('keydown', event => {
+      if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+      event.preventDefault();
+      const current = drawerTabs.indexOf(tab);
+      const next = event.key === 'Home'
+        ? 0
+        : event.key === 'End'
+          ? drawerTabs.length - 1
+          : event.key === 'ArrowRight'
+            ? (current + 1) % drawerTabs.length
+            : (current - 1 + drawerTabs.length) % drawerTabs.length;
+      activateDrawerTab(drawerTabs[next].dataset.tab, { focus: true });
+    });
+  });
 
   function renderDrawerPanes() {
     const w = activeWt;
@@ -1352,10 +1396,38 @@
     showToast(`${existingRegistration ? 'Refreshed' : 'Registered'} ${branch}`, 'git-branch');
   });
 
-  document.getElementById('deregisterWorktree').addEventListener('click', () => {
+  function openDeregisterModal() {
     if (!activeWt) return;
-    const branch = activeWt.branch;
-    activeWt.processes.forEach(process => {
+    deregisterTarget = activeWt;
+    const activeRuns =
+      activeWt.processes.filter(processIsActive).length +
+      activeWt.commands.reduce(
+        (count, command) =>
+          count + command.runs.filter(run => run.state === 'running').length,
+        0,
+      );
+    document.getElementById('deregisterMessage').textContent =
+      `Deregister ${activeWt.branch} from Port Start?`;
+    document.getElementById('deregisterImpact').textContent =
+      `${activeRuns} active ${activeRuns === 1 ? 'run' : 'runs'} will be stopped. The worktree's run logs stay available until their retention limit.`;
+    drawer.inert = true;
+    deregisterModal.classList.add('open');
+    deregisterModal.setAttribute('aria-hidden', 'false');
+    requestAnimationFrame(() => document.getElementById('deregisterCancel').focus());
+  }
+
+  function closeDeregisterModal({ restoreFocus = true } = {}) {
+    if (!deregisterModal.classList.contains('open')) return;
+    deregisterModal.classList.remove('open');
+    deregisterModal.setAttribute('aria-hidden', 'true');
+    if (drawer.classList.contains('open')) drawer.inert = false;
+    if (restoreFocus) document.getElementById('deregisterWorktree').focus();
+    deregisterTarget = null;
+  }
+
+  function deregisterWorktree(worktree) {
+    const branch = worktree.branch;
+    worktree.processes.forEach(process => {
       if (processIsActive(process)) {
         process.state = 'stopped';
         if (process.currentRunId) {
@@ -1365,29 +1437,51 @@
       }
       clearActivePorts(process);
     });
-    activeWt.commands.forEach(command => {
+    worktree.commands.forEach(command => {
       command.runs.forEach(run => {
         if (run.state === 'running') run.state = 'canceled';
       });
     });
     const retainedWorktree = {
-      id: activeWt.id,
-      branch: activeWt.branch,
-      repo: activeWt.repo,
+      id: worktree.id,
+      branch: worktree.branch,
+      repo: worktree.repo,
       status: 'deregistered',
     };
-    RETAINED_RUNS.unshift(...buildWorktreeRuns(activeWt).map(run => ({
+    RETAINED_RUNS.unshift(...buildWorktreeRuns(worktree).map(run => ({
       ...run,
       wt: retainedWorktree,
       when: run.when === 'now' ? 'deregistered just now' : run.when,
     })));
-    const index = WORKTREES.findIndex(worktree => worktree.id === activeWt.id);
+    const index = WORKTREES.findIndex(candidate => candidate.id === worktree.id);
     if (index >= 0) WORKTREES.splice(index, 1);
     INDEX = buildIndex();
     closeDrawer({ restoreFocus: false });
     activeWt = null;
     renderGrid();
     showToast(`Deregistered ${branch}; its active runs were stopped`, 'trash');
+  }
+
+  document.getElementById('deregisterWorktree').addEventListener('click', openDeregisterModal);
+  document.getElementById('deregisterCancel').addEventListener('click', () => closeDeregisterModal());
+  document.getElementById('deregisterConfirm').addEventListener('click', () => {
+    if (!deregisterTarget) return;
+    const target = deregisterTarget;
+    deregisterTarget = null;
+    closeDeregisterModal({ restoreFocus: false });
+    deregisterWorktree(target);
+  });
+  deregisterModal.addEventListener('click', event => {
+    if (event.target === deregisterModal) closeDeregisterModal();
+  });
+  deregisterModal.addEventListener('keydown', event => {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      event.stopPropagation();
+      closeDeregisterModal();
+      return;
+    }
+    trapFocus(deregisterModal, event);
   });
 
   document.getElementById('accessPreview').addEventListener('click', () => {

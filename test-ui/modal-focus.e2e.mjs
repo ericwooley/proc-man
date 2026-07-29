@@ -72,6 +72,12 @@ try {
   cdp = await connectCdp(page.webSocketDebuggerUrl);
   await cdp.call("Page.enable");
   await cdp.call("Runtime.enable");
+  await cdp.call("Emulation.setDeviceMetricsOverride", {
+    width: 1440,
+    height: 1000,
+    deviceScaleFactor: 1,
+    mobile: false,
+  });
   await cdp.call("Page.navigate", { url: prototypeUrl });
 
   async function evaluate(expression) {
@@ -149,7 +155,14 @@ try {
       cards: document.querySelectorAll(".wt-tile").length,
       drawerHidden: document.getElementById("drawer").getAttribute("aria-hidden"),
       drawerInert: document.getElementById("drawer").inert,
-      modalHidden: document.getElementById("registerModal").getAttribute("aria-hidden")
+      modalHidden: document.getElementById("registerModal").getAttribute("aria-hidden"),
+      deregisterModalHidden: document.getElementById("deregisterModal").getAttribute("aria-hidden"),
+      exposedDecorativeIcons: document.querySelectorAll(".ph:not([aria-hidden='true'])").length,
+      endpointTargetsLargeEnough: [...document.querySelectorAll(".endpoint-list .ep button")]
+        .every(button => {
+          const rect = button.getBoundingClientRect();
+          return rect.width >= 32 && rect.height >= 32;
+        })
     })`),
     {
       title: "Port Start — Worktree process manager",
@@ -157,6 +170,9 @@ try {
       drawerHidden: "true",
       drawerInert: true,
       modalHidden: "true",
+      deregisterModalHidden: "true",
+      exposedDecorativeIcons: 0,
+      endpointTargetsLargeEnough: true,
     },
   );
   await evaluate(`Object.defineProperty(navigator, "clipboard", {
@@ -183,7 +199,6 @@ try {
     { drawerHidden: "true", toast: "Copied to clipboard" },
     "keyboard activation of an endpoint should not open the worktree drawer",
   );
-
   await press("/", "Slash");
   assert.equal(
     await evaluate("document.activeElement.id"),
@@ -293,6 +308,39 @@ try {
       title: "feature/checkout-redesign",
     },
   );
+  assert.deepEqual(
+    await evaluate(`(() => {
+      const tabs = [...document.querySelectorAll('[role="tab"]')];
+      return {
+        active: tabs.find(tab => tab.getAttribute("tabindex") === "0")?.dataset.tab,
+        tabStops: tabs.filter(tab => tab.getAttribute("tabindex") === "0").length
+      };
+    })()`),
+    { active: "endpoints", tabStops: 1 },
+    "drawer tabs should expose one roving tab stop",
+  );
+  await evaluate(`document.querySelector('[data-tab="endpoints"]').focus()`);
+  await press("ArrowRight", "ArrowRight");
+  assert.deepEqual(
+    await evaluate(`({
+      focus: document.activeElement.dataset.tab,
+      active: document.querySelector('[role="tab"][aria-selected="true"]').dataset.tab
+    })`),
+    { focus: "processes", active: "processes" },
+    "Right Arrow should move and activate the next drawer tab",
+  );
+  await press("End", "End");
+  assert.equal(
+    await evaluate(`document.activeElement.dataset.tab`),
+    "logs",
+    "End should move to the final drawer tab",
+  );
+  await press("Home", "Home");
+  assert.equal(
+    await evaluate(`document.activeElement.dataset.tab`),
+    "endpoints",
+    "Home should move to the first drawer tab",
+  );
 
   await evaluate(`(() => {
     const drawer = document.getElementById("drawer");
@@ -325,6 +373,23 @@ try {
     })()`),
     "jump",
     "closed drawer controls should remain outside the focus sequence",
+  );
+  await new Promise(resolve => setTimeout(resolve, 300));
+  assert.deepEqual(
+    await evaluate(`(() => {
+      const drawer = document.getElementById("drawer");
+      const frame = document.getElementById("appFrame");
+      const drawerRect = drawer.getBoundingClientRect();
+      const frameRect = frame.getBoundingClientRect();
+      return {
+        visibility: getComputedStyle(drawer).visibility,
+        notPainted:
+          getComputedStyle(drawer).visibility === "hidden" ||
+          drawerRect.left >= frameRect.right
+      };
+    })()`),
+    { visibility: "hidden", notPainted: true },
+    "the closed drawer should not remain painted over the desktop frame",
   );
 
   await evaluate(`(() => {
@@ -458,6 +523,31 @@ try {
     2_000,
   );
   await evaluate(`document.getElementById("deregisterWorktree").click()`);
+  await waitFor(
+    `document.activeElement.id === "deregisterCancel"`,
+    "deregistration confirmation should focus the safe action",
+  );
+  assert.deepEqual(
+    await evaluate(`({
+      confirmationOpen: document.getElementById("deregisterModal").getAttribute("aria-hidden"),
+      stillRegistered: [...document.querySelectorAll(".wt-tile .branch")]
+        .some(branch => branch.textContent === "saffron-puma"),
+      branchNamed: document.getElementById("deregisterMessage").textContent.includes("saffron-puma"),
+      activeCountNamed: document.getElementById("deregisterImpact").textContent.includes("1 active run"),
+      retainedNamed: document.getElementById("deregisterImpact").textContent.includes("logs stay available"),
+      focus: document.activeElement.id
+    })`),
+    {
+      confirmationOpen: "false",
+      stillRegistered: true,
+      branchNamed: true,
+      activeCountNamed: true,
+      retainedNamed: true,
+      focus: "deregisterCancel",
+    },
+    "deregistration should require an explicit consequence-aware confirmation",
+  );
+  await evaluate(`document.getElementById("deregisterConfirm").click()`);
   assert.equal(
     await evaluate("document.querySelectorAll('.wt-tile').length"),
     6,

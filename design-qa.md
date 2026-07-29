@@ -4,8 +4,8 @@
 
 - Selected direction: Claude prototype B, “Jump to Endpoint”
 - Source capture: `/tmp/port-start-design-review.FATDfH/jump-to-endpoint.png`
-- Implemented capture: `/tmp/port-start-qa/implementation-desktop-cdp.png`
-- Combined comparison: `/tmp/port-start-qa/comparison.png`
+- Implemented capture: `/tmp/port-start-qa/implementation-desktop-final.png`
+- Combined comparison: `/tmp/port-start-qa/comparison-final.png`
 - Comparison viewport: 1440 × 1000 CSS pixels
 
 The implemented dashboard preserves the selected target’s framed desktop shell,
@@ -92,6 +92,12 @@ without changing its visual hierarchy.
     completion records `exited`. Global search indexes retained output as well
     as metadata, and a selected run downloads the canonical NDJSON record
     schema.
+16. Final UX review caught a closed drawer that remained painted over desktop
+    content. The closed state is now hidden after its transition and verified
+    at 1440 × 1000. Deregistration names the worktree, active-run impact, and
+    retained-log behavior before confirmation. Drawer tabs use roving focus and
+    arrow/Home/End navigation, decorative icons are excluded from accessible
+    names, and dashboard endpoint actions use 32-pixel targets.
 
 ## Verification
 

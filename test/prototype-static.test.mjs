@@ -168,6 +168,11 @@ test("core worktree, process, command, log, and registration interactions are wi
   );
   assert.match(html, /drawer\.inert = false/);
   assert.match(html, /drawer\.inert = true/);
+  assert.match(html, /id="deregisterModal"/);
+  assert.match(html, /id="deregisterConfirm"/);
+  assert.match(html, /worktree's run logs stay available/i);
+  assert.match(html, /ArrowRight/);
+  assert.match(html, /ArrowLeft/);
   assert.doesNotMatch(html, /class="wt-tile"[^>]+role="button"/);
   assert.match(html, /<button class="view-btn" data-open=/);
 });
