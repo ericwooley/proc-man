@@ -27,7 +27,9 @@ Registration accepts the canonical worktree candidate path, manifest YAML, and
 `dry_run`. The response is a complete reconciliation plan or result with
 processes, commands, declared ports, and links. For changed active processes, it
 returns both active-run links and configured next-run values. Repeating the same
-registration is idempotent.
+registration is idempotent. The worktree, each process, each command, and each
+declared endpoint include a canonical, opaque `selector` for use in later CLI
+actions.
 
 ### Processes
 
@@ -59,7 +61,10 @@ its manifest path, definition kind, and key.
 Process and command list responses carry a `worktree` object on every record
 with the worktree's stable ID, canonical path, repository ID, and observed
 branch. The value is `null` for standalone imperative definitions. A worktree
-filter narrows the records without changing this response shape.
+filter narrows the records without changing this response shape. Worktree,
+process, command, and declared-endpoint resources also carry the same canonical
+`selector` values returned by registration, so clients never need to synthesize
+action selectors from presentation metadata.
 
 An imperative update or worktree re-registration does not mutate an active
 run. Process responses include `configured` and `active_run.configuration`.

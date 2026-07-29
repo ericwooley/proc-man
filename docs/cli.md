@@ -98,6 +98,12 @@ results. When re-registration changes an active process, the result distinguishe
 the active run's current links from configuration pending its next start. A
 worktree-creation hook can use the JSON form safely and repeatedly.
 
+Every registration JSON result includes canonical, opaque action selectors at
+`.data.worktree.selector`, `.data.processes[].selector`,
+`.data.processes[].endpoints[].selector`, and `.data.commands[].selector`.
+Clients pass these values back unchanged; they do not derive selectors from a
+path basename, branch, or display name.
+
 `deregister` stops active runs and removes current definitions. Historical runs
 remain under their retention policies unless `--purge-logs` is supplied.
 
@@ -117,23 +123,24 @@ port-start command list --worktree "$PWD" --json
 repository/worktree label. Omitting it lists definitions across every registered
 worktree. Ambiguous selectors fail with matching worktree candidates.
 
-Human `process list` output includes stable ID, worktree, name, source, state,
-current run ID, and every declared endpoint. Each endpoint line includes its
-selector key, protocol, copyable address, and lifecycle label: `active` for the
-current run snapshot, `next_start` for changed configuration pending restart,
-or `configured` when no run is active. Human `command list` output includes
-stable ID, worktree, name, source, active invocation count, and latest run
-result.
+Human `process list` output includes the canonical process selector, worktree,
+name, source, state, current run ID, and every declared endpoint. Each endpoint
+line includes its canonical endpoint selector, protocol, copyable address, and
+lifecycle label: `active` for the current run snapshot, `next_start` for
+changed configuration pending restart, or `configured` when no run is active.
+Human `command list` output includes the canonical command selector, worktree,
+name, source, active invocation count, and latest run result.
 
 The JSON forms return the same inventory without display formatting.
-`process list --json` returns `processes`; each process contains `id`, `name`,
-`source`, `state`, `current_run_id`, an `endpoints` array with `key`,
-`protocol`, `address`, and `lifecycle`, and a `worktree` object with the
-worktree's stable ID, canonical path, repository ID, and observed branch.
-`command list --json` returns `commands`; each command contains `id`, `name`,
-`source`, `active_invocation_count`, `latest_run`, and the same `worktree`
-object with its stable ID, canonical path, repository ID, and observed branch.
-The value is `null` for standalone imperative definitions. Supplying
+`process list --json` returns `processes`; each process contains `id`,
+`selector`, `name`, `source`, `state`, `current_run_id`, an `endpoints` array
+with `key`, `selector`, `protocol`, `address`, and `lifecycle`, and a `worktree`
+object with the worktree's stable ID, canonical selector, canonical path,
+repository ID, and observed branch. `command list --json` returns `commands`;
+each command contains `id`, `selector`, `name`, `source`,
+`active_invocation_count`, `latest_run`, and the same `worktree` object with its
+stable ID, canonical selector, canonical path, repository ID, and observed
+branch. The value is `null` for standalone imperative definitions. Supplying
 `--worktree` filters these arrays without changing their response shape.
 
 The discovery results feed directly into status, endpoint, execution, and log
@@ -367,19 +374,52 @@ Every command's `--help` contains:
 - expected exit codes and common errors;
 - a “next commands” section.
 
-The root help includes this complete, copyable first-run path:
+The root help includes this manifest-independent first-run path. It uses `jq`
+to read the opaque selectors returned by the CLI and safely skips optional
+actions when a manifest has no processes or HTTP(S) endpoints:
 
 ```sh
+set -eu
+
 port-start daemon install --now
-port-start worktree register --json
-port-start process list --worktree "$PWD"
-port-start command list --worktree "$PWD"
-port-start process start "$(basename "$PWD")/web"
-port-start open "$(basename "$PWD")/web:http"
-port-start process logs "$(basename "$PWD")/web" --follow
-port-start worktree deregister "$PWD"
-port-start run list --worktree "$PWD" --include-deregistered
+registration_json="$(port-start worktree register --json)"
+worktree_selector="$(
+  printf '%s\n' "$registration_json" | jq -er '.data.worktree.selector'
+)"
+
+port-start process list --worktree "$worktree_selector"
+port-start command list --worktree "$worktree_selector"
+port-start process start --worktree "$worktree_selector"
+
+process_inventory="$(
+  port-start process list --worktree "$worktree_selector" --json
+)"
+process_selector="$(
+  printf '%s\n' "$process_inventory" |
+    jq -r '.data.processes[0].selector // empty'
+)"
+if [ -n "$process_selector" ]; then
+  port-start process logs "$process_selector" --run latest
+fi
+
+endpoint_selector="$(
+  printf '%s\n' "$process_inventory" |
+    jq -r '[.data.processes[].endpoints[] |
+      select(.protocol == "http" or .protocol == "https")][0].selector // empty'
+)"
+if [ -n "$endpoint_selector" ]; then
+  port-start open "$endpoint_selector"
+fi
+
+port-start worktree deregister "$worktree_selector"
+port-start run list --worktree "$worktree_selector" --include-deregistered
 ```
+
+The inventory output supplies selectors for every registered command as well;
+agents choose the intended command by name or purpose and pass its selector to
+`port-start command run`. The generic first-run path never guesses that a
+process is named `web`, an endpoint is named `http`, or a worktree display label
+matches its directory basename.
 
 The embedded manifest JSON Schema and OpenAPI document make the CLI
 self-describing to automated agents.
