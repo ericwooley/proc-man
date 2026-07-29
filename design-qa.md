@@ -78,6 +78,9 @@ without changing its visual hierarchy.
     addresses for both pointer and keyboard paths. Restart from stopped or
     failed goes directly to starting a new run, while active restarts retain
     their stopping phase.
+12. Clipboard behavior is verified at its boundary with the exact TCP address.
+    Copy success appears only after the write resolves, and rejected or
+    unavailable clipboard access receives a visible failure message.
 
 ## Verification
 

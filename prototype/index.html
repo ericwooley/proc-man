@@ -549,6 +549,17 @@
     clearTimeout(toastTimer);
     toastTimer = setTimeout(() => toast.classList.remove('show'), 1800);
   }
+  async function copyText(value) {
+    try {
+      if (!navigator.clipboard?.writeText) throw new Error('Clipboard unavailable');
+      await navigator.clipboard.writeText(value);
+      showToast('Copied to clipboard', 'copy');
+      return true;
+    } catch {
+      showToast('Couldn’t copy to clipboard', 'warning-circle');
+      return false;
+    }
+  }
 
   function setBackgroundInert(value) {
     document.querySelector('.top').inert = value;
@@ -740,8 +751,7 @@
     if (it.type === 'port') {
       const address = portUrl(it.port);
       if (it.port.protocol === 'tcp') {
-        navigator.clipboard && navigator.clipboard.writeText(address).catch(()=>{});
-        showToast('Copied to clipboard', 'copy');
+        void copyText(address);
       } else {
         showToast(`Opening ${address}`, 'arrow-square-out');
         window.open(address, '_blank', 'noopener');
@@ -934,8 +944,7 @@
 
     const copy = e.target.closest('[data-copy]');
     if (copy) {
-      navigator.clipboard && navigator.clipboard.writeText(copy.dataset.copy).catch(()=>{});
-      showToast('Copied to clipboard', 'copy');
+      void copyText(copy.dataset.copy);
       return;
     }
 

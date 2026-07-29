@@ -159,6 +159,16 @@ try {
       modalHidden: "true",
     },
   );
+  await evaluate(`Object.defineProperty(navigator, "clipboard", {
+    configurable: true,
+    value: {
+      writes: [],
+      writeText(value) {
+        this.writes.push(value);
+        return Promise.resolve();
+      }
+    }
+  })`);
 
   await evaluate(`(() => {
     const endpointCopy = document.querySelector(".wt-tile [data-copy]");
@@ -230,14 +240,38 @@ try {
     true,
     "TCP search results should advertise a copy action",
   );
+  await evaluate(`navigator.clipboard.writes.length = 0`);
   await evaluate(`document.querySelector("#jumpResults .jr-item").click()`);
+  await waitFor(
+    `navigator.clipboard.writes.length === 1`,
+    "TCP search activation should reach the clipboard boundary",
+  );
   assert.deepEqual(
     await evaluate(`({
       drawerHidden: document.getElementById("drawer").getAttribute("aria-hidden"),
-      toast: document.getElementById("toastText").textContent
+      toast: document.getElementById("toastText").textContent,
+      writes: navigator.clipboard.writes
     })`),
-    { drawerHidden: "true", toast: "Copied to clipboard" },
+    {
+      drawerHidden: "true",
+      toast: "Copied to clipboard",
+      writes: ["tcp://127.0.0.1:9310"],
+    },
     "clicking a TCP search result should copy its address without opening the drawer",
+  );
+  await evaluate(`(() => {
+    navigator.clipboard.writeText = value => {
+      navigator.clipboard.writes.push(value);
+      return Promise.reject(new Error("clipboard unavailable"));
+    };
+    const input = document.getElementById("jump");
+    input.value = "9310";
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    document.querySelector("#jumpResults .jr-item").click();
+  })()`);
+  await waitFor(
+    `document.getElementById("toastText").textContent === "Couldn’t copy to clipboard"`,
+    "clipboard failure should be reported instead of claiming success",
   );
 
   await evaluate(`document.querySelector('[data-open="wt1"]').click()`);
