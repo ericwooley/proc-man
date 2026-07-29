@@ -220,6 +220,11 @@ can outlive the invoking CLI unless `--wait` is supplied. With `--wait`, stdout
 and stderr stream to the terminal and the CLI exits with the registered
 command's result mapped to the stable Port Start exit contract.
 
+A worktree-associated `command run` returns `worktree_stale` while its worktree
+path is missing. Cancel remains available for an invocation that was already
+active when the path disappeared. Standalone imperative commands are
+unaffected.
+
 ## Ports and links
 
 ```sh

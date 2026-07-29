@@ -145,7 +145,7 @@ On startup the daemon:
 3. loads registered worktrees, process definitions, command definitions, and
    declared ports;
 4. serves the administration API and SPA;
-5. starts retention and stale-worktree checks.
+5. starts retention and missing-worktree checks.
 
 Processes start only through explicit actions, so recovery does not relaunch
 previously active processes. Historical runs and declared endpoint links remain

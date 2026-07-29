@@ -128,7 +128,9 @@ than launching duplicates.
 
 ### Command actions
 
-- **Run** creates a new command invocation.
+- **Run** creates a new command invocation. For a worktree-associated command
+  whose worktree is `missing`, Run returns `worktree_stale`; standalone
+  imperative commands are unaffected.
 - **Cancel** terminates one active invocation.
 - **Deregister** cancels every active invocation, then removes the current
   command definition.
@@ -190,9 +192,12 @@ Registration:
 7. reports all changes in human-readable or JSON form.
 
 The daemon periodically checks registered worktree roots. A missing root is
-marked `missing` and its managed processes and command invocations are stopped.
-If it returns within 24 hours, the prior registration becomes active again.
-After 24 hours the registration and retained logs are removed.
+marked `missing`, its process definitions project as `stale`, and its managed
+processes and command invocations are stopped. New worktree-associated process
+and command runs return `worktree_stale` until the path returns. If it returns
+within 24 hours, the worktree becomes `active` and its process definitions
+return to `stopped`; nothing starts automatically. After 24 hours the
+registration and retained logs are removed.
 
 ## Invariants
 

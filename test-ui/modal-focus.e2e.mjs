@@ -217,6 +217,30 @@ try {
     true,
     "declared ports should be searchable",
   );
+  assert.deepEqual(
+    await evaluate(`(() => {
+      const input = document.getElementById("jump");
+      const listbox = document.getElementById("jumpResults");
+      const active = document.getElementById(input.getAttribute("aria-activedescendant"));
+      return {
+        role: input.getAttribute("role"),
+        expanded: input.getAttribute("aria-expanded"),
+        controls: input.getAttribute("aria-controls"),
+        listboxRole: listbox.getAttribute("role"),
+        activeRole: active?.getAttribute("role"),
+        activeSelected: active?.getAttribute("aria-selected")
+      };
+    })()`),
+    {
+      role: "combobox",
+      expanded: "true",
+      controls: "jumpResults",
+      listboxRole: "listbox",
+      activeRole: "option",
+      activeSelected: "true",
+    },
+    "jump search should expose its active result through combobox semantics",
+  );
   await evaluate(`(() => {
     window.__openedPort = null;
     window.open = (url, target, features) => {
@@ -241,6 +265,14 @@ try {
       toast: "Opening http://127.0.0.1:4310/",
     },
     "Enter on an HTTP search result should open that endpoint directly",
+  );
+  assert.deepEqual(
+    await evaluate(`({
+      expanded: document.getElementById("jump").getAttribute("aria-expanded"),
+      active: document.getElementById("jump").hasAttribute("aria-activedescendant")
+    })`),
+    { expanded: "false", active: false },
+    "closing jump results should clear expanded and active-descendant state",
   );
 
   await evaluate(`(() => {
@@ -600,6 +632,55 @@ try {
     "the stopped-process worktree should open",
   );
   await evaluate(`document.querySelector('[data-tab="processes"]').click()`);
+  assert.deepEqual(
+    await evaluate(`({
+      startAll: Boolean(document.querySelector('[data-bulk-proc-action="start-all"]')),
+      stopAll: Boolean(document.querySelector('[data-bulk-proc-action="stop-all"]'))
+    })`),
+    { startAll: true, stopAll: true },
+    "the process pane should expose worktree-wide lifecycle controls",
+  );
+  await evaluate(
+    `document.querySelector('[data-bulk-proc-action="start-all"]').click()`,
+  );
+  await waitFor(
+    `document.querySelector('[data-proc="web"] .pill').textContent.trim() === "running" &&
+     document.querySelector('[data-proc="api"] .pill').textContent.trim() === "running" &&
+     document.querySelector('[data-proc="worker"] .pill').textContent.trim() === "failed" &&
+     document.querySelector("[data-bulk-result]").textContent.includes("2 started, 1 failed")`,
+    "Start All should settle every process independently",
+    2_000,
+  );
+  assert.deepEqual(
+    await evaluate(`(() => {
+      const result = document.querySelector("[data-bulk-result]");
+      return {
+        partial: result.textContent.includes("2 started, 1 failed"),
+        web: result.textContent.includes("web"),
+        api: result.textContent.includes("api"),
+        worker: result.textContent.includes("worker")
+      };
+    })()`),
+    { partial: true, web: true, api: true, worker: true },
+    "Start All should preserve per-process results when one launch fails",
+  );
+  await evaluate(
+    `document.querySelector('[data-bulk-proc-action="stop-all"]').click()`,
+  );
+  await waitFor(
+    `document.querySelector('[data-proc="web"] .pill').textContent.trim() === "stopped" &&
+     document.querySelector('[data-proc="api"] .pill').textContent.trim() === "stopped" &&
+     document.querySelector("[data-bulk-result]").textContent.includes("3 results")`,
+    "Stop All should settle active processes concurrently",
+    2_000,
+  );
+  assert.equal(
+    await evaluate(
+      `document.querySelector("[data-bulk-result]").textContent.includes("3 results")`,
+    ),
+    true,
+    "Stop All should report an outcome for every process",
+  );
   await evaluate(
     `document.querySelector('[data-proc="web"] [data-proc-action="restart"]').click()`,
   );
@@ -616,10 +697,49 @@ try {
   );
   await waitFor(
     `document.querySelector('[data-proc="web"] .pill').textContent.trim() === "running" &&
-     document.querySelector('[data-proc="worker"] .pill').textContent.trim() === "running"`,
-    "terminal-state restarts should finish their new runs",
+     document.querySelector('[data-proc="worker"] .pill').textContent.trim() === "failed"`,
+    "terminal-state restarts should preserve each process launch result",
     2_000,
   );
+  await evaluate(`document.querySelector('[data-tab="logs"]').click()`);
+  const processRunCountBeforeStoppingRestart = await evaluate(
+    `document.querySelectorAll(
+      '[data-pane="logs"] [data-log-target^="process:web:"]'
+    ).length`,
+  );
+  await evaluate(`document.querySelector('[data-tab="processes"]').click()`);
+  await evaluate(
+    `document.querySelector('[data-proc="web"] [data-proc-action="stop"]').click()`,
+  );
+  assert.equal(
+    await evaluate(
+      `document.querySelector('[data-proc="web"] [data-proc-action="restart"]').disabled`,
+    ),
+    false,
+    "Restart should remain available while Stop is in progress",
+  );
+  await evaluate(
+    `document.querySelector('[data-proc="web"] [data-proc-action="restart"]').click()`,
+  );
+  await evaluate(
+    `document.querySelector('[data-proc="web"] [data-proc-action="restart"]').click()`,
+  );
+  await waitFor(
+    `document.querySelector('[data-proc="web"] .pill').textContent.trim() === "running"`,
+    "Restart from stopping should coalesce and create one replacement run",
+    2_000,
+  );
+  await evaluate(`document.querySelector('[data-tab="logs"]').click()`);
+  assert.equal(
+    await evaluate(
+      `document.querySelectorAll(
+        '[data-pane="logs"] [data-log-target^="process:web:"]'
+      ).length`,
+    ),
+    processRunCountBeforeStoppingRestart + 1,
+    "repeated Restart requests while stopping should create one replacement run",
+  );
+  await evaluate(`document.querySelector('[data-tab="processes"]').click()`);
   await evaluate(
     `document.querySelector('[data-proc="web"] [data-proc-action="stop"]').click()`,
   );
@@ -1033,6 +1153,34 @@ try {
     "a zero-match filter should clear stale run details",
   );
 
+  await evaluate(`document.querySelector('[data-view-target="worktrees"]').click()`);
+  await evaluate(`document.querySelector('[data-open="wt4"]').click()`);
+  await waitFor(
+    `document.activeElement.id === "drawerClose"`,
+    "the missing-worktree fixture should open",
+  );
+  await evaluate(`document.querySelector('[data-tab="processes"]').click()`);
+  assert.deepEqual(
+    await evaluate(`({
+      worktreeMessage: document.querySelector('[data-pane="processes"]').textContent.includes("folder can’t be found") ||
+        document.querySelector('[data-pane="processes"]').textContent.includes("folder can't be found"),
+      processState: document.querySelector('[data-proc="web"] .pill').textContent.trim(),
+      startAllDisabled: document.querySelector('[data-bulk-proc-action="start-all"]').disabled
+    })`),
+    { worktreeMessage: true, processState: "stale", startAllDisabled: true },
+    "a missing worktree should project its process as stale and block new starts",
+  );
+  await evaluate(`document.querySelector('[data-tab="commands"]').click()`);
+  assert.deepEqual(
+    await evaluate(`({
+      worktreeMessage: document.querySelector('[data-pane="commands"]').textContent.includes("folder can’t be found") ||
+        document.querySelector('[data-pane="commands"]').textContent.includes("folder can't be found"),
+      runDisabled: document.querySelector('[data-cmd="test"] [data-cmd-action="run"]').disabled
+    })`),
+    { worktreeMessage: true, runDisabled: true },
+    "a missing worktree should block new associated command runs",
+  );
+  await evaluate(`document.getElementById("drawerClose").click()`);
   await evaluate(`document.querySelector('[data-view-target="admin"]').click()`);
   await evaluate(`document.getElementById("accessPreview").click()`);
   assert.equal(
@@ -1041,6 +1189,24 @@ try {
     "Administration should preview the non-loopback exposure warning",
   );
 
+  await evaluate(`document.querySelector('[data-state="loading"]').click()`);
+  assert.deepEqual(
+    await evaluate(`({
+      busy: document.getElementById("wtGrid").getAttribute("aria-busy"),
+      status: document.getElementById("worktreeLoadingStatus").textContent
+    })`),
+    { busy: "true", status: "Loading worktrees" },
+    "the loading grid should expose busy state and an accessible status",
+  );
+  await evaluate(`document.querySelector('[data-state="populated"]').click()`);
+  assert.deepEqual(
+    await evaluate(`({
+      busy: document.getElementById("wtGrid").getAttribute("aria-busy"),
+      status: document.getElementById("worktreeLoadingStatus").textContent
+    })`),
+    { busy: "false", status: "" },
+    "leaving loading state should clear the busy announcement",
+  );
   await evaluate(`document.querySelector('[data-state="empty"]').click()`);
   assert.deepEqual(
     await evaluate(`({

@@ -49,6 +49,7 @@
   button[disabled] { opacity: .45; cursor: not-allowed; }
   .mono { font-family: var(--mono); }
   .muted { color: var(--muted); }
+  .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
   .ph { font-size: 16px; line-height: 1; flex: 0 0 auto; }
 
   .proto-bar { position: fixed; top: 14px; left: 50%; transform: translateX(-50%); z-index: 300; display: flex; align-items: center; gap: 10px; background: rgba(20, 22, 20, .88); color: #f1f3ee; padding: 8px 8px 8px 14px; border-radius: 999px; box-shadow: 0 12px 30px rgba(0,0,0,.3); font-size: 12px; backdrop-filter: blur(6px); }
@@ -170,6 +171,13 @@
   .banner.warn strong { color: var(--ink); }
 
   .proc-item { border: 1px solid var(--line); border-radius: 16px; padding: 12px 14px; margin-bottom: 10px; }
+  .bulk-actions { border: 1px solid var(--line); border-radius: 16px; padding: 12px 14px; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; background: var(--surface-quiet); }
+  .bulk-actions .bulk-copy { min-width: 0; margin-right: auto; display: grid; gap: 2px; }
+  .bulk-actions .bulk-copy strong { font-size: 12.5px; }
+  .bulk-actions .bulk-copy span { color: var(--muted); font-size: 10.5px; }
+  .bulk-result { border: 1px solid var(--line); border-radius: 14px; padding: 10px 12px; margin: -2px 0 10px; background: var(--surface); font-size: 11.5px; }
+  .bulk-result strong { display: block; margin-bottom: 5px; }
+  .bulk-result ul { margin: 0; padding-left: 18px; color: var(--muted); }
   .proc-item .pi-top { display: flex; align-items: center; gap: 8px; }
   .proc-item .pi-name { font-weight: 800; font-size: 13px; }
   .proc-item .pi-actions { margin-left: auto; display: flex; gap: 6px; }
@@ -212,6 +220,7 @@
   .log-console { background: var(--rail); color: #d9e0da; border-radius: 14px; overflow: hidden; }
   .log-toolbar { display: flex; gap: 8px; padding: 9px 12px; border-bottom: 1px solid rgba(255,255,255,.08); }
   .log-toolbar input { flex: 1; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.1); border-radius: 8px; padding: 6px 9px; color: #eef0ec; font-size: 12px; }
+  .log-status { align-self: center; color: #b8c0ba; font-size: 11px; white-space: nowrap; }
   .log-body { max-height: 280px; overflow-y: auto; padding: 10px 14px; font-family: var(--mono); font-size: 11.5px; line-height: 1.65; }
   .log-line { display: flex; gap: 10px; white-space: pre-wrap; word-break: break-word; }
   .log-line .t { color: var(--log-time); flex: 0 0 auto; }
@@ -296,6 +305,9 @@
     .drawer-path { flex-wrap: wrap; }
     .copy-btn.danger { margin-left: 0; }
     .dr-tabs { overflow-x: auto; }
+    .bulk-actions { flex-wrap: wrap; }
+    .bulk-actions .bulk-copy { flex-basis: 100%; }
+    .bulk-actions > .btn { flex: 1; justify-content: center; }
     .proc-item .pi-top { flex-wrap: wrap; }
     .proc-item .pi-actions { width: 100%; margin-left: 0; justify-content: flex-end; }
   }
@@ -337,10 +349,10 @@
       <div class="jump-wrap" id="jumpWrap">
         <div class="jump-field">
           <i class="ph ph-magnifying-glass" aria-hidden="true"></i>
-          <input type="text" id="jump" placeholder="Jump to a worktree, process, command, or port…" autocomplete="off">
+          <input type="text" id="jump" placeholder="Jump to a worktree, process, command, or port…" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="jumpResults">
           <kbd>/</kbd>
         </div>
-        <div class="jump-results" id="jumpResults" hidden></div>
+        <div class="jump-results" id="jumpResults" role="listbox" aria-label="Jump search results" hidden></div>
       </div>
     </div>
 
@@ -348,7 +360,8 @@
       <div class="grid-head">
         <h2>Registered worktrees</h2>
       </div>
-      <div class="wt-grid" id="wtGrid"></div>
+      <div class="wt-grid" id="wtGrid" aria-busy="false" aria-describedby="worktreeLoadingStatus"></div>
+      <div class="sr-only" id="worktreeLoadingStatus" role="status" aria-live="polite"></div>
     </section>
 
     <section class="logs-view view" data-view="logs" hidden>
@@ -480,7 +493,7 @@
       processes: [
         { name: 'web', source: 'manifest', state: 'stopped', ports: [ { name: 'http', host: '127.0.0.1', port: 4312, protocol: 'http', path: '/' } ] },
         { name: 'api', source: 'manifest', state: 'stopped', currentRunState: 'exited', currentRunCode: 1, currentLogState: 'process-exited-nonzero', ports: [ { name: 'http', host: '127.0.0.1', port: 4313, protocol: 'http', path: '/health' } ] },
-        { name: 'worker', source: 'manifest', state: 'failed', error: "Launch failed: executable 'worker-dev' was not found.", ports: [] },
+        { name: 'worker', source: 'manifest', state: 'failed', launchWillFail: true, error: "Launch failed: executable 'worker-dev' was not found.", ports: [] },
       ],
       commands: [ { name: 'test', runs: [{ id: 'run-test-98', state: 'exited', code: 1, when: '14m ago' }] } ] },
     { id: 'wt3', branch: 'agent/emerald-fox-worker-queue', repo: 'platform', path: '~/code/platform/.worktrees/emerald-fox-worker-queue', status: 'active',
@@ -489,9 +502,9 @@
         { name: 'api', source: 'manifest', state: 'running', ports: [ { name: 'http', host: '127.0.0.1', port: 8090, protocol: 'http', path: '/' } ] },
       ],
       commands: [ { name: 'seed', runs: [] } ] },
-    { id: 'wt4', branch: 'chore/upgrade-deps', repo: 'storefront', path: '~/code/storefront/.worktrees/upgrade-deps', status: 'stale', missingSince: '6h ago',
-      processes: [ { name: 'web', source: 'manifest', state: 'stopped', ports: [ { name: 'http', host: '127.0.0.1', port: 4318, protocol: 'http', path: '/' } ] } ],
-      commands: [] },
+    { id: 'wt4', branch: 'chore/upgrade-deps', repo: 'storefront', path: '~/code/storefront/.worktrees/upgrade-deps', status: 'missing', missingSince: '6h ago',
+      processes: [ { name: 'web', source: 'manifest', state: 'stale', currentRunState: 'interrupted', currentLogState: 'stopped', currentRunReason: 'worktree_missing', ports: [ { name: 'http', host: '127.0.0.1', port: 4318, protocol: 'http', path: '/' } ] } ],
+      commands: [ { name: 'test', runs: [{ id: 'run-test-missing-14', state: 'canceled', when: '6h ago' }] } ] },
     { id: 'wt5', branch: 'spike/vector-search', repo: 'platform', path: '~/code/platform/.worktrees/vector-search', status: 'active',
       processes: [ { name: 'api', source: 'imperative', state: 'stopped', ports: [ { name: 'http', host: '127.0.0.1', port: 8099, protocol: 'http', path: '/' } ] } ],
       commands: [ { name: 'test', runs: [{ id: 'run-test-71', state: 'canceled', when: '2d ago' }] } ] },
@@ -605,7 +618,7 @@
     delete process.currentRunReason;
   }
   function wtStatusDot(w) {
-    if (w.status === 'stale') return 'stale';
+    if (w.status === 'missing') return 'stale';
     const running = w.processes.some(p => p.state === 'running' || p.state === 'starting');
     const stopped = w.processes.some(p => p.state === 'stopped' || p.state === 'failed');
     if (running && stopped) return 'mixed';
@@ -697,10 +710,13 @@
   function renderGrid() {
     const grid = document.getElementById('wtGrid');
     const body = document.getElementById('body');
+    const loadingStatus = document.getElementById('worktreeLoadingStatus');
     INDEX = buildIndex();
     worktreeCount.textContent = uiState === 'empty' ? '0' : uiState === 'loading' ? '…' : String(WORKTREES.length);
     const currentEmpty = document.getElementById('emptyState');
     if (uiState !== 'empty' && currentEmpty) currentEmpty.remove();
+    grid.setAttribute('aria-busy', uiState === 'loading' ? 'true' : 'false');
+    loadingStatus.textContent = uiState === 'loading' ? 'Loading worktrees' : '';
     if (uiState === 'loading') {
       grid.style.display = '';
       grid.innerHTML = Array.from({length: 6}).map(() => `
@@ -754,7 +770,7 @@
             </div>`).join('') : `<div class="none-declared">No declared ports</div>`}
         </div>
         <div class="tile-foot">
-          ${w.status === 'stale' ? `<span class="pill stale">Folder missing</span>` : `<span class="pill running">${w.processes.filter(p=>p.state==='running').length}/${w.processes.length} running</span>`}
+          ${w.status === 'missing' ? `<span class="pill stale">Folder missing</span>` : `<span class="pill running">${w.processes.filter(p=>p.state==='running').length}/${w.processes.length} running</span>`}
           <button class="view-btn" data-open="${w.id}" aria-label="Open ${esc(w.branch)} details">Open ${icon('caret-right')}</button>
         </div>
       </article>`;
@@ -783,9 +799,15 @@
   let hiIdx = -1;
   let currentMatches = [];
 
+  function closeJumpResults() {
+    jumpResults.hidden = true;
+    jumpInput.setAttribute('aria-expanded', 'false');
+    jumpInput.removeAttribute('aria-activedescendant');
+  }
+
   function runSearch(q) {
-    if (uiState !== 'populated') { jumpResults.hidden = true; return; }
-    if (!q.trim()) { jumpResults.hidden = true; currentMatches = []; return; }
+    if (uiState !== 'populated') { closeJumpResults(); return; }
+    if (!q.trim()) { closeJumpResults(); currentMatches = []; return; }
     const ql = q.toLowerCase();
     currentMatches = INDEX.filter(it => it.label.toLowerCase().includes(ql) || it.sub.toLowerCase().includes(ql)).slice(0, 8);
     hiIdx = currentMatches.length ? 0 : -1;
@@ -801,9 +823,15 @@
           : icon('git-branch');
   }
   function paintResults() {
-    if (!currentMatches.length) { jumpResults.innerHTML = `<div class="jr-empty">No matches. Try a worktree branch, process name, or port.</div>`; jumpResults.hidden = false; return; }
+    if (!currentMatches.length) {
+      jumpResults.innerHTML = `<div class="jr-empty">No matches. Try a worktree branch, process name, or port.</div>`;
+      jumpResults.hidden = false;
+      jumpInput.setAttribute('aria-expanded', 'true');
+      jumpInput.removeAttribute('aria-activedescendant');
+      return;
+    }
     jumpResults.innerHTML = `<div class="jr-group">Results</div>` + currentMatches.map((it, i) => `
-      <button class="jr-item ${i === hiIdx ? 'hi' : ''}" data-match="${i}">
+      <button class="jr-item ${i === hiIdx ? 'hi' : ''}" id="jump-option-${i}" role="option" aria-selected="${i === hiIdx}" tabindex="-1" data-match="${i}">
         <span class="jr-ic">${iconFor(it)}</span>
         <span class="jr-main">
           <span class="jr-title">${esc(it.label)}</span>
@@ -812,6 +840,8 @@
         ${it.type === 'port' ? `<span class="jr-addr">${it.port.protocol === 'tcp' ? 'Copy' : 'Open'} →</span>` : ''}
       </button>`).join('');
     jumpResults.hidden = false;
+    jumpInput.setAttribute('aria-expanded', 'true');
+    jumpInput.setAttribute('aria-activedescendant', `jump-option-${hiIdx}`);
   }
   jumpInput.addEventListener('input', e => runSearch(e.target.value));
   jumpInput.addEventListener('focus', () => { if (jumpInput.value.trim()) runSearch(jumpInput.value); });
@@ -820,13 +850,13 @@
     if (e.key === 'ArrowDown') { e.preventDefault(); hiIdx = Math.min(hiIdx + 1, currentMatches.length - 1); paintResults(); }
     else if (e.key === 'ArrowUp') { e.preventDefault(); hiIdx = Math.max(hiIdx - 1, 0); paintResults(); }
     else if (e.key === 'Enter') { e.preventDefault(); if (currentMatches[hiIdx]) selectMatch(currentMatches[hiIdx]); }
-    else if (e.key === 'Escape') { jumpResults.hidden = true; }
+    else if (e.key === 'Escape') { closeJumpResults(); }
   });
   jumpResults.addEventListener('click', e => {
     const btn = e.target.closest('[data-match]');
     if (btn) selectMatch(currentMatches[+btn.dataset.match]);
   });
-  document.addEventListener('click', e => { if (!e.target.closest('.jump-wrap')) jumpResults.hidden = true; });
+  document.addEventListener('click', e => { if (!e.target.closest('.jump-wrap')) closeJumpResults(); });
   document.addEventListener('keydown', event => {
     const target = event.target;
     const isEditing = target.matches('input, textarea, select, [contenteditable="true"]');
@@ -837,7 +867,7 @@
   });
 
   function selectMatch(it) {
-    jumpResults.hidden = true; jumpInput.value = '';
+    closeJumpResults(); jumpInput.value = '';
     if (it.type === 'port') {
       const address = portUrl(it.port);
       if (it.port.protocol === 'tcp') {
@@ -939,7 +969,7 @@
       ...visiblePorts(process).map(port => ({ ...port, proc: process.name })),
       ...pendingPorts(process).map(port => ({ ...port, proc: process.name, pending: true })),
     ]);
-    epPane.innerHTML = (w.status === 'stale' ? staleBanner(w) : '') + (allPorts.length ? allPorts.map(p => `
+    epPane.innerHTML = (w.status === 'missing' ? missingBanner(w) : '') + (allPorts.length ? allPorts.map(p => `
       <div class="ep-row ${p.pending ? 'pending' : ''}">
         ${p.pending ? `<span class="pending-tag">Next start</span>` : ''}
         <span class="addr">${esc(p.proc)}/${esc(p.name)} · ${p.host}:${p.port}${p.protocol!=='tcp'?(p.path||'/'):''}</span>
@@ -948,10 +978,10 @@
       </div>`).join('') : `<p class="muted" style="font-size:12.5px;">No processes in this worktree declare a port.</p>`);
 
     const procPane = document.querySelector('[data-pane="processes"]');
-    procPane.innerHTML = (w.status === 'stale' ? staleBanner(w) : '') + w.processes.map(p => procItem(w, p)).join('');
+    procPane.innerHTML = (w.status === 'missing' ? missingBanner(w) : '') + bulkProcessControls(w) + bulkProcessResult(w) + w.processes.map(p => procItem(w, p)).join('');
 
     const cmdPane = document.querySelector('[data-pane="commands"]');
-    cmdPane.innerHTML = w.commands.length ? w.commands.map(c => cmdItem(w, c)).join('') : `<p class="muted" style="font-size:12.5px;">No one-shot commands registered for this worktree.</p>`;
+    cmdPane.innerHTML = (w.status === 'missing' ? missingBanner(w) : '') + (w.commands.length ? w.commands.map(c => cmdItem(w, c)).join('') : `<p class="muted" style="font-size:12.5px;">No one-shot commands registered for this worktree.</p>`);
 
     const logsPane = document.querySelector('[data-pane="logs"]');
     const targets = [
@@ -992,8 +1022,23 @@
     }
   }
 
-  function staleBanner(w) {
+  function missingBanner(w) {
     return `<div class="banner warn">${icon('warning-circle')}<div><strong>This worktree's folder can't be found</strong> — missing since ${esc(w.missingSince)}. Its active runs were stopped, and the registration will be kept for 24 hours in case the folder returns.</div></div>`;
+  }
+  function bulkProcessControls(w) {
+    const disabled = w.status === 'missing';
+    return `<div class="bulk-actions">
+      <div class="bulk-copy"><strong>All processes</strong><span>Each process reports its own result.</span></div>
+      <button class="btn" data-bulk-proc-action="stop-all" ${disabled ? 'disabled' : ''}>Stop all</button>
+      <button class="btn primary" data-bulk-proc-action="start-all" ${disabled ? 'disabled' : ''}>Start all</button>
+    </div>`;
+  }
+  function bulkProcessResult(w) {
+    if (!w.bulkResult) return '';
+    return `<div class="bulk-result" data-bulk-result role="status" aria-live="polite">
+      <strong>${esc(w.bulkResult.summary)}</strong>
+      <ul>${w.bulkResult.results.map(result => `<li>${esc(result.name)} — ${esc(result.outcome)}</li>`).join('')}</ul>
+    </div>`;
   }
   function logConsoleHtml(pstate) {
     const lines = LOG_SAMPLES[pstate] || LOG_SAMPLES.stopped;
@@ -1005,7 +1050,7 @@
       <div class="log-toolbar">
         ${icon('magnifying-glass')}
         <input data-log-search placeholder="Search this run's logs" aria-label="Search this run's logs">
-        <button class="btn sm" style="background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.12);color:#eef0ec;">${live ? 'Following' : 'Latest run'}</button>
+        <span class="log-status">${live ? 'Following live output' : 'Saved output'}</span>
       </div>
       <div class="log-body">
         ${lines.map(l => `<div class="log-line ${l.s}" data-log-entry><span class="t">${l.t}</span><span class="m">${esc(l.m)}</span></div>`).join('')}
@@ -1027,10 +1072,10 @@
   });
 
   function procItem(w, p) {
-    const disabledStale = w.status === 'stale';
-    const canStart = (p.state === 'stopped' || p.state === 'failed') && !disabledStale;
-    const canStop = (p.state === 'running' || p.state === 'starting') && !disabledStale;
-    const canRestart = !disabledStale && p.state !== 'stopping';
+    const disabledMissing = w.status === 'missing';
+    const canStart = (p.state === 'stopped' || p.state === 'failed') && !disabledMissing;
+    const canStop = (p.state === 'running' || p.state === 'starting') && !disabledMissing;
+    const canRestart = !disabledMissing;
     return `
     <div class="proc-item" data-proc="${esc(p.name)}">
       <div class="pi-top">
@@ -1063,7 +1108,7 @@
       <div class="ci-top">
         <span class="ci-name">${icon('code')}${esc(c.name)}</span>
         <div class="ci-actions">
-          <button class="btn primary" data-cmd-action="run" ${w.status === 'stale' ? 'disabled' : ''}>Run</button>
+          <button class="btn primary" data-cmd-action="run" ${w.status === 'missing' ? 'disabled' : ''}>Run</button>
         </div>
       </div>
       <div class="cmd-runs">
@@ -1103,6 +1148,11 @@
       runProcessAction(p, procAction.dataset.procAction);
       return;
     }
+    const bulkProcAction = e.target.closest('[data-bulk-proc-action]');
+    if (bulkProcAction && !bulkProcAction.disabled) {
+      runBulkProcessAction(activeWt, bulkProcAction.dataset.bulkProcAction);
+      return;
+    }
     const cmdAction = e.target.closest('[data-cmd-action]');
     if (cmdAction && !cmdAction.disabled) {
       const c = activeWt.commands.find(x => x.name === cmdAction.closest('.cmd-item').dataset.cmd);
@@ -1124,6 +1174,19 @@
   function refreshGlobalRunsIfVisible() {
     if (activeView === 'logs') renderGlobalRuns();
   }
+  function completeProcessLaunch(p) {
+    if (p.launchWillFail) {
+      p.state = 'failed';
+      p.currentRunState = 'failed';
+      p.currentLogState = 'failed';
+      p.error = "Launch failed: executable 'worker-dev' was not found.";
+      return;
+    }
+    p.state = 'running';
+    p.currentRunState = 'running';
+    p.currentLogState = 'running';
+    delete p.error;
+  }
   function runProcessAction(p, action) {
     const worktree = activeWt;
     const transitionVersion = supersedeProcessTransition(p);
@@ -1137,10 +1200,7 @@
       refreshGlobalRunsIfVisible();
       setTimeout(() => {
         if (!processTransitionIsCurrent(p, transitionVersion)) return;
-        p.state = 'running';
-        p.currentRunState = 'running';
-        p.currentLogState = 'running';
-        delete p.error;
+        completeProcessLaunch(p);
         renderDrawerFor(worktree);
         renderGrid();
         refreshGlobalRunsIfVisible();
@@ -1175,10 +1235,7 @@
         refreshGlobalRunsIfVisible();
         setTimeout(() => {
           if (!processTransitionIsCurrent(p, transitionVersion)) return;
-          p.state = 'running';
-          p.currentRunState = 'running';
-          p.currentLogState = 'running';
-          delete p.error;
+          completeProcessLaunch(p);
           renderDrawerFor(worktree);
           renderGrid();
           refreshGlobalRunsIfVisible();
@@ -1205,16 +1262,60 @@
         refreshGlobalRunsIfVisible();
         setTimeout(() => {
           if (!processTransitionIsCurrent(p, transitionVersion)) return;
-          p.state = 'running';
-          p.currentRunState = 'running';
-          p.currentLogState = 'running';
-          delete p.error;
+          completeProcessLaunch(p);
           renderDrawerFor(worktree);
           renderGrid();
           refreshGlobalRunsIfVisible();
         }, 900);
       }, 700);
     }
+  }
+  function runBulkProcessAction(worktree, action) {
+    const isStart = action === 'start-all';
+    worktree.bulkResult = {
+      summary: `${isStart ? 'Starting' : 'Stopping'} ${worktree.processes.length} processes…`,
+      results: worktree.processes.map(process => ({
+        name: process.name,
+        outcome: 'pending',
+      })),
+    };
+    worktree.processes.forEach(process => {
+      if (isStart && (process.state === 'stopped' || process.state === 'failed')) {
+        runProcessAction(process, 'start');
+      } else if (!isStart && (process.state === 'running' || process.state === 'starting')) {
+        runProcessAction(process, 'stop');
+      }
+    });
+    renderDrawerFor(worktree);
+    setTimeout(() => {
+      const results = worktree.processes.map(process => {
+        if (isStart) {
+          if (process.state === 'running') return { name: process.name, outcome: 'started' };
+          if (process.state === 'failed') return { name: process.name, outcome: 'launch failed' };
+          return { name: process.name, outcome: `unchanged (${process.state})` };
+        }
+        if (process.state === 'stopped') return { name: process.name, outcome: 'stopped' };
+        if (process.state === 'failed') return { name: process.name, outcome: 'already inactive (failed)' };
+        return { name: process.name, outcome: `unchanged (${process.state})` };
+      });
+      if (isStart) {
+        const started = results.filter(result => result.outcome === 'started').length;
+        const failed = results.filter(result => result.outcome === 'launch failed').length;
+        worktree.bulkResult = {
+          summary: `${started} started, ${failed} failed · ${results.length} results`,
+          results,
+        };
+      } else {
+        worktree.bulkResult = {
+          summary: `Stop all complete · ${results.length} results`,
+          results,
+        };
+      }
+      renderDrawerFor(worktree);
+      renderGrid();
+      refreshGlobalRunsIfVisible();
+      showToast(`${isStart ? 'Start all' : 'Stop all'} complete`, isStart ? 'play' : 'stop-circle');
+    }, isStart ? 1250 : 1050);
   }
   function runCommandAction(c, action, runId) {
     const worktree = activeWt;

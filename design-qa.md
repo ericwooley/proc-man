@@ -4,8 +4,10 @@
 
 - Selected direction: Claude prototype B, “Jump to Endpoint”
 - Source capture: `/tmp/port-start-design-review.FATDfH/jump-to-endpoint.png`
-- Implemented capture: `/tmp/port-start-qa/implementation-desktop-final.png`
-- Combined comparison: `/tmp/port-start-qa/comparison-final.png`
+- Implemented capture: `/tmp/port-start-qa/implementation-desktop-final-v2.png`
+- Aggregate-process capture:
+  `/tmp/port-start-qa/implementation-processes-final-v2.png`
+- Combined comparison: `/tmp/port-start-qa/comparison-final-v2.png`
 - Comparison viewport: 1440 × 1000 CSS pixels
 
 The implemented dashboard preserves the selected target’s framed desktop shell,
@@ -25,7 +27,7 @@ without changing its visual hierarchy.
 - Loading and empty prototype states
 - Search by worktree, process, command, and declared port
 - Registration and deregistration
-- Process start, stop, and restart
+- Process start, stop, restart, Start all, and Stop all
 - One-shot command run and cancellation
 - Per-worktree and global logs
 - Keyboard focus traps, Escape handling, focus return, and reduced motion
@@ -105,10 +107,18 @@ without changing its visual hierarchy.
     and a separate worker fixture demonstrates a true launch failure.
     Completed and downloaded command logs now use test-, migration-, failure-,
     and cancellation-specific output rather than process shutdown samples.
+18. Final group review added worktree-wide Start all and Stop all controls with
+    per-process partial-failure results, including a repeatable worker launch
+    failure. Restart remains available while termination is in progress and
+    repeated requests coalesce into one replacement run. Jump search now exposes
+    its active option through combobox/listbox semantics; loading announces a
+    busy worktree region; and log-follow state is status text instead of a silent
+    action. The missing-worktree fixture now mirrors the canonical
+    `missing`/`stale` projection used by the documentation.
 
 ## Verification
 
-- `npm test`: 27 tests passed
+- `npm test`: 28 tests passed
 - `npm run test:browser`: worktree, process, command, log, and focus behavior passed
 - External icons: local Phosphor icon font
 - Product artwork: external `port-matrix.svg`; no inline or handcrafted SVG in

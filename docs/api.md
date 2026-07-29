@@ -68,6 +68,11 @@ in-progress stop. Restart waits for an active run to terminate and creates
 exactly one new run; concurrent Restart requests join that restart operation.
 Restart returns `409 worktree_stale` from `stale`.
 
+A worktree-associated command Run request returns `409 worktree_stale` while
+its worktree is `missing`. Cancel remains available for an invocation that was
+already active when the missing path was detected. Standalone imperative
+commands have no worktree state and are unaffected.
+
 ### Runs and logs
 
 | Method and path | Purpose |

@@ -66,7 +66,8 @@ segmented files.
 The idempotent operation that compares a worktree manifest with its stored
 manifest-owned definitions and updates the registration to match.
 
-## Stale worktree
+## Missing worktree
 
-A registered worktree whose root path is missing. Its active runs are stopped
-while the 24-hour deletion grace period runs.
+A registered worktree whose root path is missing. Its process definitions
+project as `stale`, its active runs are stopped, and new associated runs return
+`worktree_stale` while the 24-hour deletion grace period runs.

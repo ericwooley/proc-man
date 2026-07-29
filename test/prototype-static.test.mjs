@@ -147,6 +147,7 @@ test("core worktree, process, command, log, and registration interactions are wi
   }
 
   assert.match(html, /function runProcessAction\(p, action\)/);
+  assert.match(html, /function runBulkProcessAction\(worktree, action\)/);
   assert.match(html, /function runCommandAction\(c, action, runId\)/);
   assert.match(html, /function renderGlobalRuns\(/);
   assert.match(html, /function openRegisterModal\(\)/);
@@ -185,6 +186,15 @@ test("core worktree, process, command, log, and registration interactions are wi
   assert.match(html, /worktree's run logs stay available/i);
   assert.match(html, /ArrowRight/);
   assert.match(html, /ArrowLeft/);
+  assert.match(html, /data-bulk-proc-action="start-all"/);
+  assert.match(html, /data-bulk-proc-action="stop-all"/);
+  assert.match(html, /role="combobox"/);
+  assert.match(html, /role="listbox"/);
+  assert.match(html, /aria-activedescendant/);
+  assert.match(html, /aria-busy/);
+  assert.match(html, /role="status"/);
+  assert.doesNotMatch(html, /<button[^>]*>Following<\/button>/);
+  assert.doesNotMatch(html, /<button[^>]*>Latest run<\/button>/);
   assert.doesNotMatch(html, /class="wt-tile"[^>]+role="button"/);
   assert.match(html, /<button class="view-btn" data-open=/);
 });
@@ -301,4 +311,25 @@ test("API contract supports retained run discovery and cross-run log search", as
     assert.match(api, new RegExp(`\\b${field}\\b`));
   }
   assert.match(api, /next_cursor/);
+});
+
+test("missing-worktree command and download contracts are consistent", async () => {
+  const [domain, api, cli, logging, prototype] = await Promise.all([
+    readFile(new URL("../docs/domain-model.md", import.meta.url), "utf8"),
+    readFile(new URL("../docs/api.md", import.meta.url), "utf8"),
+    readFile(new URL("../docs/cli.md", import.meta.url), "utf8"),
+    readFile(new URL("../docs/logging.md", import.meta.url), "utf8"),
+    readFile(new URL("index.html", prototypeDirectory), "utf8"),
+  ]);
+
+  assert.match(domain, /Command actions[\s\S]*?worktree_stale/);
+  assert.match(api, /command run[\s\S]*?worktree_stale/i);
+  assert.match(cli, /command run[\s\S]*?worktree_stale/i);
+  assert.match(
+    prototype,
+    /status: 'missing'[\s\S]*?state: 'stale'/,
+  );
+  assert.doesNotMatch(prototype, /status: 'stale'/);
+  assert.doesNotMatch(logging, /Multi-run download/i);
+  assert.match(logging, /one selected run/i);
 });

@@ -26,7 +26,7 @@ Bug fixes begin with a failing regression test.
 - Concurrent Restart requests coalescing into one replacement run.
 - Stop, Restart, process exit, launch failure, cancel, and interruption.
 - Command invocation independence from process state.
-- Stale-worktree grace and restoration using a fake clock.
+- Missing-worktree grace and restoration using a fake clock.
 
 ### Manifest and reconciliation
 

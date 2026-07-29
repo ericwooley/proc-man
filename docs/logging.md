@@ -92,10 +92,11 @@ One run can be downloaded as:
 - `text`: a combined timeline with timestamp and stream prefix;
 - `ndjson`: the durable structured records.
 
-Multi-run download is NDJSON with an added run identifier. The HTTP response
-streams from disk and uses `Content-Disposition`; it is not assembled wholly in
-memory. CLI and API search matches use the same `seq`, `time`, `stream`, `text`,
-and `partial` field names, adding `run_id` only when results span runs.
+Downloads target one selected run and stream from disk with
+`Content-Disposition`; the response is not assembled wholly in memory.
+Cross-run CLI and API search matches use the same `seq`, `time`, `stream`,
+`text`, and `partial` field names and add `run_id` so each match remains
+attributable. A user can then download any matching run individually.
 
 ## Retention policy
 
