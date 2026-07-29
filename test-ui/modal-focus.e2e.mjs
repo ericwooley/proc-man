@@ -113,6 +113,32 @@ try {
     });
   }
 
+  async function activateFocusedButton() {
+    await cdp.call("Input.dispatchKeyEvent", {
+      type: "rawKeyDown",
+      key: "Enter",
+      code: "Enter",
+      windowsVirtualKeyCode: 13,
+      nativeVirtualKeyCode: 13,
+    });
+    await cdp.call("Input.dispatchKeyEvent", {
+      type: "char",
+      key: "Enter",
+      code: "Enter",
+      text: "\r",
+      unmodifiedText: "\r",
+      windowsVirtualKeyCode: 13,
+      nativeVirtualKeyCode: 13,
+    });
+    await cdp.call("Input.dispatchKeyEvent", {
+      type: "keyUp",
+      key: "Enter",
+      code: "Enter",
+      windowsVirtualKeyCode: 13,
+      nativeVirtualKeyCode: 13,
+    });
+  }
+
   await waitFor(
     `document.readyState === "complete" && document.querySelectorAll(".wt-tile").length === 6`,
     "prototype should load its populated worktree state",
@@ -122,14 +148,30 @@ try {
       title: document.title,
       cards: document.querySelectorAll(".wt-tile").length,
       drawerHidden: document.getElementById("drawer").getAttribute("aria-hidden"),
+      drawerInert: document.getElementById("drawer").inert,
       modalHidden: document.getElementById("registerModal").getAttribute("aria-hidden")
     })`),
     {
       title: "Port Start — Worktree process manager",
       cards: 6,
       drawerHidden: "true",
+      drawerInert: true,
       modalHidden: "true",
     },
+  );
+
+  await evaluate(`(() => {
+    const endpointCopy = document.querySelector(".wt-tile [data-copy]");
+    endpointCopy.focus();
+  })()`);
+  await activateFocusedButton();
+  assert.deepEqual(
+    await evaluate(`({
+      drawerHidden: document.getElementById("drawer").getAttribute("aria-hidden"),
+      toast: document.getElementById("toastText").textContent
+    })`),
+    { drawerHidden: "true", toast: "Copied to clipboard" },
+    "keyboard activation of an endpoint should not open the worktree drawer",
   );
 
   await press("/", "Slash");
@@ -187,11 +229,20 @@ try {
   assert.deepEqual(
     await evaluate(`({
       hidden: document.getElementById("drawer").getAttribute("aria-hidden"),
+      inert: document.getElementById("drawer").inert,
       topInert: document.querySelector(".top").inert,
       focus: document.activeElement.id
     })`),
-    { hidden: "true", topInert: false, focus: "jump" },
+    { hidden: "true", inert: true, topInert: false, focus: "jump" },
     "Escape should close the drawer, restore interactivity, and return focus",
+  );
+  assert.equal(
+    await evaluate(`(() => {
+      document.getElementById("drawerClose").focus();
+      return document.activeElement.id;
+    })()`),
+    "jump",
+    "closed drawer controls should remain outside the focus sequence",
   );
 
   await evaluate(`(() => {
@@ -247,9 +298,32 @@ try {
   );
 
   await evaluate(`(() => {
-    const tile = document.querySelector(".wt-tile");
-    tile.focus();
-    tile.click();
+    const opener = document.getElementById("registerOpen");
+    opener.focus();
+    opener.click();
+  })()`);
+  await waitFor(
+    `document.activeElement.id === "worktreePath"`,
+    "re-registration should open the registration dialog",
+  );
+  await evaluate(`(() => {
+    document.getElementById("worktreePath").value = "/tmp/agent/saffron-puma/";
+    document.getElementById("registerForm").requestSubmit();
+  })()`);
+  assert.deepEqual(
+    await evaluate(`({
+      cards: document.querySelectorAll(".wt-tile").length,
+      matches: [...document.querySelectorAll(".wt-tile .branch")]
+        .filter(branch => branch.textContent === "saffron-puma").length
+    })`),
+    { cards: 7, matches: 1 },
+    "re-registering a normalized worktree path should reconcile one registration",
+  );
+
+  await evaluate(`(() => {
+    const opener = document.querySelector(".wt-tile [data-open]");
+    opener.focus();
+    opener.click();
   })()`);
   await waitFor(
     `document.activeElement.id === "drawerClose"`,
@@ -287,20 +361,75 @@ try {
   await evaluate(
     `document.querySelector('[data-cmd="test"] [data-cmd-action="run"]').click()`,
   );
-  assert.equal(
-    await evaluate(
-      `document.querySelector('[data-cmd="test"] .pill').textContent.trim()`,
-    ),
-    "running",
+  await evaluate(
+    `document.querySelector('[data-cmd="test"] [data-cmd-action="run"]').click()`,
+  );
+  assert.deepEqual(
+    await evaluate(`({
+      running: document.querySelectorAll('[data-cmd="test"] [data-command-run] .pill.running').length,
+      runDisabled: document.querySelector('[data-cmd="test"] [data-cmd-action="run"]').disabled
+    })`),
+    { running: 2, runDisabled: false },
+    "one-shot command invocations should overlap independently",
   );
   await evaluate(
-    `document.querySelector('[data-cmd="test"] [data-cmd-action="cancel"]').click()`,
+    `document.querySelector('[data-cmd="test"] [data-command-run] [data-cmd-action="cancel"]').click()`,
   );
-  assert.equal(
-    await evaluate(
-      `document.querySelector('[data-cmd="test"] .pill').textContent.trim()`,
-    ),
-    "canceled",
+  assert.deepEqual(
+    await evaluate(`({
+      canceled: document.querySelectorAll('[data-cmd="test"] [data-command-run] .pill.canceled').length,
+      running: document.querySelectorAll('[data-cmd="test"] [data-command-run] .pill.running').length
+    })`),
+    { canceled: 1, running: 1 },
+    "cancel should target one active command invocation",
+  );
+
+  await evaluate(`document.getElementById("drawerClose").click()`);
+  await evaluate(`document.querySelector('[data-open="wt1"]').click()`);
+  await waitFor(
+    `document.activeElement.id === "drawerClose"`,
+    "the pending-port worktree should open",
+  );
+  await evaluate(`document.querySelector('[data-tab="processes"]').click()`);
+  await evaluate(
+    `document.querySelector('[data-proc="api"] [data-proc-action="stop"]').click()`,
+  );
+  await waitFor(
+    `document.querySelector('[data-proc="api"] .pill').textContent.trim() === "stopped"`,
+    "stop should move the API to its configured definition",
+    2_000,
+  );
+  assert.deepEqual(
+    await evaluate(`(() => {
+      const text = document.querySelector('[data-proc="api"]').textContent;
+      return {
+        configured: text.includes("4321"),
+        oldActive: text.includes("4311"),
+        pending: text.includes("Next start")
+      };
+    })()`),
+    { configured: true, oldActive: false, pending: false },
+    "a stopped process should expose only its configured ports",
+  );
+  await evaluate(
+    `document.querySelector('[data-proc="api"] [data-proc-action="start"]').click()`,
+  );
+  assert.deepEqual(
+    await evaluate(`(() => {
+      const text = document.querySelector('[data-proc="api"]').textContent;
+      return {
+        state: document.querySelector('[data-proc="api"] .pill').textContent.trim(),
+        configured: text.includes("4321"),
+        pending: text.includes("Next start")
+      };
+    })()`),
+    { state: "starting", configured: true, pending: false },
+    "a new run should snapshot the configured ports as its active ports",
+  );
+  await waitFor(
+    `document.querySelector('[data-proc="api"] .pill').textContent.trim() === "running"`,
+    "the API should finish starting with its configured port snapshot",
+    2_000,
   );
 
   await evaluate(`document.getElementById("drawerClose").click()`);

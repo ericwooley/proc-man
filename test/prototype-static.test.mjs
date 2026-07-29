@@ -122,12 +122,16 @@ test("declared ports are explicit child-process metadata, including multiple and
   );
   assert.match(
     html,
-    /name: 'api'[\s\S]*?port: 4311[\s\S]*?nextPorts:[\s\S]*?port: 4321/,
+    /name: 'api'[\s\S]*?ports:[\s\S]*?port: 4321[\s\S]*?activePorts:[\s\S]*?port: 4311/,
   );
   assert.match(html, /No declared ports/);
   assert.match(html, /Next start/);
   assert.doesNotMatch(html, /\bport:\s*['"]?auto\b/i);
   assert.doesNotMatch(html, /\ballocatePort\b|\bclaimPort\b|\bportOwner\b/);
+  assert.match(html, /function visiblePorts\(process\)/);
+  assert.match(html, /function pendingPorts\(process\)/);
+  assert.match(html, /process\.activePorts = process\.ports\.map/);
+  assert.match(html, /delete process\.activePorts/);
 });
 
 test("core worktree, process, command, log, and registration interactions are wired", async () => {
@@ -143,18 +147,29 @@ test("core worktree, process, command, log, and registration interactions are wi
   }
 
   assert.match(html, /function runProcessAction\(p, action\)/);
-  assert.match(html, /function runCommandAction\(c, action\)/);
+  assert.match(html, /function runCommandAction\(c, action, runId\)/);
   assert.match(html, /function renderGlobalRuns\(/);
   assert.match(html, /function openRegisterModal\(\)/);
   assert.match(html, /function closeRegisterModal\(/);
   assert.match(html, /function setBackgroundInert\(value\)/);
   assert.match(html, /function trapFocus\(container, event\)/);
+  assert.match(html, /function normalizeWorktreePath\(path\)/);
+  assert.match(html, /existingRegistration/);
   assert.match(html, /WORKTREES\.splice\(index, 1\)/);
   assert.match(html, /INDEX = buildIndex\(\)/);
   assert.match(html, /Its active runs were stopped/);
   assert.match(html, /data-state="populated"/);
   assert.match(html, /data-state="loading"/);
   assert.match(html, /data-state="empty"/);
+  assert.match(html, /data-command-run=/);
+  assert.match(
+    html,
+    /<aside class="drawer"[^>]+aria-hidden="true"[^>]+inert/,
+  );
+  assert.match(html, /drawer\.inert = false/);
+  assert.match(html, /drawer\.inert = true/);
+  assert.doesNotMatch(html, /class="wt-tile"[^>]+role="button"/);
+  assert.match(html, /<button class="view-btn" data-open=/);
 });
 
 test("registration starts with a blank worktree path and a manifest default", async () => {

@@ -104,7 +104,7 @@
   html[data-theme="dark"] .filter-chip.on { background: var(--acid); color: var(--acid-ink); border-color: var(--acid); }
 
   .wt-grid { min-width: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
-  .wt-tile { min-width: 0; cursor: pointer; text-align: left; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-card); padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+  .wt-tile { min-width: 0; text-align: left; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-card); padding: 16px; display: flex; flex-direction: column; gap: 10px; }
   .wt-tile:hover { border-color: var(--ink-soft); }
   .wt-tile:focus-visible { outline: 3px solid color-mix(in srgb, var(--acid) 70%, var(--ink)); outline-offset: 2px; }
   .wt-tile .th { display: flex; align-items: flex-start; gap: 8px; }
@@ -194,9 +194,13 @@
   .ep-row.pending { border-style: dashed; }
   .ep-row .pending-tag { font-size: 9.5px; text-transform: uppercase; color: var(--badge-warning-ink); font-weight: 800; }
 
-  .cmd-item { display: flex; align-items: center; gap: 8px; border: 1px solid var(--line); border-radius: 14px; padding: 11px 13px; margin-bottom: 8px; }
+  .cmd-item { border: 1px solid var(--line); border-radius: 14px; padding: 11px 13px; margin-bottom: 8px; }
+  .cmd-item .ci-top { display: flex; align-items: center; gap: 8px; }
   .cmd-item .ci-name { font-weight: 800; font-size: 12.5px; display: flex; align-items: center; gap: 7px; }
   .cmd-item .ci-actions { margin-left: auto; display: flex; gap: 6px; }
+  .cmd-runs { display: grid; gap: 6px; margin-top: 9px; }
+  .cmd-run { display: flex; align-items: center; gap: 8px; min-width: 0; padding: 7px 8px; border-radius: 10px; background: var(--surface-quiet); }
+  .cmd-run .run-id { min-width: 0; flex: 1; overflow: hidden; color: var(--muted); font: 10.5px var(--mono); text-overflow: ellipsis; white-space: nowrap; }
 
   .run-picker { display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; }
   .run-picker button { border: 1px solid var(--line); background: var(--surface); border-radius: 10px; padding: 6px 10px; font-size: 11.5px; font-weight: 700; }
@@ -384,7 +388,7 @@
     </section>
 
     <div class="scrim" id="scrim" aria-hidden="true"></div>
-    <aside class="drawer" id="drawer" aria-label="Worktree detail" role="dialog" aria-modal="true" aria-hidden="true">
+    <aside class="drawer" id="drawer" aria-label="Worktree detail" role="dialog" aria-modal="true" aria-hidden="true" inert>
       <div class="drawer-head">
         <div class="dh-top">
           <div>
@@ -454,30 +458,30 @@
     { id: 'wt1', branch: 'feature/checkout-redesign', repo: 'storefront', path: '~/code/storefront/.worktrees/checkout-redesign', status: 'active',
       processes: [
         { name: 'web', source: 'manifest', state: 'running', ports: [ { name: 'http', host: '127.0.0.1', port: 4310, protocol: 'http', path: '/' }, { name: 'inspector', host: '127.0.0.1', port: 9310, protocol: 'tcp' } ] },
-        { name: 'api', source: 'manifest', state: 'running', ports: [ { name: 'http', host: '127.0.0.1', port: 4311, protocol: 'http', path: '/health' } ], nextPorts: [{ name: 'http', host: '127.0.0.1', port: 4321, protocol: 'http', path: '/health' }] },
+        { name: 'api', source: 'manifest', state: 'running', ports: [ { name: 'http', host: '127.0.0.1', port: 4321, protocol: 'http', path: '/health' } ], activePorts: [{ name: 'http', host: '127.0.0.1', port: 4311, protocol: 'http', path: '/health' }] },
       ],
-      commands: [ { name: 'test', lastRun: { state: 'exited', code: 0, when: '2m ago' } }, { name: 'migrate', lastRun: { state: 'exited', code: 0, when: '1h ago' } } ] },
+      commands: [ { name: 'test', runs: [{ id: 'run-test-104', state: 'exited', code: 0, when: '2m ago' }] }, { name: 'migrate', runs: [{ id: 'run-migrate-32', state: 'exited', code: 0, when: '1h ago' }] } ] },
     { id: 'wt2', branch: 'fix/auth-race-condition', repo: 'storefront', path: '~/code/storefront/.worktrees/auth-race-condition', status: 'active',
       processes: [
         { name: 'web', source: 'manifest', state: 'stopped', ports: [ { name: 'http', host: '127.0.0.1', port: 4312, protocol: 'http', path: '/' } ] },
         { name: 'api', source: 'manifest', state: 'failed', error: "Process exited with code 1. Open its latest run to inspect the failure.", ports: [ { name: 'http', host: '127.0.0.1', port: 4313, protocol: 'http', path: '/health' } ] },
       ],
-      commands: [ { name: 'test', lastRun: { state: 'failed', code: 1, when: '14m ago' } } ] },
+      commands: [ { name: 'test', runs: [{ id: 'run-test-98', state: 'failed', code: 1, when: '14m ago' }] } ] },
     { id: 'wt3', branch: 'agent/emerald-fox-worker-queue', repo: 'platform', path: '~/code/platform/.worktrees/emerald-fox-worker-queue', status: 'active',
       processes: [
         { name: 'worker', source: 'imperative', state: 'starting', ports: [] },
         { name: 'api', source: 'manifest', state: 'running', ports: [ { name: 'http', host: '127.0.0.1', port: 8090, protocol: 'http', path: '/' } ] },
       ],
-      commands: [ { name: 'seed', lastRun: null } ] },
+      commands: [ { name: 'seed', runs: [] } ] },
     { id: 'wt4', branch: 'chore/upgrade-deps', repo: 'storefront', path: '~/code/storefront/.worktrees/upgrade-deps', status: 'stale', missingSince: '6h ago',
       processes: [ { name: 'web', source: 'manifest', state: 'stopped', ports: [ { name: 'http', host: '127.0.0.1', port: 4318, protocol: 'http', path: '/' } ] } ],
       commands: [] },
     { id: 'wt5', branch: 'spike/vector-search', repo: 'platform', path: '~/code/platform/.worktrees/vector-search', status: 'active',
       processes: [ { name: 'api', source: 'imperative', state: 'stopped', ports: [ { name: 'http', host: '127.0.0.1', port: 8099, protocol: 'http', path: '/' } ] } ],
-      commands: [ { name: 'test', lastRun: { state: 'canceled', when: '2d ago' } } ] },
+      commands: [ { name: 'test', runs: [{ id: 'run-test-71', state: 'canceled', when: '2d ago' }] } ] },
     { id: 'wt6', branch: 'agent/violet-otter-notifications', repo: 'platform', path: '~/code/platform/.worktrees/violet-otter-notifications', status: 'active',
       processes: [ { name: 'worker', source: 'imperative', state: 'running', ports: [] }, { name: 'api', source: 'manifest', state: 'running', ports: [ { name: 'http', host: '127.0.0.1', port: 8101, protocol: 'http', path: '/' } ] } ],
-      commands: [ { name: 'test', lastRun: { state: 'exited', code: 0, when: '40m ago' } } ] },
+      commands: [ { name: 'test', runs: [{ id: 'run-test-83', state: 'exited', code: 0, when: '40m ago' }] } ] },
   ];
 
   const LOG_SAMPLES = {
@@ -489,6 +493,31 @@
 
   function esc(s) { return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
   function portUrl(p) { return `${p.protocol === 'tcp' ? 'tcp://' : (p.protocol + '://')}${p.host}:${p.port}${p.protocol === 'tcp' ? '' : (p.path || '/')}`; }
+  function processIsActive(process) {
+    return ['starting', 'running', 'stopping'].includes(process.state);
+  }
+  function portsMatch(first, second) {
+    return JSON.stringify(first) === JSON.stringify(second);
+  }
+  function visiblePorts(process) {
+    return processIsActive(process)
+      ? (process.activePorts || process.ports)
+      : process.ports;
+  }
+  function pendingPorts(process) {
+    if (!processIsActive(process) || !process.activePorts) return [];
+    return portsMatch(process.activePorts, process.ports) ? [] : process.ports;
+  }
+  function snapshotConfiguredPorts(process) {
+    process.activePorts = process.ports.map(port => ({ ...port }));
+  }
+  function clearActivePorts(process) {
+    delete process.activePorts;
+  }
+  function normalizeWorktreePath(path) {
+    const normalized = path.trim().replace(/\/+/g, '/');
+    return normalized.length > 1 ? normalized.replace(/\/+$/, '') : normalized;
+  }
   function wtStatusDot(w) {
     if (w.status === 'stale') return 'stale';
     const running = w.processes.some(p => p.state === 'running' || p.state === 'starting');
@@ -504,6 +533,7 @@
   let overlayOpener = null;
   let toastTimer;
   let activeGlobalRun = null;
+  let invocationSequence = 200;
 
   const views = [...document.querySelectorAll('.view')];
   const jumpWrap = document.getElementById('jumpWrap');
@@ -566,6 +596,7 @@
   function renderGrid() {
     const grid = document.getElementById('wtGrid');
     const body = document.getElementById('body');
+    INDEX = buildIndex();
     worktreeCount.textContent = uiState === 'empty' ? '0' : uiState === 'loading' ? '…' : String(WORKTREES.length);
     const currentEmpty = document.getElementById('emptyState');
     if (uiState !== 'empty' && currentEmpty) currentEmpty.remove();
@@ -601,9 +632,11 @@
     grid.style.display = '';
     grid.innerHTML = WORKTREES.map(w => {
       const dot = wtStatusDot(w);
-      const allPorts = w.processes.flatMap(p => p.ports.map(port => ({ ...port, proc: p.name })));
+      const allPorts = w.processes.flatMap(process =>
+        visiblePorts(process).map(port => ({ ...port, proc: process.name })),
+      );
       return `
-      <div class="wt-tile" data-open="${w.id}" tabindex="0" role="button" aria-label="Open ${esc(w.branch)}">
+      <article class="wt-tile" data-worktree="${w.id}">
         <div class="th">
           <span class="status-dot ${dot}" title="${dot}"></span>
           <div style="min-width:0;">
@@ -621,9 +654,9 @@
         </div>
         <div class="tile-foot">
           ${w.status === 'stale' ? `<span class="pill stale">Folder missing</span>` : `<span class="pill running">${w.processes.filter(p=>p.state==='running').length}/${w.processes.length} running</span>`}
-          <span class="view-btn">Open ${icon('caret-right')}</span>
+          <button class="view-btn" data-open="${w.id}" aria-label="Open ${esc(w.branch)} details">Open ${icon('caret-right')}</button>
         </div>
-      </div>`;
+      </article>`;
     }).join('');
   }
 
@@ -634,7 +667,9 @@
       items.push({ type: 'worktree', wt: w, label: w.branch, sub: w.repo });
       w.processes.forEach(p => {
         items.push({ type: 'process', wt: w, proc: p, label: `${w.branch} / ${p.name}`, sub: `process · ${p.state}` });
-        p.ports.forEach(port => items.push({ type: 'port', wt: w, proc: p, port, label: `${w.branch} / ${p.name} / ${port.name}`, sub: portUrl(port) }));
+        [...visiblePorts(p), ...pendingPorts(p)].forEach(port => {
+          items.push({ type: 'port', wt: w, proc: p, port, label: `${w.branch} / ${p.name} / ${port.name}`, sub: portUrl(port) });
+        });
       });
       w.commands.forEach(c => items.push({ type: 'command', wt: w, cmd: c, label: `${w.branch} / ${c.name}`, sub: 'command' }));
     });
@@ -728,6 +763,7 @@
     document.querySelectorAll('.dr-tab').forEach(t => { const on = t.dataset.tab === activeTab; t.classList.toggle('active', on); t.setAttribute('aria-selected', on); });
     renderDrawerPanes();
     setBackgroundInert(true);
+    drawer.inert = false;
     drawer.classList.add('open');
     drawer.setAttribute('aria-hidden', 'false');
     scrim.classList.add('open');
@@ -737,6 +773,7 @@
     if (!drawer.classList.contains('open')) return;
     drawer.classList.remove('open');
     drawer.setAttribute('aria-hidden', 'true');
+    drawer.inert = true;
     scrim.classList.remove('open');
     if (!registerModal.classList.contains('open')) setBackgroundInert(false);
     if (restoreFocus && overlayOpener?.isConnected) overlayOpener.focus();
@@ -759,7 +796,10 @@
     document.querySelectorAll('.dr-pane').forEach(p => p.hidden = p.dataset.pane !== activeTab);
 
     const epPane = document.querySelector('[data-pane="endpoints"]');
-    const allPorts = w.processes.flatMap(p => p.ports.map(port => ({ ...port, proc: p.name })).concat((p.nextPorts||[]).map(port => ({...port, proc: p.name, pending: true}))));
+    const allPorts = w.processes.flatMap(process => [
+      ...visiblePorts(process).map(port => ({ ...port, proc: process.name })),
+      ...pendingPorts(process).map(port => ({ ...port, proc: process.name, pending: true })),
+    ]);
     epPane.innerHTML = (w.status === 'stale' ? staleBanner(w) : '') + (allPorts.length ? allPorts.map(p => `
       <div class="ep-row ${p.pending ? 'pending' : ''}">
         ${p.pending ? `<span class="pending-tag">Next start</span>` : ''}
@@ -775,10 +815,17 @@
     cmdPane.innerHTML = w.commands.length ? w.commands.map(c => cmdItem(w, c)).join('') : `<p class="muted" style="font-size:12.5px;">No one-shot commands registered for this worktree.</p>`;
 
     const logsPane = document.querySelector('[data-pane="logs"]');
-    const targets = [...w.processes.map(p => ({ kind: 'process', name: p.name, state: p.state })), ...w.commands.filter(c=>c.lastRun).map(c => ({ kind: 'command', name: c.name, state: c.lastRun.state }))];
-    logsPane.dataset.sel = targets[0] ? targets[0].name : '';
+    const targets = [
+      ...w.processes.map(p => ({ key: `process:${p.name}`, label: `process/${p.name}`, state: p.state })),
+      ...w.commands.flatMap(command => command.runs.map(run => ({
+        key: `command:${command.name}:${run.id}`,
+        label: `command/${command.name} · ${run.id.replace('run-', '#')}`,
+        state: run.state === 'exited' ? 'stopped' : run.state,
+      }))),
+    ];
+    logsPane.dataset.sel = targets[0] ? targets[0].key : '';
     logsPane.innerHTML = targets.length ? `
-      <div class="run-picker">${targets.map((t,i) => `<button class="${i===0?'on':''}" data-log-target="${esc(t.name)}" data-log-state="${t.state}">${esc(t.kind)}/${esc(t.name)}</button>`).join('')}</div>
+      <div class="run-picker">${targets.map((t,i) => `<button class="${i===0?'on':''}" data-log-target="${esc(t.key)}" data-log-state="${t.state}">${esc(t.label)}</button>`).join('')}</div>
       <div class="log-console" id="logConsole">${logConsoleHtml(targets[0].state)}</div>
     ` : `<p class="muted" style="font-size:12.5px;">Nothing has been run yet in this worktree.</p>`;
     logsPane.querySelectorAll('[data-log-target]').forEach(btn => btn.addEventListener('click', () => {
@@ -824,33 +871,43 @@
       </div>
       ${p.error ? `<div class="pi-err">${icon('warning-circle')}${esc(p.error)}</div>` : ''}
       <div class="pi-ports">
-        ${p.ports.map(port => `<div class="ep-row"><span class="addr">${esc(port.name)} · ${port.host}:${port.port}${port.protocol!=='tcp'?(port.path||'/'):''}</span>${port.protocol!=='tcp'?`<button data-open-port="${esc(portUrl(port))}" title="Open" aria-label="Open ${esc(p.name)} ${esc(port.name)}">${icon('arrow-square-out')}</button>`:''}<button data-copy="${esc(portUrl(port))}" title="Copy" aria-label="Copy ${esc(p.name)} ${esc(port.name)} address">${icon('copy')}</button></div>`).join('')}
-        ${(p.nextPorts||[]).map(port => `<div class="ep-row pending"><span class="pending-tag">Next start</span><span class="addr">${esc(port.name)} · ${port.host}:${port.port}</span></div>`).join('')}
-      </div>
-    </div>`;
-  }
-  function cmdItem(w, c) {
-    const running = c.lastRun && c.lastRun.state === 'running';
-    return `
-    <div class="cmd-item" data-cmd="${esc(c.name)}">
-      <span class="ci-name">${icon('code')}${esc(c.name)}</span>
-      ${c.lastRun ? `<span class="pill ${c.lastRun.state === 'exited' && c.lastRun.code === 0 ? 'running' : c.lastRun.state}">${c.lastRun.state === 'exited' ? (c.lastRun.code === 0 ? 'succeeded' : 'exit ' + c.lastRun.code) : c.lastRun.state}</span>` : `<span class="muted" style="font-size:11.5px;">Never run</span>`}
-      <div class="ci-actions">
-        <button class="btn" data-cmd-action="cancel" ${running?'':'disabled'}>Cancel</button>
-        <button class="btn primary" data-cmd-action="run" ${running?'disabled':''}>${running?'Running…':'Run'}</button>
+        ${visiblePorts(p).map(port => `<div class="ep-row"><span class="addr">${esc(port.name)} · ${port.host}:${port.port}${port.protocol!=='tcp'?(port.path||'/'):''}</span>${port.protocol!=='tcp'?`<button data-open-port="${esc(portUrl(port))}" title="Open" aria-label="Open ${esc(p.name)} ${esc(port.name)}">${icon('arrow-square-out')}</button>`:''}<button data-copy="${esc(portUrl(port))}" title="Copy" aria-label="Copy ${esc(p.name)} ${esc(port.name)} address">${icon('copy')}</button></div>`).join('')}
+        ${pendingPorts(p).map(port => `<div class="ep-row pending"><span class="pending-tag">Next start</span><span class="addr">${esc(port.name)} · ${port.host}:${port.port}</span></div>`).join('')}
       </div>
     </div>`;
   }
 
-  document.addEventListener('keydown', e => {
-    if (e.key !== 'Enter' && e.key !== ' ') return;
-    const tile = e.target.closest('.wt-tile');
-    if (tile) { e.preventDefault(); openDrawer(tile.dataset.open, 'endpoints'); }
-  });
+  function commandRunPresentation(run) {
+    if (run.state === 'exited' && run.code === 0) return { css: 'running', label: 'succeeded' };
+    if (run.state === 'exited') return { css: 'failed', label: `exit ${run.code}` };
+    return { css: run.state, label: run.state };
+  }
+
+  function cmdItem(w, c) {
+    return `
+    <div class="cmd-item" data-cmd="${esc(c.name)}">
+      <div class="ci-top">
+        <span class="ci-name">${icon('code')}${esc(c.name)}</span>
+        <div class="ci-actions">
+          <button class="btn primary" data-cmd-action="run" ${w.status === 'stale' ? 'disabled' : ''}>Run</button>
+        </div>
+      </div>
+      <div class="cmd-runs">
+        ${c.runs.length ? c.runs.slice(0, 4).map(run => {
+          const presentation = commandRunPresentation(run);
+          return `<div class="cmd-run" data-command-run="${esc(run.id)}">
+            <span class="pill ${presentation.css}">${esc(presentation.label)}</span>
+            <span class="run-id">${esc(run.id)} · ${esc(run.when)}</span>
+            ${run.state === 'running' ? `<button class="btn" data-cmd-action="cancel" data-run-id="${esc(run.id)}">Cancel</button>` : ''}
+          </div>`;
+        }).join('') : `<span class="muted" style="font-size:11.5px;">Never run</span>`}
+      </div>
+    </div>`;
+  }
 
   document.addEventListener('click', e => {
     const openTile = e.target.closest('[data-open]');
-    if (openTile && !e.target.closest('button')) { openDrawer(openTile.dataset.open, 'endpoints'); return; }
+    if (openTile) { openDrawer(openTile.dataset.open, 'endpoints'); return; }
 
     const copy = e.target.closest('[data-copy]');
     if (copy) {
@@ -876,13 +933,14 @@
     const cmdAction = e.target.closest('[data-cmd-action]');
     if (cmdAction && !cmdAction.disabled) {
       const c = activeWt.commands.find(x => x.name === cmdAction.closest('.cmd-item').dataset.cmd);
-      runCommandAction(c, cmdAction.dataset.cmdAction);
+      runCommandAction(c, cmdAction.dataset.cmdAction, cmdAction.dataset.runId);
       return;
     }
   });
 
   function runProcessAction(p, action) {
     if (action === 'start') {
+      snapshotConfiguredPorts(p);
       p.state = 'starting';
       showToast(`Starting process/${p.name}`, 'play');
       renderDrawerPanes();
@@ -900,6 +958,7 @@
       renderGrid();
       setTimeout(() => {
         p.state = 'stopped';
+        clearActivePorts(p);
         if (activeWt) renderDrawerPanes();
         renderGrid();
       }, 900);
@@ -908,6 +967,7 @@
       showToast(`Restarting process/${p.name}`, 'arrows-clockwise');
       renderDrawerPanes();
       setTimeout(() => {
+        snapshotConfiguredPorts(p);
         p.state = 'starting';
         if (activeWt) renderDrawerPanes();
         setTimeout(() => {
@@ -919,18 +979,26 @@
       }, 700);
     }
   }
-  function runCommandAction(c, action) {
+  function runCommandAction(c, action, runId) {
     if (action === 'run') {
-      c.lastRun = { state: 'running', when: 'just now' };
+      const run = {
+        id: `run-${++invocationSequence}`,
+        state: 'running',
+        when: 'just now',
+      };
+      c.runs.unshift(run);
       showToast(`Running command/${c.name}`, 'play');
       renderDrawerPanes();
       setTimeout(() => {
-        if (c.lastRun.state !== 'running') return;
-        c.lastRun = { state: 'exited', code: 0, when: 'just now' };
+        const current = c.runs.find(candidate => candidate.id === run.id);
+        if (!current || current.state !== 'running') return;
+        Object.assign(current, { state: 'exited', code: 0, when: 'just now' });
         if (activeWt) renderDrawerPanes();
       }, 1400);
     } else if (action === 'cancel') {
-      c.lastRun = { state: 'canceled', when: 'just now' };
+      const run = c.runs.find(candidate => candidate.id === runId);
+      if (!run || run.state !== 'running') return;
+      Object.assign(run, { state: 'canceled', when: 'just now' });
       showToast(`Canceled command/${c.name}`, 'stop-circle');
       renderDrawerPanes();
     }
@@ -947,15 +1015,15 @@
         state: p.state,
         when: p.state === 'running' ? 'now' : 'latest run',
       })),
-      ...w.commands.filter(c => c.lastRun).map(c => ({
-        id: `${w.id}:command:${c.name}`,
+      ...w.commands.flatMap(command => command.runs.map(run => ({
+        id: `${w.id}:command:${command.name}:${run.id}`,
         wt: w,
         kind: 'command',
-        name: c.name,
-        state: c.lastRun.state === 'exited' && c.lastRun.code === 0 ? 'succeeded' : c.lastRun.state,
-        logState: c.lastRun.state === 'exited' ? 'stopped' : c.lastRun.state,
-        when: c.lastRun.when,
-      })),
+        name: `${command.name} · ${run.id.replace('run-', '#')}`,
+        state: run.state === 'exited' && run.code === 0 ? 'succeeded' : run.state,
+        logState: run.state === 'exited' ? 'stopped' : run.state,
+        when: run.when,
+      }))),
     ]);
   }
 
@@ -1033,17 +1101,27 @@
   });
   document.getElementById('registerForm').addEventListener('submit', event => {
     event.preventDefault();
-    const path = document.getElementById('worktreePath').value.trim();
+    const path = normalizeWorktreePath(document.getElementById('worktreePath').value);
+    const manifest = document.getElementById('manifestPath').value.trim();
     const branch = path.split('/').filter(Boolean).at(-1) || 'new-worktree';
-    WORKTREES.unshift({
-      id: `wt${Date.now()}`,
-      branch,
-      repo: 'new registration',
-      path,
-      status: 'active',
-      processes: [{ name: 'web', source: 'manifest', state: 'stopped', ports: [] }],
-      commands: [],
-    });
+    const existingRegistration = WORKTREES.find(worktree =>
+      normalizeWorktreePath(worktree.path) === path &&
+      (worktree.manifest || '.port-start.yaml') === manifest,
+    );
+    if (existingRegistration) {
+      Object.assign(existingRegistration, { branch, path, manifest, status: 'active' });
+    } else {
+      WORKTREES.unshift({
+        id: `wt${Date.now()}`,
+        branch,
+        repo: 'new registration',
+        path,
+        manifest,
+        status: 'active',
+        processes: [{ name: 'web', source: 'manifest', state: 'stopped', ports: [] }],
+        commands: [],
+      });
+    }
     INDEX = buildIndex();
     uiState = 'populated';
     document.querySelectorAll('.proto-bar [data-state]').forEach(button => {
@@ -1053,7 +1131,7 @@
     renderGrid();
     event.target.reset();
     document.getElementById('manifestPath').value = '.port-start.yaml';
-    showToast(`Registered ${branch}`, 'git-branch');
+    showToast(`${existingRegistration ? 'Refreshed' : 'Registered'} ${branch}`, 'git-branch');
   });
 
   document.getElementById('deregisterWorktree').addEventListener('click', () => {

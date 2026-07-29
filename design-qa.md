@@ -19,6 +19,7 @@ without changing its visual hierarchy.
 
 - Populated dashboard at 1440 × 1000
 - Worktree detail drawer with Processes selected at 1440 × 1000
+- Worktree detail drawer with independent command runs at 1440 × 1000
 - Dark theme at 1440 × 1000
 - Responsive dashboard at 390 × 844 using Chrome device metrics
 - Loading and empty prototype states
@@ -49,6 +50,13 @@ without changing its visual hierarchy.
    color, radii, borders, elevation, grid density, and card hierarchy. The
    intentional additions remain visually subordinate to search and worktree
    discovery.
+5. Checkpoint review identified contract gaps in idempotent registration,
+   overlapping command invocations, active-versus-configured port snapshots,
+   endpoint keyboard behavior, and the closed drawer’s focus state. Each gap
+   received a browser regression assertion before implementation. The command
+   drawer was recaptured at
+   `/tmp/port-start-qa/implementation-commands-cdp.png` after the interaction
+   model changed.
 
 ## Verification
 
