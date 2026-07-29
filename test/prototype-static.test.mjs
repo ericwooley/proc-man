@@ -49,7 +49,75 @@ function mixHexColors(foreground, background, foregroundWeight) {
 }
 
 function cssToken(block, name) {
-  return block.match(new RegExp(`--${name}:\\s*(#[0-9a-f]{6})`, "i"))?.[1];
+  return block.match(
+    new RegExp(`--${name}:\\s*(#[0-9a-f]{6})\\s*;`, "i"),
+  )?.[1];
+}
+
+function statePillStyleErrors(html) {
+  const expectedBackgroundByClass = new Map([
+    ["running", ["good", "var(--badge-good-bg)"]],
+    ["succeeded", ["good", "var(--badge-good-bg)"]],
+    ["mixed", ["warning", "var(--badge-warning-bg)"]],
+    ["starting", ["warning", "var(--badge-warning-bg)"]],
+    ["stopping", ["warning", "var(--badge-warning-bg)"]],
+    ["stale", ["danger", "var(--badge-danger-bg)"]],
+    ["failed", ["danger", "var(--badge-danger-bg)"]],
+    ["stopped", ["neutral", "var(--surface-soft)"]],
+    ["canceled", ["neutral", "var(--surface-soft)"]],
+  ]);
+  const styleSource = [...html.matchAll(/<style(?:\s[^>]*)?>([\s\S]*?)<\/style>/gi)]
+    .map(match => match[1])
+    .join("\n");
+  const seenClasses = new Set();
+  const errors = new Set();
+
+  for (const rule of styleSource.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+    const selectors = rule[1]
+      .split(",")
+      .map(selector => selector.trim())
+      .filter(Boolean);
+    const backgroundDeclarations = [
+      ...rule[2].matchAll(
+        /(?:^|;)\s*background(?:-color)?\s*:\s*([^;}]+)/gi,
+      ),
+    ].map(match => match[1].trim());
+    if (backgroundDeclarations.length === 0) continue;
+
+    for (const selector of selectors) {
+      if (!selector.includes(".pill") || selector.includes(".pill::before")) {
+        continue;
+      }
+      const stateClasses = [...expectedBackgroundByClass.keys()].filter(
+        state => new RegExp(`\\.pill\\.${state}\\b`).test(selector),
+      );
+      if (stateClasses.length === 0) {
+        errors.add("state pill selectors should not add untracked backgrounds");
+        continue;
+      }
+      for (const stateClass of stateClasses) {
+        seenClasses.add(stateClass);
+        const [label, expectedBackground] =
+          expectedBackgroundByClass.get(stateClass);
+        if (
+          backgroundDeclarations.some(
+            declaration => declaration !== expectedBackground,
+          )
+        ) {
+          errors.add(
+            `${label} state pills should use an opaque background token`,
+          );
+        }
+      }
+    }
+  }
+
+  for (const [stateClass, [label]] of expectedBackgroundByClass) {
+    if (!seenClasses.has(stateClass)) {
+      errors.add(`${label} state pills should use an opaque background token`);
+    }
+  }
+  return [...errors];
 }
 
 test("served prototype directory contains only runtime surfaces and assets", async () => {
@@ -354,14 +422,38 @@ test("light and dark body-copy tokens meet WCAG AA contrast", async () => {
       `${theme} stopped or canceled text should meet 4.5:1`,
     );
   }
-  for (const state of ["good", "warning", "danger"]) {
-    assert.equal(
-      [...html.matchAll(new RegExp(`background:\\s*var\\(--badge-${state}-bg\\)`, "g"))]
-        .length,
-      2,
-      `${state} state pills should use an opaque background token`,
-    );
-  }
+  assert.deepEqual(statePillStyleErrors(html), []);
+});
+
+test("state-pill contrast guard rejects translucent tokens and later overrides", async () => {
+  const html = await readFile(new URL("index.html", prototypeDirectory), "utf8");
+  const lightBlock = html.match(/:root\s*\{([\s\S]*?)\}/)?.[1];
+  assert.ok(lightBlock);
+
+  const translucentTokenBlock = lightBlock.replace(
+    "--badge-good-bg: #daeae4",
+    "--badge-good-bg: #daeae480",
+  );
+  const laterTranslucentOverride = html.replace(
+    "</style>",
+    `.pill.succeeded {
+      background: color-mix(in srgb, var(--good) 18%, transparent);
+    }
+    </style>`,
+  );
+
+  assert.deepEqual(
+    {
+      translucentToken: cssToken(translucentTokenBlock, "badge-good-bg"),
+      laterOverrideErrors: statePillStyleErrors(laterTranslucentOverride),
+    },
+    {
+      translucentToken: undefined,
+      laterOverrideErrors: [
+        "good state pills should use an opaque background token",
+      ],
+    },
+  );
 });
 
 test("browser prerequisites and override are documented", async () => {
@@ -475,7 +567,7 @@ test("design QA evidence is durable inside the repository", async () => {
   );
 
   assert.doesNotMatch(designQa, /\/tmp\//);
-  assert.match(designQa, /`npm test`: 31 tests passed/);
+  assert.match(designQa, /`npm test`: 32 tests passed/);
   for (const asset of [
     "jump-to-endpoint.png",
     "implementation-desktop.png",

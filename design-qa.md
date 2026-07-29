@@ -165,7 +165,7 @@ without changing its visual hierarchy.
 
 ## Verification
 
-- `npm test`: 31 tests passed
+- `npm test`: 32 tests passed
 - `npm run test:browser`: worktree, process, command, log, and focus behavior passed
 - External icons: local Phosphor icon font
 - Product artwork: external `port-matrix.svg`; no inline or handcrafted SVG in
