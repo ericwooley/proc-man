@@ -104,6 +104,18 @@ try {
     throw new Error(message);
   }
 
+  async function activeFocusIndicator() {
+    return evaluate(`(() => {
+      const style = getComputedStyle(document.activeElement);
+      return {
+        width: style.outlineWidth,
+        style: style.outlineStyle,
+        offset: style.outlineOffset,
+        color: style.outlineColor
+      };
+    })()`);
+  }
+
   async function press(key, code = key, modifiers = 0) {
     await cdp.call("Input.dispatchKeyEvent", {
       type: "keyDown",
@@ -174,6 +186,29 @@ try {
       exposedDecorativeIcons: 0,
       endpointTargetsLargeEnough: true,
     },
+  );
+  assert.deepEqual(
+    await evaluate(`(() => {
+      const badgeState = worktreeId => {
+        const badge = document.querySelector(
+          '[data-worktree="' + worktreeId + '"] .tile-foot .pill'
+        );
+        return ["running", "mixed", "stopped"].find(state =>
+          badge.classList.contains(state)
+        );
+      };
+      return {
+        fullyRunning: badgeState("wt1"),
+        partiallyRunning: badgeState("wt3"),
+        stopped: badgeState("wt2")
+      };
+    })()`),
+    {
+      fullyRunning: "running",
+      partiallyRunning: "mixed",
+      stopped: "stopped",
+    },
+    "worktree badges should distinguish fully running, partial, and stopped states",
   );
   await evaluate(`Object.defineProperty(navigator, "clipboard", {
     configurable: true,
@@ -571,11 +606,27 @@ try {
   await evaluate(
     `document.querySelector('[data-proc="web"] [data-proc-action="start"]').focus()`,
   );
+  const processActionFocusIndicator = await activeFocusIndicator();
+  assert.deepEqual(
+    {
+      width: processActionFocusIndicator.width,
+      style: processActionFocusIndicator.style,
+      offset: processActionFocusIndicator.offset,
+    },
+    { width: "3px", style: "solid", offset: "2px" },
+    "the process action should use the authored high-contrast focus indicator",
+  );
   await activateFocusedButton();
-  assert.equal(
-    await evaluate(`document.activeElement.dataset.proc`),
-    "web",
-    "Start should keep focus on its process when the action becomes unavailable",
+  assert.deepEqual(
+    {
+      process: await evaluate(`document.activeElement.dataset.proc`),
+      indicator: await activeFocusIndicator(),
+    },
+    {
+      process: "web",
+      indicator: processActionFocusIndicator,
+    },
+    "Start should keep the authored focus indicator on its process fallback",
   );
   await waitFor(
     `document.querySelector('[data-proc="web"] .pill').textContent.trim() === "running"`,
@@ -822,11 +873,18 @@ try {
   await evaluate(
     `document.querySelector('[data-proc="web"] [data-proc-action="stop"]').focus()`,
   );
+  const stopActionFocusIndicator = await activeFocusIndicator();
   await activateFocusedButton();
-  assert.equal(
-    await evaluate(`document.activeElement.dataset.proc`),
-    "web",
-    "Stop should keep focus on its process when the action becomes unavailable",
+  assert.deepEqual(
+    {
+      process: await evaluate(`document.activeElement.dataset.proc`),
+      indicator: await activeFocusIndicator(),
+    },
+    {
+      process: "web",
+      indicator: stopActionFocusIndicator,
+    },
+    "Stop should keep the authored focus indicator on its process fallback",
   );
   await waitFor(
     `document.querySelector('[data-proc="web"] .pill').textContent.trim() === "stopped"`,
@@ -975,21 +1033,32 @@ try {
     cancel.focus();
     return cancel.dataset.runId;
   })()`);
+  const cancelActionFocusIndicator = await activeFocusIndicator();
   await activateFocusedButton();
   assert.deepEqual(
     await evaluate(`({
       canceled: document.querySelectorAll('[data-cmd="test"] [data-command-run] .pill.canceled').length,
       running: document.querySelectorAll('[data-cmd="test"] [data-command-run] .pill.running').length,
       focusRun: document.activeElement.dataset.commandRun,
+      focusIndicator: (() => {
+        const style = getComputedStyle(document.activeElement);
+        return {
+          width: style.outlineWidth,
+          style: style.outlineStyle,
+          offset: style.outlineOffset,
+          color: style.outlineColor
+        };
+      })(),
       announcement: document.getElementById("actionStatus").textContent
     })`),
     {
       canceled: 1,
       running: 1,
       focusRun: canceledRunId,
+      focusIndicator: cancelActionFocusIndicator,
       announcement: `Command test run ${canceledRunId} canceled.`,
     },
-    "Cancel should target one invocation, retain its focus context, and announce the outcome",
+    "Cancel should retain its authored focus indicator and announce the outcome",
   );
   await evaluate(`document.querySelector('[data-tab="logs"]').click()`);
   const selectedCommandLog = await evaluate(`(() => {

@@ -45,7 +45,11 @@
   body { margin: 0; background: var(--canvas); color: var(--ink); font-family: var(--font); font-size: 14px; line-height: 1.45; -webkit-font-smoothing: antialiased; display: grid; place-items: center; padding: 22px; }
   button, input, select, textarea { font: inherit; color: inherit; }
   button { cursor: pointer; }
-  button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, a:focus-visible { outline: 3px solid color-mix(in srgb, var(--acid) 70%, var(--ink)); outline-offset: 2px; }
+  button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, a:focus-visible,
+  .proc-item:focus-visible, .cmd-item:focus-visible, .cmd-run:focus-visible {
+    outline: 3px solid color-mix(in srgb, var(--acid) 70%, var(--ink));
+    outline-offset: 2px;
+  }
   button[disabled] { opacity: .45; cursor: not-allowed; }
   .mono { font-family: var(--mono); }
   .muted { color: var(--muted); }
@@ -128,6 +132,8 @@
   .tile-foot { margin-top: auto; display: flex; align-items: center; gap: 8px; padding-top: 6px; border-top: 1px solid var(--line); }
   .tile-foot .pill { font-size: 10.5px; font-weight: 700; padding: 3px 8px; border-radius: 999px; text-transform: uppercase; }
   .tile-foot .pill.running { color: var(--badge-good-ink); background: color-mix(in srgb, var(--good) 18%, transparent); }
+  .tile-foot .pill.mixed { color: var(--badge-warning-ink); background: color-mix(in srgb, var(--warning) 18%, transparent); }
+  .tile-foot .pill.stopped { color: var(--muted); background: var(--surface-soft); }
   .tile-foot .pill.stale { color: var(--badge-danger-ink); background: color-mix(in srgb, var(--danger) 16%, transparent); }
   .tile-foot .view-btn { margin-left: auto; border: 1px solid var(--line); background: var(--surface); border-radius: 10px; padding: 6px 11px; font-size: 11.5px; font-weight: 700; display: inline-flex; align-items: center; gap: 5px; }
   .tile-foot .view-btn:hover { background: var(--surface-soft); }
@@ -620,10 +626,13 @@
   }
   function wtStatusDot(w) {
     if (w.status === 'missing') return 'stale';
-    const running = w.processes.some(p => p.state === 'running' || p.state === 'starting');
-    const stopped = w.processes.some(p => p.state === 'stopped' || p.state === 'failed');
-    if (running && stopped) return 'mixed';
-    return running ? 'running' : 'stopped';
+    const running = w.processes.filter(p => p.state === 'running').length;
+    const active = w.processes.filter(p =>
+      p.state === 'running' || p.state === 'starting'
+    ).length;
+    if (w.processes.length > 0 && running === w.processes.length) return 'running';
+    if (active === 0) return 'stopped';
+    return 'mixed';
   }
 
   let uiState = 'populated';
@@ -775,7 +784,7 @@
             </div>`).join('') : `<div class="none-declared">No declared ports</div>`}
         </div>
         <div class="tile-foot">
-          ${w.status === 'missing' ? `<span class="pill stale">Folder missing</span>` : `<span class="pill running">${w.processes.filter(p=>p.state==='running').length}/${w.processes.length} running</span>`}
+          ${w.status === 'missing' ? `<span class="pill stale">Folder missing</span>` : `<span class="pill ${dot}">${w.processes.filter(p=>p.state==='running').length}/${w.processes.length} running</span>`}
           <button class="view-btn" data-open="${w.id}" aria-label="Open ${esc(w.branch)} details">Open ${icon('caret-right')}</button>
         </div>
       </article>`;
