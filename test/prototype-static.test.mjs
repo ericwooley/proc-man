@@ -244,10 +244,12 @@ test("light and dark body-copy tokens meet WCAG AA contrast", async () => {
     const ink = cssToken(block, "ink");
     const muted = cssToken(block, "muted");
     const focus = cssToken(block, "focus");
+    const focusInverse = cssToken(block, "focus-inverse");
+    const rail = cssToken(block, "rail");
     const shell = cssToken(block, "shell");
     const surface = cssToken(block, "surface");
     assert.ok(
-      ink && muted && focus && shell && surface,
+      ink && muted && focus && focusInverse && rail && shell && surface,
       `${theme} tokens should be present`,
     );
     assert.ok(
@@ -262,6 +264,10 @@ test("light and dark body-copy tokens meet WCAG AA contrast", async () => {
       contrastRatio(focus, surface) >= 3 &&
         contrastRatio(focus, shell) >= 3,
       `${theme} focus indicator should meet 3:1 against adjacent surfaces`,
+    );
+    assert.ok(
+      contrastRatio(focusInverse, rail) >= 3,
+      `${theme} inverse focus indicator should meet 3:1 on dark surfaces`,
     );
   }
 });

@@ -258,6 +258,7 @@ try {
     `document.readyState === "complete" && document.querySelectorAll(".wt-tile").length === 6`,
     "prototype should load its populated worktree state",
   );
+  await evaluate(`document.documentElement.dataset.theme = "light"`);
   assert.deepEqual(
     await evaluate(`({
       title: document.title,
@@ -306,6 +307,43 @@ try {
       stopped: "stopped",
     },
     "worktree badges should distinguish fully running, partial, and stopped states",
+  );
+  await evaluate(`document.querySelector('[data-state="empty"]').click()`);
+  await waitFor(
+    `Boolean(document.querySelector(".snippet button"))`,
+    "empty state should expose its registration snippet",
+  );
+  await press("Tab", "Tab");
+  const darkSurfaceFocusSamples = await evaluate(`(() => {
+    const sample = (control, surface) => {
+      control.focus();
+      return {
+        focus: getComputedStyle(control).outlineColor,
+        surface: getComputedStyle(surface).backgroundColor
+      };
+    };
+    return [
+      sample(
+        document.querySelector('.proto-bar [data-state="populated"]'),
+        document.querySelector(".proto-bar")
+      ),
+      sample(
+        document.querySelector(".snippet button"),
+        document.querySelector(".snippet")
+      )
+    ];
+  })()`);
+  assert.equal(
+    darkSurfaceFocusSamples.every(
+      sample => contrastRatio(sample.focus, sample.surface) >= 3,
+    ),
+    true,
+    "dark-surface controls should use a focus indicator with at least 3:1 contrast",
+  );
+  await evaluate(`document.querySelector('[data-state="populated"]').click()`);
+  await waitFor(
+    `document.querySelectorAll(".wt-tile").length === 6`,
+    "populated state should return after focus contrast checks",
   );
   await evaluate(`Object.defineProperty(navigator, "clipboard", {
     configurable: true,

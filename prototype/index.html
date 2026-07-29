@@ -26,7 +26,7 @@
   :root {
     --canvas: #aeb9b2; --shell: #f7f8f6; --surface: #ffffff; --surface-soft: #edf0ec; --surface-quiet: #f2f4f1;
     --ink: #17181a; --ink-soft: #353834; --muted: #626a63; --line: #dfe3de; --rail: #18191c;
-    --acid: #efff83; --acid-ink: #1a1c17; --focus: #17181a; --good: #2f8c69; --warning: #bd7d25; --danger: #c6525d;
+    --acid: #efff83; --acid-ink: #1a1c17; --focus: #17181a; --focus-inverse: #efff83; --good: #2f8c69; --warning: #bd7d25; --danger: #c6525d;
     --badge-good-ink: #28765a; --badge-danger-ink: #ad4650; --badge-warning-ink: #90601d; --manifest-ink: #6c59c2;
     --log-time: #78827d; --shadow: 0 30px 85px rgba(38, 50, 43, .2);
     --radius-shell: 30px; --radius-card: 20px; --radius-control: 14px;
@@ -36,7 +36,7 @@
   html[data-theme="dark"] {
     --canvas: #111715; --shell: #222623; --surface: #2b302c; --surface-soft: #323833; --surface-quiet: #262b27;
     --ink: #f5f7f3; --ink-soft: #dfe4de; --muted: #adb5ae; --line: #3d443e; --rail: #0e100f;
-    --acid: #eaff71; --acid-ink: #141713; --focus: #eaff71; --good: #75d2a9; --warning: #f2b85f; --danger: #ff8290;
+    --acid: #eaff71; --acid-ink: #141713; --focus: #eaff71; --focus-inverse: #eaff71; --good: #75d2a9; --warning: #f2b85f; --danger: #ff8290;
     --badge-good-ink: #75d2a9; --badge-danger-ink: #ff8795; --badge-warning-ink: #f2b85f; --manifest-ink: #ad99ff;
     --shadow: 0 34px 90px rgba(0, 0, 0, .42);
   }
@@ -49,6 +49,11 @@
   .proc-item:focus-visible, .cmd-item:focus-visible, .cmd-run:focus-visible {
     outline: 3px solid var(--focus);
     outline-offset: 2px;
+  }
+  .proto-bar button:focus-visible,
+  .snippet button:focus-visible,
+  .log-toolbar input:focus-visible {
+    outline-color: var(--focus-inverse);
   }
   button[disabled] { opacity: .45; cursor: not-allowed; }
   .mono { font-family: var(--mono); }
