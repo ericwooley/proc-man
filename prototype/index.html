@@ -1065,10 +1065,21 @@
     });
     document.getElementById('globalLogTitle').textContent = `${run.wt.branch} · ${run.kind}/${run.name}`;
     const state = document.getElementById('globalLogState');
+    state.hidden = false;
     state.className = `pill ${globalPillClass(run.state)}`;
     state.textContent = run.state;
     document.getElementById('globalLogConsole').innerHTML =
       `<div class="log-console">${logConsoleHtml(run.logState || run.state)}</div>`;
+  }
+
+  function clearGlobalRunSelection() {
+    activeGlobalRun = null;
+    document.getElementById('globalLogTitle').textContent = 'No matching run';
+    const state = document.getElementById('globalLogState');
+    state.hidden = true;
+    state.textContent = '';
+    document.getElementById('globalLogConsole').innerHTML =
+      `<div class="jr-empty">Change the filter to inspect run output.</div>`;
   }
 
   function renderGlobalRuns(query = document.getElementById('globalRunSearch').value) {
@@ -1077,6 +1088,7 @@
       `${run.wt.branch} ${run.wt.repo} ${run.kind} ${run.name}`.toLowerCase().includes(normalized),
     );
     const list = document.getElementById('globalRunList');
+    const focusedRunId = document.activeElement?.dataset?.run;
     list.innerHTML = runs.length
       ? runs.map(run => `
           <button class="run-row" data-run="${esc(run.id)}">
@@ -1092,6 +1104,12 @@
     });
     const selection = runs.find(run => run.id === activeGlobalRun?.id) || runs[0];
     if (selection) selectGlobalRun(selection);
+    else clearGlobalRunSelection();
+    if (focusedRunId) {
+      [...list.querySelectorAll('[data-run]')]
+        .find(button => button.dataset.run === focusedRunId)
+        ?.focus();
+    }
   }
 
   document.getElementById('globalRunSearch').addEventListener('input', event => renderGlobalRuns(event.target.value));

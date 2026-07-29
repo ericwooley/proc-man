@@ -64,6 +64,9 @@ without changing its visual hierarchy.
 7. Runs & logs was exercised while a process was still starting. Lifecycle and
    command updates now refresh that view in place, so status and output do not
    remain stuck at an earlier in-flight state.
+8. Live Runs & logs refreshes now restore the focused run by stable ID, and a
+   filter with no matches clears the previous detail before showing a direct
+   empty-state prompt.
 
 ## Verification
 

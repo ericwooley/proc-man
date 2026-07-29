@@ -414,6 +414,14 @@ try {
     "starting",
     "global runs should show an in-flight process on view entry",
   );
+  const focusedRunId = await evaluate(`(() => {
+    const row = [...document.querySelectorAll(".run-row")].find(candidate =>
+      candidate.textContent.includes("fix/auth-race-condition") &&
+      candidate.textContent.includes("process/web")
+    );
+    row.focus();
+    return row.dataset.run;
+  })()`);
   await waitFor(
     `[...document.querySelectorAll(".run-row")].find(candidate =>
       candidate.textContent.includes("fix/auth-race-condition") &&
@@ -421,6 +429,11 @@ try {
     )?.querySelector(".pill")?.textContent.trim() === "running"`,
     "global runs should refresh when an in-flight process finishes starting",
     2_000,
+  );
+  assert.equal(
+    await evaluate("document.activeElement.dataset.run"),
+    focusedRunId,
+    "a live global-runs refresh should preserve the focused run row",
   );
 
   await evaluate(`document.querySelector('[data-view-target="worktrees"]').click()`);
@@ -524,6 +537,26 @@ try {
     ),
     true,
     "global logs should filter by worktree",
+  );
+  await evaluate(`(() => {
+    const input = document.getElementById("globalRunSearch");
+    input.value = "no-such-worktree-or-run";
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  })()`);
+  assert.deepEqual(
+    await evaluate(`({
+      rows: document.querySelectorAll(".run-row").length,
+      title: document.getElementById("globalLogTitle").textContent,
+      stateHidden: document.getElementById("globalLogState").hidden,
+      emptyDetail: document.getElementById("globalLogConsole").textContent.includes("Change the filter")
+    })`),
+    {
+      rows: 0,
+      title: "No matching run",
+      stateHidden: true,
+      emptyDetail: true,
+    },
+    "a zero-match filter should clear stale run details",
   );
 
   await evaluate(`document.querySelector('[data-view-target="admin"]').click()`);
