@@ -801,7 +801,7 @@ try {
     window.__downloadedLog = null;
     window.__downloadedBlob = null;
     URL.createObjectURL = blob => {
-      window.__downloadedBlob = { size: blob.size, type: blob.type };
+      window.__downloadedBlob = blob;
       return "blob:port-start-log";
     };
     URL.revokeObjectURL = () => {};
@@ -811,16 +811,34 @@ try {
     document.getElementById("globalLogDownload").click();
   })()`);
   assert.deepEqual(
-    await evaluate(`({
-      downloaded: Boolean(
-        window.__downloadedLog?.download.endsWith(".ndjson") &&
-        window.__downloadedLog?.href === "blob:port-start-log"
-      ),
-      nonempty: window.__downloadedBlob?.size > 0,
-      type: window.__downloadedBlob?.type
-    })`),
-    { downloaded: true, nonempty: true, type: "application/x-ndjson" },
-    "the selected historical run should download as nonempty NDJSON",
+    await evaluate(`(async () => {
+      const text = await window.__downloadedBlob.text();
+      const record = JSON.parse(text.trim().split("\\n")[0]);
+      return {
+        downloaded: Boolean(
+          window.__downloadedLog?.download.endsWith(".ndjson") &&
+          window.__downloadedLog?.href === "blob:port-start-log"
+        ),
+        nonempty: window.__downloadedBlob.size > 0,
+        type: window.__downloadedBlob.type,
+        fields: Object.keys(record).sort(),
+        canonicalValues: Boolean(
+          record.seq === 1 &&
+          Number.isFinite(Date.parse(record.time)) &&
+          ["stdout", "stderr"].includes(record.stream) &&
+          typeof record.text === "string" &&
+          record.partial === false
+        )
+      };
+    })()`),
+    {
+      downloaded: true,
+      nonempty: true,
+      type: "application/x-ndjson",
+      fields: ["partial", "seq", "stream", "text", "time"],
+      canonicalValues: true,
+    },
+    "the selected historical run should download canonical nonempty NDJSON",
   );
   await evaluate(`(() => {
     const input = document.getElementById("globalRunSearch");

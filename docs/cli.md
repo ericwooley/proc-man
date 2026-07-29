@@ -268,14 +268,16 @@ Both human and JSON listings are newest-first and cursor-paginated. `--limit`
 defaults to 50 and is capped at 500; `--cursor` continues from the prior page.
 JSON returns `runs` and `next_cursor`. Each run contains `id`,
 `worktree_snapshot`, `definition_kind`, `definition_name`, `state`,
-`started_at`, `ended_at`, and `retained_until`. A missing `next_cursor` means
-the result is complete.
+`started_at`, `ended_at`, `retained_until`, `worktree_registered`, and
+`definition_present`. The snapshot preserves identity from run start; the two
+booleans report query-time registration and definition presence. A missing
+`next_cursor` means the result is complete.
 
 `run search` searches retained stdout and stderr across the same filters. It
 accepts literal text by default plus `--regex`, `--ignore-case`, and `--stream`.
 Human matches include the run ID and a copyable follow-up command. JSON returns
-`matches` and `next_cursor`; each match contains `run_id`, `stream`, `sequence`,
-`timestamp`, and `line`.
+`matches` and `next_cursor`; each match contains `run_id` plus the canonical
+log-record fields `seq`, `time`, `stream`, `text`, and `partial`.
 
 Discovery hands directly into status and logs:
 

@@ -94,7 +94,8 @@ One run can be downloaded as:
 
 Multi-run download is NDJSON with an added run identifier. The HTTP response
 streams from disk and uses `Content-Disposition`; it is not assembled wholly in
-memory.
+memory. CLI and API search matches use the same `seq`, `time`, `stream`, `text`,
+and `partial` field names, adding `run_id` only when results span runs.
 
 ## Retention policy
 

@@ -90,7 +90,8 @@ without changing its visual hierarchy.
 15. Process definition state and run outcome are presented independently:
     stopping a definition records an `interrupted` run, while a normal command
     completion records `exited`. Global search indexes retained output as well
-    as metadata, and a selected run downloads as NDJSON.
+    as metadata, and a selected run downloads the canonical NDJSON record
+    schema.
 
 ## Verification
 

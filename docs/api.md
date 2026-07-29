@@ -84,15 +84,21 @@ Restart returns `409 worktree_stale` from `stale`.
 `until`, `include_deregistered`, `cursor`, and `limit`. Its response contains
 `runs` and `next_cursor`. Every run includes its definition snapshot and a
 `worktree_snapshot` with the worktree ID, path, repository, branch, and
-deregistration status captured for that run. This keeps retained history
-discoverable after current definitions have been removed.
+identity captured when the run started. Query-time `worktree_registered` and
+`definition_present` booleans sit outside that immutable snapshot. This keeps
+retained history discoverable after current definitions have been removed
+without rewriting historical identity. `include_deregistered` defaults to
+false; when true, it also returns runs for which either query-time boolean is
+false.
 
 `POST /api/v1/run-search` accepts a literal query or RE2 expression, case
 sensitivity, stream, worktree, definition kind and name, run state, timestamp
 range, `include_deregistered`, cursor, and limit. Its response contains
 ordered `matches` and `next_cursor`; each match includes the run ID,
-`worktree_snapshot`, sequence, timestamp, stream, and message. Invalid regular
-expressions return validation errors rather than an empty result.
+`worktree_snapshot`, `worktree_registered`, `definition_present`, and the
+canonical log-record fields `seq`, `time`, `stream`, `text`, and `partial`.
+Invalid regular expressions return validation errors rather than an empty
+result.
 
 Single-run log queries accept the same text, stream, timestamp, cursor, and
 limit semantics. Cross-run and single-run search scan the same retained

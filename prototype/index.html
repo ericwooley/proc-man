@@ -1271,11 +1271,11 @@
     if (!activeGlobalRun) return;
     const body = runLogLines(activeGlobalRun)
       .map((line, index) => JSON.stringify({
-        run_id: activeGlobalRun.id,
-        sequence: index + 1,
-        timestamp: line.t,
+        seq: index + 1,
+        time: `2026-07-29T${line.t}Z`,
         stream: line.s,
-        message: line.m,
+        text: line.m,
+        partial: false,
       }))
       .join('\n') + '\n';
     const blob = new Blob([body], { type: 'application/x-ndjson' });
