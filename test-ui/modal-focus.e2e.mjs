@@ -886,6 +886,13 @@ try {
     },
     "Stop should keep the authored focus indicator on its process fallback",
   );
+  assert.equal(
+    await evaluate(
+      `document.querySelector('[data-worktree="wt2"] .tile-foot .pill').classList.contains("mixed")`,
+    ),
+    true,
+    "a worktree should remain transitional while its final active process is stopping",
+  );
   await waitFor(
     `document.querySelector('[data-proc="web"] .pill').textContent.trim() === "stopped"`,
     "the restarted web process should return to stopped for supersession coverage",

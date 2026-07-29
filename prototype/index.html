@@ -628,7 +628,7 @@
     if (w.status === 'missing') return 'stale';
     const running = w.processes.filter(p => p.state === 'running').length;
     const active = w.processes.filter(p =>
-      p.state === 'running' || p.state === 'starting'
+      p.state === 'running' || p.state === 'starting' || p.state === 'stopping'
     ).length;
     if (w.processes.length > 0 && running === w.processes.length) return 'running';
     if (active === 0) return 'stopped';

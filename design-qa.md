@@ -126,11 +126,12 @@ without changing its visual hierarchy.
     Machine-readable process and command inventories retain worktree identity
     on every record, the obsolete social card is no longer packaged, and all
     visual comparison evidence is retained in the repository.
-20. Dashboard badges now distinguish fully running, partially active, and
-    stopped worktrees instead of giving every registered worktree a success
-    treatment. Programmatic process, command, and invocation focus fallbacks
-    use the same three-pixel high-contrast indicator as interactive controls.
-    Browser assertions cover the three badge states and the computed focus
+20. Dashboard badges now distinguish fully running, transitional or partially
+    active, and stopped worktrees instead of giving every registered worktree a
+    success treatment. A worktree remains transitional while its final active
+    process is stopping. Programmatic process, command, and invocation focus
+    fallbacks use the same three-pixel high-contrast indicator as interactive
+    controls. Browser assertions cover the badge states and the computed focus
     indicator after Start, Stop, and Cancel; the dashboard and drawer captures
     were refreshed at 1440 × 1000.
 
