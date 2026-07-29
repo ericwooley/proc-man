@@ -279,6 +279,7 @@ test("API contract supports retained run discovery and cross-run log search", as
   assert.match(api, /worktree_snapshot/);
   assert.match(api, /worktree_registered/);
   assert.match(api, /definition_present/);
+  assert.match(api, /\brun_id\b/);
   for (const field of ["seq", "time", "stream", "text", "partial"]) {
     assert.match(api, new RegExp(`\\b${field}\\b`));
   }

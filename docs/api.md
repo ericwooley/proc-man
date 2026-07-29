@@ -94,7 +94,7 @@ false.
 `POST /api/v1/run-search` accepts a literal query or RE2 expression, case
 sensitivity, stream, worktree, definition kind and name, run state, timestamp
 range, `include_deregistered`, cursor, and limit. Its response contains
-ordered `matches` and `next_cursor`; each match includes the run ID,
+ordered `matches` and `next_cursor`; each match includes `run_id`,
 `worktree_snapshot`, `worktree_registered`, `definition_present`, and the
 canonical log-record fields `seq`, `time`, `stream`, `text`, and `partial`.
 Invalid regular expressions return validation errors rather than an empty
