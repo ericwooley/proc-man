@@ -19,9 +19,10 @@ scope for this phase.
 
 ## UI prototype
 
-The canonical static prototype lives in [`prototype/`](prototype/). It shows the
-worktree, process, command, declared-port, and log-management experience in light
-and dark themes.
+The static prototype lives in [`prototype/`](prototype/). It is being revised to
+match the process, command, declared-port, and log-management specification in
+this documentation; until that revision lands, the Markdown specifications are
+the current product contract.
 
 Run the prototype with the repository's simple Python HTTP server:
 

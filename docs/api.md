@@ -49,7 +49,7 @@ is idempotent.
 | `POST /api/v1/commands` | Create an imperative command definition. |
 | `GET /api/v1/commands/{id}` | Get effective config and recent runs. |
 | `PATCH /api/v1/commands/{id}` | Update an imperative command definition. |
-| `DELETE /api/v1/commands/{id}` | Deregister a command definition. |
+| `DELETE /api/v1/commands/{id}` | Cancel active invocations and deregister a command. |
 | `POST /api/v1/commands/{id}/runs` | Start one invocation and return its run. |
 
 Updating a manifest-owned process or command returns `409 manifest_owned` with
@@ -125,7 +125,6 @@ Required stable error codes include:
 - `not_found`;
 - `ambiguous_selector`;
 - `manifest_owned`;
-- `already_running`;
 - `invalid_state`;
 - `worktree_stale`;
 - `authentication_required`;

@@ -116,6 +116,10 @@ port-start command register test \
   -- npm test
 ```
 
+`command deregister` cancels every active invocation before removing the current
+definition. Retained runs remain available according to their retention policy
+unless `--purge-logs` is supplied.
+
 Shell strings use an explicit flag:
 
 ```sh
@@ -229,10 +233,11 @@ Errors use:
 {
   "ok": false,
   "error": {
-    "code": "already_running",
-    "message": "process web already has an active run",
+    "code": "worktree_stale",
+    "message": "process web cannot start because its worktree is missing",
     "details": {
-      "run_id": "run_01..."
+      "worktree_id": "wt_01...",
+      "missing_since": "2026-07-29T18:15:00Z"
     }
   }
 }

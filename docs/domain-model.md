@@ -119,6 +119,8 @@ join the existing start rather than launching duplicates.
 
 - **Run** creates a new command invocation.
 - **Cancel** terminates one active invocation.
+- **Deregister** cancels every active invocation, then removes the current
+  command definition.
 
 Command invocations do not change a process definition's state.
 
