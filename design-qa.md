@@ -134,6 +134,12 @@ without changing its visual hierarchy.
     controls. Browser assertions cover the badge states and the computed focus
     indicator after Start, Stop, and Cancel; the dashboard and drawer captures
     were refreshed at 1440 × 1000.
+21. The light-theme focus indicator now uses the dark interface ink and clears
+    a computed 3:1 contrast check against adjacent cards and shell surfaces;
+    dark mode retains the acid indicator. Deregistration invalidates pending
+    process transitions and aggregate batches before retaining interrupted run
+    history, so delayed Start, Restart, and Start-all callbacks cannot publish
+    stale completion state after a worktree is removed.
 
 ## Verification
 

@@ -10,6 +10,40 @@ import { connectCdp } from "./cdp-client.mjs";
 const chromeBinary = process.env.CHROME_BIN ?? "/usr/bin/google-chrome";
 const prototypeUrl = new URL("../prototype/index.html", import.meta.url).href;
 
+function cssColorToRgb(value) {
+  const numbers = value.match(/\d*\.?\d+/g)?.map(Number) ?? [];
+  if (value.startsWith("color(srgb") && numbers.length >= 3) {
+    return numbers.slice(0, 3).map(channel => channel * 255);
+  }
+  if (value.startsWith("rgb") && numbers.length >= 3) {
+    return numbers.slice(0, 3);
+  }
+  throw new Error(`Unsupported computed color: ${value}`);
+}
+
+function relativeLuminance(color) {
+  return cssColorToRgb(color)
+    .map(channel => channel / 255)
+    .map(channel =>
+      channel <= 0.04045
+        ? channel / 12.92
+        : ((channel + 0.055) / 1.055) ** 2.4
+    )
+    .reduce(
+      (luminance, channel, index) =>
+        luminance + channel * [0.2126, 0.7152, 0.0722][index],
+      0,
+    );
+}
+
+function contrastRatio(first, second) {
+  const firstLuminance = relativeLuminance(first);
+  const secondLuminance = relativeLuminance(second);
+  const lighter = Math.max(firstLuminance, secondLuminance);
+  const darker = Math.min(firstLuminance, secondLuminance);
+  return (lighter + 0.05) / (darker + 0.05);
+}
+
 async function getAvailablePort() {
   const server = createNetServer();
   await new Promise((resolve, reject) => {
@@ -113,6 +147,69 @@ try {
         offset: style.outlineOffset,
         color: style.outlineColor
       };
+    })()`);
+  }
+
+  async function registerAndOpenWorktree(path) {
+    const branch = path.split("/").filter(Boolean).at(-1);
+    await evaluate(`document.getElementById("registerOpen").click()`);
+    await waitFor(
+      `document.activeElement.id === "worktreePath"`,
+      `registration should open for ${branch}`,
+    );
+    await evaluate(`(() => {
+      document.getElementById("worktreePath").value = ${JSON.stringify(path)};
+      document.getElementById("registerForm").requestSubmit();
+    })()`);
+    await waitFor(
+      `[...document.querySelectorAll(".wt-tile .branch")]
+        .some(element => element.textContent === ${JSON.stringify(branch)})`,
+      `${branch} should register`,
+    );
+    await evaluate(`(() => {
+      const branch = [...document.querySelectorAll(".wt-tile .branch")]
+        .find(element => element.textContent === ${JSON.stringify(branch)});
+      branch.closest(".wt-tile").querySelector("[data-open]").click();
+    })()`);
+    await waitFor(
+      `document.activeElement.id === "drawerClose"`,
+      `${branch} should open`,
+    );
+    await evaluate(`document.querySelector('[data-tab="processes"]').click()`);
+    return branch;
+  }
+
+  async function deregisterOpenWorktree() {
+    await evaluate(`document.getElementById("deregisterWorktree").click()`);
+    await waitFor(
+      `document.activeElement.id === "deregisterCancel"`,
+      "deregistration confirmation should open",
+    );
+    await evaluate(`document.getElementById("deregisterConfirm").click()`);
+  }
+
+  async function assertRetainedRunState(branch, expectedState) {
+    await evaluate(`(() => {
+      document.querySelector('[data-view-target="logs"]').click();
+      const input = document.getElementById("globalRunSearch");
+      input.value = ${JSON.stringify(branch)};
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    })()`);
+    await waitFor(
+      `document.querySelectorAll(".run-row").length === 1 &&
+       document.getElementById("globalLogTitle").textContent.includes(${JSON.stringify(branch)})`,
+      `${branch} retained run should be discoverable`,
+    );
+    assert.equal(
+      await evaluate(`document.getElementById("globalLogState").textContent`),
+      expectedState,
+      `${branch} should retain its ${expectedState} run`,
+    );
+    await evaluate(`(() => {
+      const input = document.getElementById("globalRunSearch");
+      input.value = "";
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+      document.querySelector('[data-view-target="worktrees"]').click();
     })()`);
   }
 
@@ -607,6 +704,20 @@ try {
     `document.querySelector('[data-proc="web"] [data-proc-action="start"]').focus()`,
   );
   const processActionFocusIndicator = await activeFocusIndicator();
+  const adjacentFocusSurfaces = await evaluate(`({
+    card: getComputedStyle(document.querySelector(".proc-item")).backgroundColor,
+    drawer: getComputedStyle(document.getElementById("drawer")).backgroundColor,
+    shell: getComputedStyle(document.getElementById("appFrame")).backgroundColor
+  })`);
+  const opaqueFocusSurfaces = Object.values(adjacentFocusSurfaces)
+    .filter(color => color !== "rgba(0, 0, 0, 0)");
+  assert.equal(
+    opaqueFocusSurfaces.every(
+      surface => contrastRatio(processActionFocusIndicator.color, surface) >= 3,
+    ),
+    true,
+    "the light-theme focus indicator should have at least 3:1 contrast against adjacent surfaces",
+  );
   assert.deepEqual(
     {
       width: processActionFocusIndicator.width,
@@ -690,6 +801,96 @@ try {
   );
   await evaluate(`document.getElementById("globalRunSearch").value = ""`);
   await evaluate(`document.querySelector('[data-view-target="worktrees"]').click()`);
+
+  const startRaceBranch = await registerAndOpenWorktree(
+    "/tmp/agent/start-deregister-race",
+  );
+  await evaluate(
+    `document.getElementById("actionStatus").textContent = "No stale process completion"`,
+  );
+  await evaluate(
+    `document.querySelector('[data-proc="web"] [data-proc-action="start"]').click()`,
+  );
+  await deregisterOpenWorktree();
+  const startDeregistrationOutcome = await evaluate(`({
+    announcement: document.getElementById("actionStatus").textContent,
+    toast: document.getElementById("toastText").textContent
+  })`);
+  await new Promise(resolve => setTimeout(resolve, 1_250));
+  assert.deepEqual(
+    await evaluate(`({
+      announcement: document.getElementById("actionStatus").textContent,
+      toast: document.getElementById("toastText").textContent,
+      registered: [...document.querySelectorAll(".wt-tile .branch")]
+        .some(element => element.textContent === ${JSON.stringify(startRaceBranch)})
+    })`),
+    {
+      ...startDeregistrationOutcome,
+      registered: false,
+    },
+    "deregistration should invalidate an in-flight process Start",
+  );
+  await assertRetainedRunState(startRaceBranch, "interrupted");
+
+  const restartRaceBranch = await registerAndOpenWorktree(
+    "/tmp/agent/restart-deregister-race",
+  );
+  await evaluate(
+    `document.getElementById("actionStatus").textContent = "No stale restart completion"`,
+  );
+  await evaluate(
+    `document.querySelector('[data-proc="web"] [data-proc-action="restart"]').click()`,
+  );
+  await deregisterOpenWorktree();
+  const restartDeregistrationOutcome = await evaluate(`({
+    announcement: document.getElementById("actionStatus").textContent,
+    toast: document.getElementById("toastText").textContent
+  })`);
+  await new Promise(resolve => setTimeout(resolve, 1_250));
+  assert.deepEqual(
+    await evaluate(`({
+      announcement: document.getElementById("actionStatus").textContent,
+      toast: document.getElementById("toastText").textContent,
+      registered: [...document.querySelectorAll(".wt-tile .branch")]
+        .some(element => element.textContent === ${JSON.stringify(restartRaceBranch)})
+    })`),
+    {
+      ...restartDeregistrationOutcome,
+      registered: false,
+    },
+    "deregistration should invalidate an in-flight process Restart",
+  );
+  await assertRetainedRunState(restartRaceBranch, "interrupted");
+
+  const bulkRaceBranch = await registerAndOpenWorktree(
+    "/tmp/agent/start-all-deregister-race",
+  );
+  await evaluate(
+    `document.getElementById("actionStatus").textContent = "No stale aggregate completion"`,
+  );
+  await evaluate(
+    `document.querySelector('[data-bulk-proc-action="start-all"]').click()`,
+  );
+  await deregisterOpenWorktree();
+  const bulkDeregistrationOutcome = await evaluate(`({
+    announcement: document.getElementById("actionStatus").textContent,
+    toast: document.getElementById("toastText").textContent
+  })`);
+  await new Promise(resolve => setTimeout(resolve, 1_500));
+  assert.deepEqual(
+    await evaluate(`({
+      announcement: document.getElementById("actionStatus").textContent,
+      toast: document.getElementById("toastText").textContent,
+      registered: [...document.querySelectorAll(".wt-tile .branch")]
+        .some(element => element.textContent === ${JSON.stringify(bulkRaceBranch)})
+    })`),
+    {
+      ...bulkDeregistrationOutcome,
+      registered: false,
+    },
+    "deregistration should invalidate in-flight process and Start-all callbacks",
+  );
+  await assertRetainedRunState(bulkRaceBranch, "interrupted");
 
   await evaluate(`document.querySelector('[data-open="wt2"]').click()`);
   await waitFor(
