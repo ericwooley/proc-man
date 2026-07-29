@@ -242,3 +242,23 @@ test("browser prerequisites and override are documented", async () => {
   assert.match(readme, /registration and deregistration/);
   assert.equal(packageData.engines?.node, ">=22");
 });
+
+test("CLI contract gives agents a worktree-scoped discovery path", async () => {
+  const cli = await readFile(
+    new URL("../docs/cli.md", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(cli, /port-start process list --worktree/);
+  assert.match(cli, /port-start command list --worktree/);
+  assert.match(cli, /active_invocation_count/);
+  assert.match(cli, /next_start/);
+  for (const followUp of [
+    "port-start process status",
+    "port-start open",
+    "port-start command run",
+    "port-start process logs",
+  ]) {
+    assert.match(cli, new RegExp(followUp.replaceAll(" ", "\\s+")));
+  }
+});

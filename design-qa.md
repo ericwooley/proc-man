@@ -81,10 +81,13 @@ without changing its visual hierarchy.
 12. Clipboard behavior is verified at its boundary with the exact TCP address.
     Copy success appears only after the write resolves, and rejected or
     unavailable clipboard access receives a visible failure message.
+13. Deregistration now removes active definitions while retaining completed run
+    history in Runs & logs. Current and earlier process runs are independently
+    selectable, and the selected run’s output supports in-place text filtering.
 
 ## Verification
 
-- `npm test`: 25 tests passed
+- `npm test`: 26 tests passed
 - `npm run test:browser`: worktree, process, command, log, and focus behavior passed
 - External icons: local Phosphor icon font
 - Product artwork: external `port-matrix.svg`; no inline or handcrafted SVG in

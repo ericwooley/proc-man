@@ -435,12 +435,37 @@ try {
     `document.activeElement.id === "drawerClose"`,
     "the registered worktree should open",
   );
+  await evaluate(`document.querySelector('[data-tab="processes"]').click()`);
+  await evaluate(
+    `document.querySelector('[data-proc="web"] [data-proc-action="start"]').click()`,
+  );
+  await waitFor(
+    `document.querySelector('[data-proc="web"] .pill').textContent.trim() === "running"`,
+    "the registered process should create a run before deregistration",
+    2_000,
+  );
   await evaluate(`document.getElementById("deregisterWorktree").click()`);
   assert.equal(
     await evaluate("document.querySelectorAll('.wt-tile').length"),
     6,
     "deregistering should remove the worktree",
   );
+  await evaluate(`document.querySelector('[data-view-target="logs"]').click()`);
+  await evaluate(`(() => {
+    const input = document.getElementById("globalRunSearch");
+    input.value = "saffron-puma";
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  })()`);
+  assert.equal(
+    await evaluate(
+      `document.querySelectorAll(".run-row").length > 0 &&
+       document.getElementById("globalLogTitle").textContent.includes("saffron-puma")`,
+    ),
+    true,
+    "deregistering should retain completed run history in Runs & logs",
+  );
+  await evaluate(`document.getElementById("globalRunSearch").value = ""`);
+  await evaluate(`document.querySelector('[data-view-target="worktrees"]').click()`);
 
   await evaluate(`document.querySelector('[data-open="wt2"]').click()`);
   await waitFor(
@@ -706,6 +731,45 @@ try {
     ),
     true,
     "the global runs view should list process and command output",
+  );
+  await evaluate(`(() => {
+    const input = document.getElementById("globalRunSearch");
+    input.value = "checkout-redesign";
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  })()`);
+  assert.equal(
+    await evaluate(
+      `[...document.querySelectorAll(".run-row")]
+        .filter(row => row.textContent.includes("process/web")).length >= 2`,
+    ),
+    true,
+    "global logs should expose current and historical process runs",
+  );
+  await evaluate(`(() => {
+    const historical = [...document.querySelectorAll(".run-row")]
+      .find(row =>
+        row.textContent.includes("process/web") &&
+        row.textContent.includes("#web-103")
+      );
+    historical.click();
+    const input = document.querySelector("#globalLogConsole [data-log-search]");
+    input.value = "received SIGTERM";
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  })()`);
+  assert.deepEqual(
+    await evaluate(`({
+      selected: document.getElementById("globalLogTitle").textContent.includes("#web-103"),
+      visibleLines: [...document.querySelectorAll(
+        "#globalLogConsole [data-log-entry]"
+      )].filter(line => !line.hidden).length,
+      matchingText: [...document.querySelectorAll(
+        "#globalLogConsole [data-log-entry]"
+      )].filter(line => !line.hidden).every(
+        line => line.textContent.includes("received SIGTERM")
+      )
+    })`),
+    { selected: true, visibleLines: 1, matchingText: true },
+    "historical process output should be searchable within the selected run",
   );
   await evaluate(`(() => {
     const input = document.getElementById("globalRunSearch");

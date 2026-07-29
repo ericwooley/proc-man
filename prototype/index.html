@@ -457,7 +457,7 @@
   const WORKTREES = [
     { id: 'wt1', branch: 'feature/checkout-redesign', repo: 'storefront', path: '~/code/storefront/.worktrees/checkout-redesign', status: 'active',
       processes: [
-        { name: 'web', source: 'manifest', state: 'running', ports: [ { name: 'http', host: '127.0.0.1', port: 4310, protocol: 'http', path: '/' }, { name: 'inspector', host: '127.0.0.1', port: 9310, protocol: 'tcp' } ] },
+        { name: 'web', source: 'manifest', state: 'running', currentRunId: 'run-web-105', runHistory: [{ id: 'run-web-103', state: 'stopped', logState: 'stopped', when: '18m ago' }], ports: [ { name: 'http', host: '127.0.0.1', port: 4310, protocol: 'http', path: '/' }, { name: 'inspector', host: '127.0.0.1', port: 9310, protocol: 'tcp' } ] },
         { name: 'api', source: 'manifest', state: 'running', ports: [ { name: 'http', host: '127.0.0.1', port: 4321, protocol: 'http', path: '/health' } ], activePorts: [{ name: 'http', host: '127.0.0.1', port: 4311, protocol: 'http', path: '/health' }] },
       ],
       commands: [ { name: 'test', runs: [{ id: 'run-test-104', state: 'exited', code: 0, when: '2m ago' }] }, { name: 'migrate', runs: [{ id: 'run-migrate-32', state: 'exited', code: 0, when: '1h ago' }] } ] },
@@ -483,6 +483,7 @@
       processes: [ { name: 'worker', source: 'imperative', state: 'running', ports: [] }, { name: 'api', source: 'manifest', state: 'running', ports: [ { name: 'http', host: '127.0.0.1', port: 8101, protocol: 'http', path: '/' } ] } ],
       commands: [ { name: 'test', runs: [{ id: 'run-test-83', state: 'exited', code: 0, when: '40m ago' }] } ] },
   ];
+  const RETAINED_RUNS = [];
 
   const LOG_SAMPLES = {
     running: [ { t: '18:41:02.114', s: 'stdout', m: 'compiled client bundle in 812ms' }, { t: '18:41:02.118', s: 'stdout', m: 'watching for file changes...' }, { t: '18:41:15.902', s: 'stdout', m: 'GET /api/cart 200 12ms' } ],
@@ -517,6 +518,28 @@
   function normalizeWorktreePath(path) {
     const normalized = path.trim().replace(/\/+/g, '/');
     return normalized.length > 1 ? normalized.replace(/\/+$/, '') : normalized;
+  }
+  function processRunEntries(process) {
+    const current = {
+      id: process.currentRunId || `run-${process.name}-latest`,
+      state: process.state,
+      logState: process.state,
+      when: process.state === 'running' ? 'now' : 'latest run',
+    };
+    return [current, ...(process.runHistory || [])];
+  }
+  function beginProcessRun(process) {
+    const previousId = process.currentRunId || `run-${process.name}-latest`;
+    process.runHistory ||= [];
+    if (!process.runHistory.some(run => run.id === previousId)) {
+      process.runHistory.unshift({
+        id: previousId,
+        state: process.state === 'failed' ? 'failed' : 'stopped',
+        logState: process.state === 'failed' ? 'failed' : 'stopped',
+        when: 'just now',
+      });
+    }
+    process.currentRunId = `run-${++invocationSequence}`;
   }
   function wtStatusDot(w) {
     if (w.status === 'stale') return 'stale';
@@ -837,7 +860,11 @@
 
     const logsPane = document.querySelector('[data-pane="logs"]');
     const targets = [
-      ...w.processes.map(p => ({ key: `process:${p.name}`, label: `process/${p.name}`, state: p.state })),
+      ...w.processes.flatMap(process => processRunEntries(process).map(run => ({
+        key: `process:${process.name}:${run.id}`,
+        label: `process/${process.name} · ${run.id.replace('run-', '#')}`,
+        state: run.logState || run.state,
+      }))),
       ...w.commands.flatMap(command => command.runs.map(run => ({
         key: `command:${command.name}:${run.id}`,
         label: `command/${command.name} · ${run.id.replace('run-', '#')}`,
@@ -877,14 +904,27 @@
     return `
       <div class="log-toolbar">
         ${icon('magnifying-glass')}
-        <input placeholder="Search this run's logs">
+        <input data-log-search placeholder="Search this run's logs" aria-label="Search this run's logs">
         <button class="btn sm" style="background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.12);color:#eef0ec;">${live ? 'Following' : 'Latest run'}</button>
       </div>
       <div class="log-body">
-        ${lines.map(l => `<div class="log-line ${l.s}"><span class="t">${l.t}</span><span class="m">${esc(l.m)}</span></div>`).join('')}
+        ${lines.map(l => `<div class="log-line ${l.s}" data-log-entry><span class="t">${l.t}</span><span class="m">${esc(l.m)}</span></div>`).join('')}
+        <div class="jr-empty" data-log-empty hidden>No log lines match this search.</div>
         ${live ? `<div class="log-line"><span class="t">now</span><span class="m"><span class="log-cursor"></span></span></div>` : ''}
       </div>`;
   }
+  document.addEventListener('input', event => {
+    if (!event.target.matches('[data-log-search]')) return;
+    const console = event.target.closest('.log-console');
+    const query = event.target.value.trim().toLowerCase();
+    const lines = [...console.querySelectorAll('[data-log-entry]')];
+    let visible = 0;
+    lines.forEach(line => {
+      line.hidden = query.length > 0 && !line.textContent.toLowerCase().includes(query);
+      if (!line.hidden) visible += 1;
+    });
+    console.querySelector('[data-log-empty]').hidden = visible > 0;
+  });
 
   function procItem(w, p) {
     const disabledStale = w.status === 'stale';
@@ -987,6 +1027,7 @@
     const worktree = activeWt;
     const transitionVersion = supersedeProcessTransition(p);
     if (action === 'start') {
+      beginProcessRun(p);
       snapshotConfiguredPorts(p);
       p.state = 'starting';
       showToast(`Starting process/${p.name}`, 'play');
@@ -1017,6 +1058,7 @@
       }, 900);
     } else if (action === 'restart') {
       if (p.state === 'stopped' || p.state === 'failed') {
+        beginProcessRun(p);
         snapshotConfiguredPorts(p);
         p.state = 'starting';
         showToast(`Restarting process/${p.name}`, 'arrows-clockwise');
@@ -1040,6 +1082,7 @@
       refreshGlobalRunsIfVisible();
       setTimeout(() => {
         if (!processTransitionIsCurrent(p, transitionVersion)) return;
+        beginProcessRun(p);
         snapshotConfiguredPorts(p);
         p.state = 'starting';
         renderDrawerFor(worktree);
@@ -1086,16 +1129,17 @@
   }
 
   // ---- global runs and logs ----
-  function buildGlobalRuns() {
-    return WORKTREES.flatMap(w => [
-      ...w.processes.map(p => ({
-        id: `${w.id}:process:${p.name}`,
+  function buildWorktreeRuns(w) {
+    return [
+      ...w.processes.flatMap(process => processRunEntries(process).map(run => ({
+        id: `${w.id}:process:${process.name}:${run.id}`,
         wt: w,
         kind: 'process',
-        name: p.name,
-        state: p.state,
-        when: p.state === 'running' ? 'now' : 'latest run',
-      })),
+        name: `${process.name} · ${run.id.replace('run-', '#')}`,
+        state: run.state,
+        logState: run.logState || run.state,
+        when: run.when,
+      }))),
       ...w.commands.flatMap(command => command.runs.map(run => ({
         id: `${w.id}:command:${command.name}:${run.id}`,
         wt: w,
@@ -1105,7 +1149,14 @@
         logState: run.state === 'exited' ? 'stopped' : run.state,
         when: run.when,
       }))),
-    ]);
+    ];
+  }
+
+  function buildGlobalRuns() {
+    return [
+      ...WORKTREES.flatMap(buildWorktreeRuns),
+      ...RETAINED_RUNS,
+    ];
   }
 
   function globalPillClass(state) {
@@ -1235,6 +1286,26 @@
   document.getElementById('deregisterWorktree').addEventListener('click', () => {
     if (!activeWt) return;
     const branch = activeWt.branch;
+    activeWt.processes.forEach(process => {
+      if (processIsActive(process)) process.state = 'stopped';
+      clearActivePorts(process);
+    });
+    activeWt.commands.forEach(command => {
+      command.runs.forEach(run => {
+        if (run.state === 'running') run.state = 'canceled';
+      });
+    });
+    const retainedWorktree = {
+      id: activeWt.id,
+      branch: activeWt.branch,
+      repo: activeWt.repo,
+      status: 'deregistered',
+    };
+    RETAINED_RUNS.unshift(...buildWorktreeRuns(activeWt).map(run => ({
+      ...run,
+      wt: retainedWorktree,
+      when: run.when === 'now' ? 'deregistered just now' : run.when,
+    })));
     const index = WORKTREES.findIndex(worktree => worktree.id === activeWt.id);
     if (index >= 0) WORKTREES.splice(index, 1);
     INDEX = buildIndex();

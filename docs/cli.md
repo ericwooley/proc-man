@@ -99,6 +99,47 @@ worktree-creation hook can use the JSON form safely and repeatedly.
 `deregister` stops active runs and removes current definitions. Historical runs
 remain under their retention policies unless `--purge-logs` is supplied.
 
+## Inventory and discovery
+
+Agents and people can recover a worktree's registered names and endpoint keys
+without repeating registration:
+
+```sh
+port-start process list --worktree "$PWD"
+port-start process list --worktree "$PWD" --json
+port-start command list --worktree "$PWD"
+port-start command list --worktree "$PWD" --json
+```
+
+`--worktree` accepts a canonical path, stable worktree ID, or unambiguous
+repository/worktree label. Omitting it lists definitions across every registered
+worktree. Ambiguous selectors fail with matching worktree candidates.
+
+Human `process list` output includes stable ID, worktree, name, source, state,
+current run ID, and every declared endpoint. Each endpoint line includes its
+selector key, protocol, copyable address, and lifecycle label: `active` for the
+current run snapshot, `next_start` for changed configuration pending restart,
+or `configured` when no run is active. Human `command list` output includes
+stable ID, worktree, name, source, active invocation count, and latest run
+result.
+
+The JSON forms return the same inventory without display formatting.
+`process list --json` returns `worktree` and `processes`; each process contains
+`id`, `name`, `source`, `state`, `current_run_id`, and an `endpoints` array with
+`key`, `protocol`, `address`, and `lifecycle`. `command list --json` returns
+`worktree` and `commands`; each command contains `id`, `name`, `source`,
+`active_invocation_count`, and `latest_run`.
+
+The discovery results feed directly into status, endpoint, execution, and log
+commands:
+
+```sh
+port-start process status my-worktree/web
+port-start open my-worktree/web:http
+port-start command run my-worktree/test
+port-start process logs my-worktree/web --run latest
+```
+
 ## Imperative registration
 
 Long-running process:
@@ -282,7 +323,18 @@ Every command's `--help` contains:
 - expected exit codes and common errors;
 - a “next commands” section.
 
-The root help includes a complete first-run path: install the daemon, register a
-worktree, list its processes and commands, start a process, open a declared
-endpoint, follow logs, and deregister the worktree. The embedded manifest JSON
-Schema and OpenAPI document make the CLI self-describing to automated agents.
+The root help includes this complete, copyable first-run path:
+
+```sh
+port-start daemon install --now
+port-start worktree register --json
+port-start process list --worktree "$PWD"
+port-start command list --worktree "$PWD"
+port-start process start "$(basename "$PWD")/web"
+port-start open "$(basename "$PWD")/web:http"
+port-start process logs "$(basename "$PWD")/web" --follow
+port-start worktree deregister "$PWD"
+```
+
+The embedded manifest JSON Schema and OpenAPI document make the CLI
+self-describing to automated agents.
