@@ -379,47 +379,51 @@ to read the opaque selectors returned by the CLI and safely skips optional
 actions when a manifest has no processes or HTTP(S) endpoints:
 
 ```sh
-set -eu
+set -u
 
-port-start daemon install --now
-registration_json="$(port-start worktree register --json)"
+port-start daemon install --now || exit $?
+registration_json="$(port-start worktree register --json)" || exit $?
 worktree_selector="$(
   printf '%s\n' "$registration_json" | jq -er '.data.worktree.selector'
-)"
+)" || exit $?
 
-port-start process list --worktree "$worktree_selector"
-port-start command list --worktree "$worktree_selector"
-port-start process start --worktree "$worktree_selector"
+port-start process list --worktree "$worktree_selector" || :
+port-start command list --worktree "$worktree_selector" || :
+port-start process start --worktree "$worktree_selector" || :
 
 process_inventory="$(
   port-start process list --worktree "$worktree_selector" --json
-)"
+)" || exit $?
 process_selector="$(
   printf '%s\n' "$process_inventory" |
-    jq -r '.data.processes[0].selector // empty'
+    jq -r '(.data.processes | sort_by(.selector) | .[0].selector) // empty'
 )"
 if [ -n "$process_selector" ]; then
-  port-start process logs "$process_selector" --run latest
+  port-start process logs "$process_selector" --run latest || :
 fi
 
 endpoint_selector="$(
   printf '%s\n' "$process_inventory" |
     jq -r '[.data.processes[].endpoints[] |
-      select(.protocol == "http" or .protocol == "https")][0].selector // empty'
+      select(.protocol == "http" or .protocol == "https")] |
+      sort_by(.selector) | (.[0].selector // empty)'
 )"
 if [ -n "$endpoint_selector" ]; then
-  port-start open "$endpoint_selector"
+  port-start open "$endpoint_selector" || :
 fi
 
-port-start worktree deregister "$worktree_selector"
+port-start worktree deregister "$worktree_selector" || :
 port-start run list --worktree "$worktree_selector" --include-deregistered
 ```
 
 The inventory output supplies selectors for every registered command as well;
 agents choose the intended command by name or purpose and pass its selector to
-`port-start command run`. The generic first-run path never guesses that a
-process is named `web`, an endpoint is named `http`, or a worktree display label
-matches its directory basename.
+`port-start command run`. The sample sorts opaque selectors before choosing a
+repeatable process and HTTP(S) endpoint, even when the service returns the same
+inventory in a different order. Lifecycle, log, open, and deregistration errors
+remain visible but do not prevent later diagnostics or retained-run discovery.
+Bootstrap, registration, selector extraction, and inventory failures stop the
+walkthrough because later actions would have no valid target.
 
 The embedded manifest JSON Schema and OpenAPI document make the CLI
 self-describing to automated agents.
