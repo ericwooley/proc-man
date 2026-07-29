@@ -70,6 +70,10 @@ without changing its visual hierarchy.
 9. Restart was verified from drawer initiation through the dashboard card’s
    stopping, starting, and running states, including promotion of the configured
    port snapshot while the drawer is closed.
+10. Per-worktree log selection and keyboard focus now survive command
+    completion by stable target key. Deferred updates are scoped to the
+    worktree that launched them, so an older timer cannot rerender another
+    worktree’s open drawer.
 
 ## Verification
 

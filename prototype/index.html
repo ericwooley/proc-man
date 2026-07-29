@@ -823,16 +823,28 @@
         state: run.state === 'exited' ? 'stopped' : run.state,
       }))),
     ];
-    logsPane.dataset.sel = targets[0] ? targets[0].key : '';
+    const previousSelection = logsPane.dataset.worktree === w.id
+      ? logsPane.dataset.sel
+      : '';
+    const selectedTarget = targets.find(target => target.key === previousSelection) || targets[0];
+    const focusedLogTarget = document.activeElement?.dataset?.logTarget;
+    logsPane.dataset.worktree = w.id;
+    logsPane.dataset.sel = selectedTarget?.key || '';
     logsPane.innerHTML = targets.length ? `
-      <div class="run-picker">${targets.map((t,i) => `<button class="${i===0?'on':''}" data-log-target="${esc(t.key)}" data-log-state="${t.state}">${esc(t.label)}</button>`).join('')}</div>
-      <div class="log-console" id="logConsole">${logConsoleHtml(targets[0].state)}</div>
+      <div class="run-picker">${targets.map(t => `<button class="${t.key===selectedTarget.key?'on':''}" data-log-target="${esc(t.key)}" data-log-state="${t.state}">${esc(t.label)}</button>`).join('')}</div>
+      <div class="log-console" id="logConsole">${logConsoleHtml(selectedTarget.state)}</div>
     ` : `<p class="muted" style="font-size:12.5px;">Nothing has been run yet in this worktree.</p>`;
     logsPane.querySelectorAll('[data-log-target]').forEach(btn => btn.addEventListener('click', () => {
       logsPane.querySelectorAll('[data-log-target]').forEach(b => b.classList.remove('on'));
       btn.classList.add('on');
+      logsPane.dataset.sel = btn.dataset.logTarget;
       document.getElementById('logConsole').innerHTML = logConsoleHtml(btn.dataset.logState);
     }));
+    if (focusedLogTarget) {
+      [...logsPane.querySelectorAll('[data-log-target]')]
+        .find(button => button.dataset.logTarget === focusedLogTarget)
+        ?.focus();
+    }
   }
 
   function staleBanner(w) {
@@ -945,58 +957,62 @@
   function processTransitionIsCurrent(p, transitionVersion) {
     return p.transitionVersion === transitionVersion;
   }
+  function renderDrawerFor(worktree) {
+    if (activeWt === worktree) renderDrawerPanes();
+  }
   function refreshGlobalRunsIfVisible() {
     if (activeView === 'logs') renderGlobalRuns();
   }
   function runProcessAction(p, action) {
+    const worktree = activeWt;
     const transitionVersion = supersedeProcessTransition(p);
     if (action === 'start') {
       snapshotConfiguredPorts(p);
       p.state = 'starting';
       showToast(`Starting process/${p.name}`, 'play');
-      renderDrawerPanes();
+      renderDrawerFor(worktree);
       renderGrid();
       refreshGlobalRunsIfVisible();
       setTimeout(() => {
         if (!processTransitionIsCurrent(p, transitionVersion)) return;
         p.state = 'running';
         delete p.error;
-        if (activeWt) renderDrawerPanes();
+        renderDrawerFor(worktree);
         renderGrid();
         refreshGlobalRunsIfVisible();
       }, 1100);
     } else if (action === 'stop') {
       p.state = 'stopping';
       showToast(`Stopping process/${p.name}`, 'stop-circle');
-      renderDrawerPanes();
+      renderDrawerFor(worktree);
       renderGrid();
       refreshGlobalRunsIfVisible();
       setTimeout(() => {
         if (!processTransitionIsCurrent(p, transitionVersion)) return;
         p.state = 'stopped';
         clearActivePorts(p);
-        if (activeWt) renderDrawerPanes();
+        renderDrawerFor(worktree);
         renderGrid();
         refreshGlobalRunsIfVisible();
       }, 900);
     } else if (action === 'restart') {
       p.state = 'stopping';
       showToast(`Restarting process/${p.name}`, 'arrows-clockwise');
-      renderDrawerPanes();
+      renderDrawerFor(worktree);
       renderGrid();
       refreshGlobalRunsIfVisible();
       setTimeout(() => {
         if (!processTransitionIsCurrent(p, transitionVersion)) return;
         snapshotConfiguredPorts(p);
         p.state = 'starting';
-        if (activeWt) renderDrawerPanes();
+        renderDrawerFor(worktree);
         renderGrid();
         refreshGlobalRunsIfVisible();
         setTimeout(() => {
           if (!processTransitionIsCurrent(p, transitionVersion)) return;
           p.state = 'running';
           delete p.error;
-          if (activeWt) renderDrawerPanes();
+          renderDrawerFor(worktree);
           renderGrid();
           refreshGlobalRunsIfVisible();
         }, 900);
@@ -1004,6 +1020,7 @@
     }
   }
   function runCommandAction(c, action, runId) {
+    const worktree = activeWt;
     if (action === 'run') {
       const run = {
         id: `run-${++invocationSequence}`,
@@ -1012,13 +1029,13 @@
       };
       c.runs.unshift(run);
       showToast(`Running command/${c.name}`, 'play');
-      renderDrawerPanes();
+      renderDrawerFor(worktree);
       refreshGlobalRunsIfVisible();
       setTimeout(() => {
         const current = c.runs.find(candidate => candidate.id === run.id);
         if (!current || current.state !== 'running') return;
         Object.assign(current, { state: 'exited', code: 0, when: 'just now' });
-        if (activeWt) renderDrawerPanes();
+        renderDrawerFor(worktree);
         refreshGlobalRunsIfVisible();
       }, 1400);
     } else if (action === 'cancel') {
@@ -1026,7 +1043,7 @@
       if (!run || run.state !== 'running') return;
       Object.assign(run, { state: 'canceled', when: 'just now' });
       showToast(`Canceled command/${c.name}`, 'stop-circle');
-      renderDrawerPanes();
+      renderDrawerFor(worktree);
       refreshGlobalRunsIfVisible();
     }
   }

@@ -468,6 +468,43 @@ try {
     { canceled: 1, running: 1 },
     "cancel should target one active command invocation",
   );
+  await evaluate(`document.querySelector('[data-tab="logs"]').click()`);
+  const selectedCommandLog = await evaluate(`(() => {
+    const target = [...document.querySelectorAll(
+      '[data-pane="logs"] [data-log-target]'
+    )].find(button =>
+      button.dataset.logTarget.startsWith("command:test:") &&
+      button.dataset.logState === "running"
+    );
+    target.click();
+    target.focus();
+    return target.dataset.logTarget;
+  })()`);
+  await waitFor(
+    `[...document.querySelectorAll('[data-pane="logs"] [data-log-target]')]
+      .find(button => button.dataset.logTarget === ${JSON.stringify(selectedCommandLog)})
+      ?.dataset.logState === "stopped"`,
+    "the selected command log should refresh when its run completes",
+    2_000,
+  );
+  assert.deepEqual(
+    await evaluate(`(() => {
+      const pane = document.querySelector('[data-pane="logs"]');
+      const selected = [...pane.querySelectorAll("[data-log-target]")]
+        .find(button => button.dataset.logTarget === ${JSON.stringify(selectedCommandLog)});
+      return {
+        stored: pane.dataset.sel,
+        selected: selected.classList.contains("on"),
+        focused: document.activeElement.dataset.logTarget
+      };
+    })()`),
+    {
+      stored: selectedCommandLog,
+      selected: true,
+      focused: selectedCommandLog,
+    },
+    "command completion should preserve the selected and focused drawer log",
+  );
 
   await evaluate(`document.getElementById("drawerClose").click()`);
   await evaluate(`document.querySelector('[data-open="wt1"]').click()`);
