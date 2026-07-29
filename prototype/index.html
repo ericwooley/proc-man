@@ -1269,34 +1269,66 @@
         }, 900);
       }, 700);
     }
+    return transitionVersion;
+  }
+  function planBulkProcessAction(process, isStart) {
+    if (isStart) {
+      if (process.state === 'stopped' || process.state === 'failed') {
+        return { dispatch: 'start', outcome: 'pending' };
+      }
+      if (process.state === 'starting' || process.state === 'running') {
+        return { dispatch: null, outcome: `already active (${process.state})` };
+      }
+      return { dispatch: null, outcome: `not started (${process.state})` };
+    }
+    if (process.state === 'starting' || process.state === 'running') {
+      return { dispatch: 'stop', outcome: 'pending' };
+    }
+    if (process.state === 'stopping') {
+      return { dispatch: null, outcome: 'already stopping' };
+    }
+    return { dispatch: null, outcome: `already inactive (${process.state})` };
   }
   function runBulkProcessAction(worktree, action) {
     const isStart = action === 'start-all';
+    const batchVersion = (worktree.bulkBatchVersion || 0) + 1;
+    worktree.bulkBatchVersion = batchVersion;
+    const records = worktree.processes.map(process => {
+      const plan = planBulkProcessAction(process, isStart);
+      const transitionVersion = plan.dispatch
+        ? runProcessAction(process, plan.dispatch)
+        : null;
+      return {
+        process,
+        transitionVersion,
+        outcome: plan.outcome,
+      };
+    });
     worktree.bulkResult = {
       summary: `${isStart ? 'Starting' : 'Stopping'} ${worktree.processes.length} processes…`,
-      results: worktree.processes.map(process => ({
-        name: process.name,
-        outcome: 'pending',
+      results: records.map(record => ({
+        name: record.process.name,
+        outcome: record.outcome,
       })),
     };
-    worktree.processes.forEach(process => {
-      if (isStart && (process.state === 'stopped' || process.state === 'failed')) {
-        runProcessAction(process, 'start');
-      } else if (!isStart && (process.state === 'running' || process.state === 'starting')) {
-        runProcessAction(process, 'stop');
-      }
-    });
     renderDrawerFor(worktree);
     setTimeout(() => {
-      const results = worktree.processes.map(process => {
+      if (worktree.bulkBatchVersion !== batchVersion) return;
+      const results = records.map(record => {
+        const { process } = record;
+        if (record.transitionVersion === null) {
+          return { name: process.name, outcome: record.outcome };
+        }
+        if (process.transitionVersion !== record.transitionVersion) {
+          return { name: process.name, outcome: 'superseded by newer action' };
+        }
         if (isStart) {
           if (process.state === 'running') return { name: process.name, outcome: 'started' };
           if (process.state === 'failed') return { name: process.name, outcome: 'launch failed' };
-          return { name: process.name, outcome: `unchanged (${process.state})` };
+          return { name: process.name, outcome: `not started (${process.state})` };
         }
         if (process.state === 'stopped') return { name: process.name, outcome: 'stopped' };
-        if (process.state === 'failed') return { name: process.name, outcome: 'already inactive (failed)' };
-        return { name: process.name, outcome: `unchanged (${process.state})` };
+        return { name: process.name, outcome: `not stopped (${process.state})` };
       });
       if (isStart) {
         const started = results.filter(result => result.outcome === 'started').length;

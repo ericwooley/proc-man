@@ -665,6 +665,26 @@ try {
     "Start All should preserve per-process results when one launch fails",
   );
   await evaluate(
+    `document.querySelector('[data-bulk-proc-action="start-all"]').click()`,
+  );
+  await waitFor(
+    `document.querySelector("[data-bulk-result]").textContent.includes("0 started, 1 failed")`,
+    "Start All should preserve no-op outcomes for already active processes",
+    2_000,
+  );
+  assert.deepEqual(
+    await evaluate(`(() => {
+      const result = document.querySelector("[data-bulk-result]").textContent;
+      return {
+        webAlreadyActive: result.includes("web — already active (running)"),
+        apiAlreadyActive: result.includes("api — already active (running)"),
+        workerFailed: result.includes("worker — launch failed")
+      };
+    })()`),
+    { webAlreadyActive: true, apiAlreadyActive: true, workerFailed: true },
+    "Start All should not label already-running processes as newly started",
+  );
+  await evaluate(
     `document.querySelector('[data-bulk-proc-action="stop-all"]').click()`,
   );
   await waitFor(
@@ -680,6 +700,30 @@ try {
     ),
     true,
     "Stop All should report an outcome for every process",
+  );
+  await evaluate(
+    `document.querySelector('[data-bulk-proc-action="start-all"]').click()`,
+  );
+  await new Promise(resolve => setTimeout(resolve, 50));
+  await evaluate(
+    `document.querySelector('[data-bulk-proc-action="stop-all"]').click()`,
+  );
+  await waitFor(
+    `document.querySelector('[data-proc="web"] .pill').textContent.trim() === "stopped" &&
+     document.querySelector('[data-proc="api"] .pill').textContent.trim() === "stopped" &&
+     document.querySelector('[data-proc="worker"] .pill').textContent.trim() === "stopped" &&
+     document.querySelector("[data-bulk-result]").textContent.includes("Stop all complete")`,
+    "a newer Stop All should supersede an in-flight Start All batch",
+    2_000,
+  );
+  await new Promise(resolve => setTimeout(resolve, 350));
+  assert.deepEqual(
+    await evaluate(`({
+      summary: document.querySelector("[data-bulk-result] strong").textContent,
+      toast: document.getElementById("toastText").textContent
+    })`),
+    { summary: "Stop all complete · 3 results", toast: "Stop all complete" },
+    "an older Start All timer should not overwrite the newer Stop All result",
   );
   await evaluate(
     `document.querySelector('[data-proc="web"] [data-proc-action="restart"]').click()`,

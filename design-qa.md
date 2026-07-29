@@ -114,7 +114,9 @@ without changing its visual hierarchy.
     its active option through combobox/listbox semantics; loading announces a
     busy worktree region; and log-follow state is status text instead of a silent
     action. The missing-worktree fixture now mirrors the canonical
-    `missing`/`stale` projection used by the documentation.
+    `missing`/`stale` projection used by the documentation. Aggregate batches
+    retain dispatch-time no-op results and use a batch version so an older
+    Start-all completion cannot overwrite a newer Stop-all result.
 
 ## Verification
 
