@@ -142,6 +142,9 @@ without changing its visual hierarchy.
     before retaining interrupted run history, so delayed Start, Restart, and
     Start-all callbacks cannot publish stale completion state after a worktree
     is removed.
+22. Per-worktree and global run selectors now expose their selected state to
+    assistive technology with `aria-pressed`. The semantic state moves with the
+    visible output and remains exclusive when another run is selected.
 
 ## Verification
 

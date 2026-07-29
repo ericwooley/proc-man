@@ -1089,12 +1089,15 @@
     logsPane.dataset.worktree = w.id;
     logsPane.dataset.sel = selectedTarget?.key || '';
     logsPane.innerHTML = targets.length ? `
-      <div class="run-picker">${targets.map(t => `<button class="${t.key===selectedTarget.key?'on':''}" data-log-target="${esc(t.key)}" data-log-state="${t.state}" data-log-sample="${t.logState}">${esc(t.label)}</button>`).join('')}</div>
+      <div class="run-picker">${targets.map(t => `<button class="${t.key===selectedTarget.key?'on':''}" aria-pressed="${t.key===selectedTarget.key?'true':'false'}" data-log-target="${esc(t.key)}" data-log-state="${t.state}" data-log-sample="${t.logState}">${esc(t.label)}</button>`).join('')}</div>
       <div class="log-console" id="logConsole">${logConsoleHtml(selectedTarget.logState)}</div>
     ` : `<p class="muted" style="font-size:12.5px;">Nothing has been run yet in this worktree.</p>`;
     logsPane.querySelectorAll('[data-log-target]').forEach(btn => btn.addEventListener('click', () => {
-      logsPane.querySelectorAll('[data-log-target]').forEach(b => b.classList.remove('on'));
-      btn.classList.add('on');
+      logsPane.querySelectorAll('[data-log-target]').forEach(b => {
+        const selected = b === btn;
+        b.classList.toggle('on', selected);
+        b.setAttribute('aria-pressed', String(selected));
+      });
       logsPane.dataset.sel = btn.dataset.logTarget;
       document.getElementById('logConsole').innerHTML = logConsoleHtml(btn.dataset.logSample);
     }));
@@ -1531,7 +1534,9 @@
   function selectGlobalRun(run) {
     activeGlobalRun = run;
     document.querySelectorAll('.run-row').forEach(row => {
-      row.classList.toggle('active', row.dataset.run === run.id);
+      const selected = row.dataset.run === run.id;
+      row.classList.toggle('active', selected);
+      row.setAttribute('aria-pressed', String(selected));
     });
     document.getElementById('globalLogTitle').textContent = `${run.wt.branch} · ${run.kind}/${run.name}`;
     const state = document.getElementById('globalLogState');
@@ -1545,6 +1550,10 @@
 
   function clearGlobalRunSelection() {
     activeGlobalRun = null;
+    document.querySelectorAll('.run-row').forEach(row => {
+      row.classList.remove('active');
+      row.setAttribute('aria-pressed', 'false');
+    });
     document.getElementById('globalLogTitle').textContent = 'No matching run';
     const state = document.getElementById('globalLogState');
     state.hidden = true;
@@ -1565,7 +1574,7 @@
     const focusedRunId = document.activeElement?.dataset?.run;
     list.innerHTML = runs.length
       ? runs.map(run => `
-          <button class="run-row" data-run="${esc(run.id)}">
+          <button class="run-row" aria-pressed="false" data-run="${esc(run.id)}">
             <span class="run-row-top"><span class="pill ${globalPillClass(run.state)}">${esc(run.state)}</span><strong>${esc(run.kind)}/${esc(run.name)}</strong></span>
             <small>${esc(run.wt.branch)} · ${esc(run.wt.repo)} · ${esc(run.when)}</small>
           </button>`).join('')

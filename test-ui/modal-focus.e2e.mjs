@@ -1333,12 +1333,18 @@ try {
       return {
         stored: pane.dataset.sel,
         selected: selected.classList.contains("on"),
+        pressed: selected.getAttribute("aria-pressed"),
+        otherPressed: [...pane.querySelectorAll("[data-log-target]")]
+          .filter(button => button !== selected)
+          .some(button => button.getAttribute("aria-pressed") === "true"),
         focused: document.activeElement.dataset.logTarget
       };
     })()`),
     {
       stored: selectedCommandLog,
       selected: true,
+      pressed: "true",
+      otherPressed: false,
       focused: selectedCommandLog,
     },
     "command completion should preserve the selected and focused drawer log",
@@ -1500,6 +1506,11 @@ try {
   assert.deepEqual(
     await evaluate(`({
       selected: document.getElementById("globalLogTitle").textContent.includes("#web-103"),
+      pressed: [...document.querySelectorAll(".run-row")]
+        .find(row => row.textContent.includes("#web-103"))
+        ?.getAttribute("aria-pressed"),
+      pressedCount: [...document.querySelectorAll(".run-row")]
+        .filter(row => row.getAttribute("aria-pressed") === "true").length,
       visibleLines: [...document.querySelectorAll(
         "#globalLogConsole [data-log-entry]"
       )].filter(line => !line.hidden).length,
@@ -1509,7 +1520,13 @@ try {
         line => line.textContent.includes("received SIGTERM")
       )
     })`),
-    { selected: true, visibleLines: 1, matchingText: true },
+    {
+      selected: true,
+      pressed: "true",
+      pressedCount: 1,
+      visibleLines: 1,
+      matchingText: true,
+    },
     "historical process output should be searchable within the selected run",
   );
   await evaluate(`(() => {
