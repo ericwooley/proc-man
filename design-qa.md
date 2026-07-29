@@ -158,6 +158,10 @@ without changing its visual hierarchy.
     text contrast requirements, showcase icon glyphs stay out of accessible
     names, and Administration presents current access state with one functional
     notice action.
+26. State labels now use opaque theme tokens, so their contrast remains stable
+    on worktree cards, quiet command rows, and selected run rows. Deterministic
+    checks cover every colored state against all three authored surfaces in
+    light and dark themes.
 
 ## Verification
 

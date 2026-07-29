@@ -280,12 +280,16 @@ test("light and dark body-copy tokens meet WCAG AA contrast", async () => {
     const shell = cssToken(block, "shell");
     const surface = cssToken(block, "surface");
     const surfaceSoft = cssToken(block, "surface-soft");
+    const surfaceQuiet = cssToken(block, "surface-quiet");
     const good = cssToken(block, "good");
     const warning = cssToken(block, "warning");
     const danger = cssToken(block, "danger");
     const badgeGoodInk = cssToken(block, "badge-good-ink");
+    const badgeGoodBackground = cssToken(block, "badge-good-bg");
     const badgeWarningInk = cssToken(block, "badge-warning-ink");
+    const badgeWarningBackground = cssToken(block, "badge-warning-bg");
     const badgeDangerInk = cssToken(block, "badge-danger-ink");
+    const badgeDangerBackground = cssToken(block, "badge-danger-bg");
     assert.ok(
       ink &&
         muted &&
@@ -295,12 +299,16 @@ test("light and dark body-copy tokens meet WCAG AA contrast", async () => {
         shell &&
         surface &&
         surfaceSoft &&
+        surfaceQuiet &&
         good &&
         warning &&
         danger &&
         badgeGoodInk &&
+        badgeGoodBackground &&
         badgeWarningInk &&
-        badgeDangerInk,
+        badgeWarningBackground &&
+        badgeDangerInk &&
+        badgeDangerBackground,
       `${theme} tokens should be present`,
     );
     assert.ok(
@@ -320,25 +328,39 @@ test("light and dark body-copy tokens meet WCAG AA contrast", async () => {
       contrastRatio(focusInverse, rail) >= 3,
       `${theme} inverse focus indicator should meet 3:1 on dark surfaces`,
     );
-    for (const [label, stateInk, stateBackground] of [
-      ["tile running", badgeGoodInk, mixHexColors(good, surface, 0.18)],
-      ["tile mixed", badgeWarningInk, mixHexColors(warning, surface, 0.18)],
-      ["tile stopped", muted, surfaceSoft],
-      ["tile stale", badgeDangerInk, mixHexColors(danger, surface, 0.16)],
-      ["process running", badgeGoodInk, mixHexColors(good, surface, 0.18)],
-      [
-        "process transitional",
-        badgeWarningInk,
-        mixHexColors(warning, surface, 0.18),
-      ],
-      ["process failed", badgeDangerInk, mixHexColors(danger, surface, 0.16)],
-      ["run stopped or canceled", muted, surfaceSoft],
+    for (const [surfaceLabel, backdrop] of [
+      ["surface", surface],
+      ["surface-quiet", surfaceQuiet],
+      ["surface-soft", surfaceSoft],
     ]) {
-      assert.ok(
-        contrastRatio(stateInk, stateBackground) >= 4.5,
-        `${theme} ${label} text should meet 4.5:1`,
-      );
+      for (const [stateLabel, stateInk, stateBackground] of [
+        ["running or succeeded", badgeGoodInk, badgeGoodBackground],
+        ["mixed or transitional", badgeWarningInk, badgeWarningBackground],
+        ["stale or failed", badgeDangerInk, badgeDangerBackground],
+      ]) {
+        const effectiveBackground = mixHexColors(
+          stateBackground,
+          backdrop,
+          1,
+        );
+        assert.ok(
+          contrastRatio(stateInk, effectiveBackground) >= 4.5,
+          `${theme} ${stateLabel} text should meet 4.5:1 on ${surfaceLabel}`,
+        );
+      }
     }
+    assert.ok(
+      contrastRatio(muted, surfaceSoft) >= 4.5,
+      `${theme} stopped or canceled text should meet 4.5:1`,
+    );
+  }
+  for (const state of ["good", "warning", "danger"]) {
+    assert.equal(
+      [...html.matchAll(new RegExp(`background:\\s*var\\(--badge-${state}-bg\\)`, "g"))]
+        .length,
+      2,
+      `${state} state pills should use an opaque background token`,
+    );
   }
 });
 

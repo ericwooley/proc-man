@@ -27,7 +27,7 @@
     --canvas: #aeb9b2; --shell: #f7f8f6; --surface: #ffffff; --surface-soft: #edf0ec; --surface-quiet: #f2f4f1;
     --ink: #17181a; --ink-soft: #353834; --muted: #626a63; --line: #dfe3de; --rail: #18191c;
     --acid: #efff83; --acid-ink: #1a1c17; --focus: #17181a; --focus-inverse: #efff83; --good: #2f8c69; --warning: #bd7d25; --danger: #c6525d;
-    --badge-good-ink: #267052; --badge-danger-ink: #ad4650; --badge-warning-ink: #8b5b18; --manifest-ink: #6c59c2;
+    --badge-good-ink: #267052; --badge-good-bg: #daeae4; --badge-danger-ink: #ad4650; --badge-danger-bg: #f8eaeb; --badge-warning-ink: #8b5b18; --badge-warning-bg: #f3e8d8; --manifest-ink: #6c59c2;
     --log-time: #78827d; --shadow: 0 30px 85px rgba(38, 50, 43, .2);
     --radius-shell: 30px; --radius-card: 20px; --radius-control: 14px;
     --font: "Manrope", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
@@ -37,7 +37,7 @@
     --canvas: #111715; --shell: #222623; --surface: #2b302c; --surface-soft: #323833; --surface-quiet: #262b27;
     --ink: #f5f7f3; --ink-soft: #dfe4de; --muted: #adb5ae; --line: #3d443e; --rail: #0e100f;
     --acid: #eaff71; --acid-ink: #141713; --focus: #eaff71; --focus-inverse: #eaff71; --good: #75d2a9; --warning: #f2b85f; --danger: #ff8290;
-    --badge-good-ink: #75d2a9; --badge-danger-ink: #ff929f; --badge-warning-ink: #f2b85f; --manifest-ink: #ad99ff;
+    --badge-good-ink: #75d2a9; --badge-good-bg: #384d43; --badge-danger-ink: #ff929f; --badge-danger-bg: #4d3d3c; --badge-warning-ink: #f2b85f; --badge-warning-bg: #4f4835; --manifest-ink: #ad99ff;
     --shadow: 0 34px 90px rgba(0, 0, 0, .42);
   }
   * { box-sizing: border-box; }
@@ -137,10 +137,10 @@
 
   .tile-foot { margin-top: auto; display: flex; align-items: center; gap: 8px; padding-top: 6px; border-top: 1px solid var(--line); }
   .tile-foot .pill { font-size: 10.5px; font-weight: 700; padding: 3px 8px; border-radius: 999px; text-transform: uppercase; }
-  .tile-foot .pill.running { color: var(--badge-good-ink); background: color-mix(in srgb, var(--good) 18%, transparent); }
-  .tile-foot .pill.mixed { color: var(--badge-warning-ink); background: color-mix(in srgb, var(--warning) 18%, transparent); }
+  .tile-foot .pill.running { color: var(--badge-good-ink); background: var(--badge-good-bg); }
+  .tile-foot .pill.mixed { color: var(--badge-warning-ink); background: var(--badge-warning-bg); }
   .tile-foot .pill.stopped { color: var(--muted); background: var(--surface-soft); }
-  .tile-foot .pill.stale { color: var(--badge-danger-ink); background: color-mix(in srgb, var(--danger) 16%, transparent); }
+  .tile-foot .pill.stale { color: var(--badge-danger-ink); background: var(--badge-danger-bg); }
   .tile-foot .view-btn { margin-left: auto; border: 1px solid var(--line); background: var(--surface); border-radius: 10px; padding: 6px 11px; font-size: 11.5px; font-weight: 700; display: inline-flex; align-items: center; gap: 5px; }
   .tile-foot .view-btn:hover { background: var(--surface-soft); }
 
@@ -202,10 +202,10 @@
   html[data-theme="dark"] .btn.danger { color: var(--acid-ink); }
   .pill { display: inline-flex; align-items: center; gap: 5px; font-size: 10.5px; font-weight: 700; padding: 3px 8px; border-radius: 999px; text-transform: uppercase; }
   .pill::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
-  .pill.running, .pill.succeeded { color: var(--badge-good-ink); background: color-mix(in srgb, var(--good) 18%, transparent); }
+  .pill.running, .pill.succeeded { color: var(--badge-good-ink); background: var(--badge-good-bg); }
   .pill.stopped { color: var(--muted); background: var(--surface-soft); }
-  .pill.starting, .pill.stopping { color: var(--badge-warning-ink); background: color-mix(in srgb, var(--warning) 18%, transparent); }
-  .pill.failed { color: var(--badge-danger-ink); background: color-mix(in srgb, var(--danger) 16%, transparent); }
+  .pill.starting, .pill.stopping { color: var(--badge-warning-ink); background: var(--badge-warning-bg); }
+  .pill.failed { color: var(--badge-danger-ink); background: var(--badge-danger-bg); }
   .pill.canceled { color: var(--muted); background: var(--surface-soft); }
   .proc-item .pi-err { margin-top: 8px; font-size: 11.5px; color: var(--badge-danger-ink); display: flex; gap: 6px; }
   .proc-item .pi-ports { margin-top: 9px; display: flex; flex-direction: column; gap: 5px; }
