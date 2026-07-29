@@ -1733,27 +1733,35 @@ try {
   await evaluate(`(() => {
     const rows = [...document.querySelectorAll(".run-row")];
     rows.at(-1).scrollIntoView({ block: "nearest" });
-    rows.at(-1).click();
+    rows.at(-1).focus();
   })()`);
+  await activateFocusedButton();
   assert.deepEqual(
     await evaluate(`(() => {
       const list = document.getElementById("globalRunList");
       const detail = document.querySelector(".global-log");
-      const console = document.getElementById("globalLogConsole");
+      const entry = document.querySelector(
+        "#globalLogConsole [data-log-entry]"
+      );
+      const entryRect = entry.getBoundingClientRect();
       return {
         listBounded: list.clientHeight < list.scrollHeight,
+        selectedFocused:
+          document.activeElement.classList.contains("run-row") &&
+          document.activeElement.getAttribute("aria-pressed") === "true",
         detailVisible:
           detail.getBoundingClientRect().top >= 0 &&
           detail.getBoundingClientRect().top < window.innerHeight,
-        outputVisible:
-          console.getBoundingClientRect().top >= 0 &&
-          console.getBoundingClientRect().top < window.innerHeight
+        completeEntryVisible:
+          entryRect.top >= 0 &&
+          entryRect.bottom <= window.innerHeight
       };
     })()`),
     {
       listBounded: true,
+      selectedFocused: true,
       detailVisible: true,
-      outputVisible: true,
+      completeEntryVisible: true,
     },
     "selecting a run on a narrow screen should reveal its output beside a bounded inventory",
   );

@@ -151,7 +151,8 @@ without changing its visual hierarchy.
     log history.
 24. On narrow screens, the run inventory now has its own bounded scroll region.
     The selected row remains focused in that region while the corresponding
-    output stays visible directly below it.
+    output stays directly below it with at least one complete log entry visible
+    at 390 × 844.
 
 ## Verification
 
