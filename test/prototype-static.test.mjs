@@ -154,6 +154,18 @@ test("core worktree, process, command, log, and registration interactions are wi
   assert.match(html, /function setBackgroundInert\(value\)/);
   assert.match(html, /function trapFocus\(container, event\)/);
   assert.match(html, /function normalizeWorktreePath\(path\)/);
+  assert.match(
+    html,
+    /name: 'api'[\s\S]*?state: 'stopped'[\s\S]*?currentRunState: 'exited'[\s\S]*?currentRunCode: 1/,
+  );
+  assert.match(
+    html,
+    /name: 'worker'[\s\S]*?state: 'failed'[\s\S]*?Launch failed/,
+  );
+  assert.match(
+    html,
+    /run-test-98'[\s\S]*?state: 'exited'[\s\S]*?code: 1/,
+  );
   assert.match(html, /existingRegistration/);
   assert.match(html, /WORKTREES\.splice\(index, 1\)/);
   assert.match(html, /INDEX = buildIndex\(\)/);

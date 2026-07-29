@@ -100,6 +100,11 @@ without changing its visual hierarchy.
     names, and dashboard endpoint actions use 32-pixel targets. The drawer
     focus trap filters the roving set by actual tab order, including forward
     and reverse wrapping when the selected panel has no controls.
+17. Product re-review separated launch failure from a child’s nonzero exit:
+    the definition returns to `stopped`, its run remains `exited` with code 1,
+    and a separate worker fixture demonstrates a true launch failure.
+    Completed and downloaded command logs now use test-, migration-, failure-,
+    and cancellation-specific output rather than process shutdown samples.
 
 ## Verification
 

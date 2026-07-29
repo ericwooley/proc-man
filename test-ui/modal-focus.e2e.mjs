@@ -604,19 +604,19 @@ try {
     `document.querySelector('[data-proc="web"] [data-proc-action="restart"]').click()`,
   );
   await evaluate(
-    `document.querySelector('[data-proc="api"] [data-proc-action="restart"]').click()`,
+    `document.querySelector('[data-proc="worker"] [data-proc-action="restart"]').click()`,
   );
   assert.deepEqual(
     await evaluate(`({
       stoppedRestart: document.querySelector('[data-proc="web"] .pill').textContent.trim(),
-      failedRestart: document.querySelector('[data-proc="api"] .pill').textContent.trim()
+      failedRestart: document.querySelector('[data-proc="worker"] .pill').textContent.trim()
     })`),
     { stoppedRestart: "starting", failedRestart: "starting" },
     "restart from stopped or failed should create a new run without a stopping phase",
   );
   await waitFor(
     `document.querySelector('[data-proc="web"] .pill').textContent.trim() === "running" &&
-     document.querySelector('[data-proc="api"] .pill').textContent.trim() === "running"`,
+     document.querySelector('[data-proc="worker"] .pill').textContent.trim() === "running"`,
     "terminal-state restarts should finish their new runs",
     2_000,
   );
@@ -778,8 +778,46 @@ try {
     },
     "command completion should preserve the selected and focused drawer log",
   );
+  assert.deepEqual(
+    await evaluate(`({
+      commandOutput: document.getElementById("logConsole").textContent.includes("test suite passed"),
+      unrelatedStopOutput: document.getElementById("logConsole").textContent.includes("received SIGTERM")
+    })`),
+    { commandOutput: true, unrelatedStopOutput: false },
+    "a successful command should show command-specific output",
+  );
 
   await evaluate(`document.getElementById("drawerClose").click()`);
+  await evaluate(`document.querySelector('[data-view-target="logs"]').click()`);
+  await evaluate(`(() => {
+    const runId = ${JSON.stringify(selectedCommandLog.split(":").at(-1))};
+    const row = [...document.querySelectorAll(".run-row")]
+      .find(candidate => candidate.dataset.run.endsWith(":" + runId));
+    row.click();
+    window.__commandDownloadBlob = null;
+    URL.createObjectURL = blob => {
+      window.__commandDownloadBlob = blob;
+      return "blob:command-log";
+    };
+    URL.revokeObjectURL = () => {};
+    HTMLAnchorElement.prototype.click = () => {};
+    document.getElementById("globalLogDownload").click();
+  })()`);
+  assert.deepEqual(
+    await evaluate(`(async () => {
+      const records = (await window.__commandDownloadBlob.text())
+        .trim()
+        .split("\\n")
+        .map(JSON.parse);
+      return {
+        commandOutput: records.some(record => record.text.includes("test suite passed")),
+        unrelatedStopOutput: records.some(record => record.text.includes("received SIGTERM"))
+      };
+    })()`),
+    { commandOutput: true, unrelatedStopOutput: false },
+    "a successful command download should contain that command's output",
+  );
+  await evaluate(`document.querySelector('[data-view-target="worktrees"]').click()`);
   await evaluate(`document.querySelector('[data-open="wt1"]').click()`);
   await waitFor(
     `document.activeElement.id === "drawerClose"`,

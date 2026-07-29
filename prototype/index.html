@@ -472,16 +472,17 @@
   const WORKTREES = [
     { id: 'wt1', branch: 'feature/checkout-redesign', repo: 'storefront', path: '~/code/storefront/.worktrees/checkout-redesign', status: 'active',
       processes: [
-        { name: 'web', source: 'manifest', state: 'running', currentRunId: 'run-web-105', runHistory: [{ id: 'run-web-103', state: 'exited', logState: 'stopped', reason: 'process_exit', when: '18m ago' }], ports: [ { name: 'http', host: '127.0.0.1', port: 4310, protocol: 'http', path: '/' }, { name: 'inspector', host: '127.0.0.1', port: 9310, protocol: 'tcp' } ] },
+        { name: 'web', source: 'manifest', state: 'running', currentRunId: 'run-web-105', runHistory: [{ id: 'run-web-103', state: 'interrupted', logState: 'stopped', reason: 'user_stop', when: '18m ago' }], ports: [ { name: 'http', host: '127.0.0.1', port: 4310, protocol: 'http', path: '/' }, { name: 'inspector', host: '127.0.0.1', port: 9310, protocol: 'tcp' } ] },
         { name: 'api', source: 'manifest', state: 'running', ports: [ { name: 'http', host: '127.0.0.1', port: 4321, protocol: 'http', path: '/health' } ], activePorts: [{ name: 'http', host: '127.0.0.1', port: 4311, protocol: 'http', path: '/health' }] },
       ],
       commands: [ { name: 'test', runs: [{ id: 'run-test-104', state: 'exited', code: 0, when: '2m ago' }] }, { name: 'migrate', runs: [{ id: 'run-migrate-32', state: 'exited', code: 0, when: '1h ago' }] } ] },
     { id: 'wt2', branch: 'fix/auth-race-condition', repo: 'storefront', path: '~/code/storefront/.worktrees/auth-race-condition', status: 'active',
       processes: [
         { name: 'web', source: 'manifest', state: 'stopped', ports: [ { name: 'http', host: '127.0.0.1', port: 4312, protocol: 'http', path: '/' } ] },
-        { name: 'api', source: 'manifest', state: 'failed', error: "Process exited with code 1. Open its latest run to inspect the failure.", ports: [ { name: 'http', host: '127.0.0.1', port: 4313, protocol: 'http', path: '/health' } ] },
+        { name: 'api', source: 'manifest', state: 'stopped', currentRunState: 'exited', currentRunCode: 1, currentLogState: 'process-exited-nonzero', ports: [ { name: 'http', host: '127.0.0.1', port: 4313, protocol: 'http', path: '/health' } ] },
+        { name: 'worker', source: 'manifest', state: 'failed', error: "Launch failed: executable 'worker-dev' was not found.", ports: [] },
       ],
-      commands: [ { name: 'test', runs: [{ id: 'run-test-98', state: 'failed', code: 1, when: '14m ago' }] } ] },
+      commands: [ { name: 'test', runs: [{ id: 'run-test-98', state: 'exited', code: 1, when: '14m ago' }] } ] },
     { id: 'wt3', branch: 'agent/emerald-fox-worker-queue', repo: 'platform', path: '~/code/platform/.worktrees/emerald-fox-worker-queue', status: 'active',
       processes: [
         { name: 'worker', source: 'imperative', state: 'starting', ports: [] },
@@ -505,14 +506,24 @@
       process.currentRunState ||= process.state === 'stopped'
         ? 'exited'
         : process.state;
+      process.currentLogState ||= logStateForRunState(process.currentRunState);
     });
   });
 
   const LOG_SAMPLES = {
     running: [ { t: '18:41:02.114', s: 'stdout', m: 'compiled client bundle in 812ms' }, { t: '18:41:02.118', s: 'stdout', m: 'watching for file changes...' }, { t: '18:41:15.902', s: 'stdout', m: 'GET /api/cart 200 12ms' } ],
-    failed: [ { t: '18:12:40.001', s: 'stdout', m: 'booting api on {port.http}' }, { t: '18:12:40.093', s: 'stderr', m: 'Error: listen EADDRINUSE: address already in use 127.0.0.1:4313' }, { t: '18:12:40.101', s: 'stdout', m: 'process exited with code 1' } ],
+    failed: [ { t: '18:12:40.001', s: 'stdout', m: 'launching worker-dev' }, { t: '18:12:40.093', s: 'stderr', m: "Launch failed: executable 'worker-dev' was not found" } ],
     stopped: [ { t: '17:02:11.220', s: 'stdout', m: 'received SIGTERM, shutting down' }, { t: '17:02:11.402', s: 'stdout', m: 'closed 0 active connections' } ],
     starting: [ { t: '18:44:50.010', s: 'stdout', m: 'launching worker process...' } ],
+    'process-exited': [ { t: '17:08:11.220', s: 'stdout', m: 'process completed' }, { t: '17:08:11.402', s: 'stdout', m: 'process exited with code 0' } ],
+    'process-exited-nonzero': [ { t: '18:12:40.001', s: 'stdout', m: 'starting api validation' }, { t: '18:12:40.101', s: 'stderr', m: 'process exited with code 1' } ],
+    'command-running': [ { t: '18:46:10.010', s: 'stdout', m: 'running command...' } ],
+    'command-test-success': [ { t: '18:46:11.010', s: 'stdout', m: '42 tests passed' }, { t: '18:46:11.120', s: 'stdout', m: 'test suite passed in 1.2s' } ],
+    'command-migrate-success': [ { t: '17:41:06.201', s: 'stdout', m: 'applied migration 20260729_add_run_index' }, { t: '17:41:06.390', s: 'stdout', m: 'database is up to date' } ],
+    'command-failed': [ { t: '18:32:04.991', s: 'stderr', m: '2 tests failed' }, { t: '18:32:05.102', s: 'stderr', m: 'test suite exited with code 1' } ],
+    'command-canceled': [ { t: '16:21:44.008', s: 'stderr', m: 'command canceled by user' } ],
+    'command-launch-failed': [ { t: '16:19:22.008', s: 'stderr', m: 'command launch failed before execution' } ],
+    'command-success': [ { t: '18:46:11.120', s: 'stdout', m: 'command completed successfully' } ],
   };
 
   function esc(s) { return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
@@ -543,16 +554,29 @@
     return normalized.length > 1 ? normalized.replace(/\/+$/, '') : normalized;
   }
   function logStateForRunState(state) {
-    return ['exited', 'canceled', 'interrupted'].includes(state)
-      ? 'stopped'
-      : state;
+    if (state === 'exited') return 'process-exited';
+    if (['canceled', 'interrupted'].includes(state)) return 'stopped';
+    return state;
+  }
+  function commandLogState(commandName, run) {
+    if (run.logState) return run.logState;
+    if (run.state === 'running') return 'command-running';
+    if (run.state === 'canceled') return 'command-canceled';
+    if (run.state === 'failed') return 'command-launch-failed';
+    if (run.state === 'exited' && run.code !== 0) return 'command-failed';
+    if (run.state === 'exited') {
+      const specific = `command-${commandName}-success`;
+      return LOG_SAMPLES[specific] ? specific : 'command-success';
+    }
+    return 'command-success';
   }
   function processRunEntries(process) {
     const current = process.currentRunId
       ? [{
           id: process.currentRunId,
           state: process.currentRunState,
-          logState: logStateForRunState(process.currentRunState),
+          logState: process.currentLogState || logStateForRunState(process.currentRunState),
+          code: process.currentRunCode,
           reason: process.currentRunReason,
           when: process.currentRunState === 'running' ? 'now' : 'latest run',
         }]
@@ -568,13 +592,16 @@
       process.runHistory.unshift({
         id: process.currentRunId,
         state: process.currentRunState,
-        logState: logStateForRunState(process.currentRunState),
+        logState: process.currentLogState || logStateForRunState(process.currentRunState),
+        code: process.currentRunCode,
         reason: process.currentRunReason,
         when: 'just now',
       });
     }
     process.currentRunId = `run-${++invocationSequence}`;
     process.currentRunState = 'starting';
+    process.currentLogState = 'starting';
+    delete process.currentRunCode;
     delete process.currentRunReason;
   }
   function wtStatusDot(w) {
@@ -938,7 +965,7 @@
         key: `command:${command.name}:${run.id}`,
         label: `command/${command.name} · ${run.id.replace('run-', '#')}`,
         state: run.state,
-        logState: logStateForRunState(run.state),
+        logState: commandLogState(command.name, run),
       }))),
     ];
     const previousSelection = logsPane.dataset.worktree === w.id
@@ -970,7 +997,10 @@
   }
   function logConsoleHtml(pstate) {
     const lines = LOG_SAMPLES[pstate] || LOG_SAMPLES.stopped;
-    const live = pstate === 'running' || pstate === 'starting';
+    const live =
+      pstate === 'running' ||
+      pstate === 'starting' ||
+      pstate === 'command-running';
     return `
       <div class="log-toolbar">
         ${icon('magnifying-glass')}
@@ -1013,6 +1043,7 @@
         </div>
       </div>
       ${p.error ? `<div class="pi-err">${icon('warning-circle')}${esc(p.error)}</div>` : ''}
+      ${p.currentRunCode !== undefined ? `<div class="pi-err">${icon('terminal-window')}Latest run exited with code ${p.currentRunCode}. Open its logs to inspect the result.</div>` : ''}
       <div class="pi-ports">
         ${visiblePorts(p).map(port => `<div class="ep-row"><span class="addr">${esc(port.name)} · ${port.host}:${port.port}${port.protocol!=='tcp'?(port.path||'/'):''}</span>${port.protocol!=='tcp'?`<button data-open-port="${esc(portUrl(port))}" title="Open" aria-label="Open ${esc(p.name)} ${esc(port.name)}">${icon('arrow-square-out')}</button>`:''}<button data-copy="${esc(portUrl(port))}" title="Copy" aria-label="Copy ${esc(p.name)} ${esc(port.name)} address">${icon('copy')}</button></div>`).join('')}
         ${pendingPorts(p).map(port => `<div class="ep-row pending"><span class="pending-tag">Next start</span><span class="addr">${esc(port.name)} · ${port.host}:${port.port}</span></div>`).join('')}
@@ -1108,6 +1139,7 @@
         if (!processTransitionIsCurrent(p, transitionVersion)) return;
         p.state = 'running';
         p.currentRunState = 'running';
+        p.currentLogState = 'running';
         delete p.error;
         renderDrawerFor(worktree);
         renderGrid();
@@ -1116,6 +1148,7 @@
     } else if (action === 'stop') {
       p.state = 'stopping';
       p.currentRunState = 'stopping';
+      p.currentLogState = 'stopped';
       showToast(`Stopping process/${p.name}`, 'stop-circle');
       renderDrawerFor(worktree);
       renderGrid();
@@ -1124,6 +1157,7 @@
         if (!processTransitionIsCurrent(p, transitionVersion)) return;
         p.state = 'stopped';
         p.currentRunState = 'interrupted';
+        p.currentLogState = 'stopped';
         p.currentRunReason = 'user_stop';
         clearActivePorts(p);
         renderDrawerFor(worktree);
@@ -1143,6 +1177,7 @@
           if (!processTransitionIsCurrent(p, transitionVersion)) return;
           p.state = 'running';
           p.currentRunState = 'running';
+          p.currentLogState = 'running';
           delete p.error;
           renderDrawerFor(worktree);
           renderGrid();
@@ -1152,6 +1187,7 @@
       }
       p.state = 'stopping';
       p.currentRunState = 'stopping';
+      p.currentLogState = 'stopped';
       showToast(`Restarting process/${p.name}`, 'arrows-clockwise');
       renderDrawerFor(worktree);
       renderGrid();
@@ -1159,6 +1195,7 @@
       setTimeout(() => {
         if (!processTransitionIsCurrent(p, transitionVersion)) return;
         p.currentRunState = 'interrupted';
+        p.currentLogState = 'stopped';
         p.currentRunReason = 'restart';
         beginProcessRun(p);
         snapshotConfiguredPorts(p);
@@ -1170,6 +1207,7 @@
           if (!processTransitionIsCurrent(p, transitionVersion)) return;
           p.state = 'running';
           p.currentRunState = 'running';
+          p.currentLogState = 'running';
           delete p.error;
           renderDrawerFor(worktree);
           renderGrid();
@@ -1225,7 +1263,7 @@
         kind: 'command',
         name: `${command.name} · ${run.id.replace('run-', '#')}`,
         state: run.state,
-        logState: logStateForRunState(run.state),
+        logState: commandLogState(command.name, run),
         when: run.when,
       }))),
     ];
@@ -1434,6 +1472,7 @@
         process.state = 'stopped';
         if (process.currentRunId) {
           process.currentRunState = 'interrupted';
+          process.currentLogState = 'stopped';
           process.currentRunReason = 'worktree_deregistered';
         }
       }
