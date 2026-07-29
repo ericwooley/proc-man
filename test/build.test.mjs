@@ -22,27 +22,28 @@ async function fetchBuilt(pathname, init) {
   return worker.fetch(new Request(`https://prototype.test${pathname}`, init));
 }
 
-test("build serves the full-bleed Twin Listener prototype as the canonical page", async () => {
+test("build serves the worktree process manager as the canonical page", async () => {
   const response = await fetchBuilt("/");
   const html = await response.text();
 
   assert.equal(response.status, 200);
   assert.match(response.headers.get("content-type"), /^text\/html/);
-  assert.match(html, /assets\/logos\/twin-listener\.svg/);
-  assert.match(html, /Keep[\s\S]*worktrees quiet/);
+  assert.match(html, /assets\/logos\/port-matrix\.svg/);
+  assert.match(html, /Jump to a worktree, process, command, or port/);
+  assert.match(html, /Register worktree/);
 });
 
-test("build serves the logo gallery and its relative SVG asset", async () => {
+test("build serves the brand reference and its relative SVG asset", async () => {
   const galleryResponse = await fetchBuilt("/logo-showcase.html");
   const gallery = await galleryResponse.text();
-  const logoResponse = await fetchBuilt("/assets/logos/twin-listener.svg");
+  const logoResponse = await fetchBuilt("/assets/logos/port-matrix.svg");
   const logo = await logoResponse.text();
 
   assert.equal(galleryResponse.status, 200);
-  assert.match(gallery, /Twin Listener is currently installed/);
+  assert.match(gallery, /Port Matrix is the product mark/);
   assert.equal(logoResponse.status, 200);
   assert.equal(logoResponse.headers.get("content-type"), "image/svg+xml");
-  assert.match(logo, /<title>Twin Listener<\/title>/);
+  assert.match(logo, /<title>Port Matrix<\/title>/);
 });
 
 test("build serves all live asset types with their real content types", async () => {
@@ -63,7 +64,7 @@ test("build serves all live asset types with their real content types", async ()
 });
 
 test("built worker preserves HEAD and method handling", async () => {
-  const headResponse = await fetchBuilt("/assets/logos/twin-listener.svg", {
+  const headResponse = await fetchBuilt("/assets/logos/port-matrix.svg", {
     method: "HEAD",
   });
   const postResponse = await fetchBuilt("/", { method: "POST" });

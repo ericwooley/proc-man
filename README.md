@@ -19,10 +19,10 @@ scope for this phase.
 
 ## UI prototype
 
-The static prototype lives in [`prototype/`](prototype/). It is being revised to
-match the process, command, declared-port, and log-management specification in
-this documentation; until that revision lands, the Markdown specifications are
-the current product contract.
+The static prototype lives in [`prototype/`](prototype/). Its search-first
+dashboard demonstrates worktree registration and deregistration, process and
+command controls, declared-port lookup, current and historical logs,
+administration settings, and populated, loading, and empty states.
 
 Run the prototype with the repository's simple Python HTTP server:
 
@@ -30,7 +30,7 @@ Run the prototype with the repository's simple Python HTTP server:
 npm run serve
 ```
 
-Then open <http://127.0.0.1:4174/>. The logo exploration is available at
+Then open <http://127.0.0.1:4174/>. The brand mark reference is available at
 <http://127.0.0.1:4174/logo-showcase.html>.
 
 Use `npm test` for deterministic UI checks. The browser keyboard-flow check

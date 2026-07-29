@@ -4,13 +4,14 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light dark">
-  <title>Port Start — Logo design exploration</title>
-  <link rel="icon" href="./assets/logos/twin-listener.svg" type="image/svg+xml">
+  <title>Port Start — Brand mark</title>
+  <link rel="icon" href="./assets/logos/port-matrix.svg" type="image/svg+xml">
   <link rel="stylesheet" href="./assets/phosphor/style.css">
   <script>
     (() => {
       const saved = localStorage.getItem("port-start-logo-theme");
-      document.documentElement.dataset.theme = saved || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+      document.documentElement.dataset.theme =
+        saved ?? (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
     })();
   </script>
   <style>
@@ -22,229 +23,180 @@
     }
 
     :root {
-      --bg: #f7f8f6;
-      --paper: #f7f8f6;
-      --card: #edf0ec;
+      --canvas: #aeb9b2;
+      --surface: #f7f8f6;
+      --surface-soft: #edf0ec;
       --ink: #17181a;
-      --muted: #626962;
-      --line: #d9ded8;
+      --muted: #626a63;
+      --line: #dfe3de;
       --acid: #efff83;
-      --font: "Manrope", sans-serif;
+      --shadow: 0 30px 85px rgba(38, 50, 43, .2);
+      --font: "Manrope", "Segoe UI", sans-serif;
+      --mono: "SFMono-Regular", Consolas, monospace;
     }
     html[data-theme="dark"] {
-      --bg: #222623;
-      --paper: #222623;
-      --card: #2b302c;
+      --canvas: #111715;
+      --surface: #222623;
+      --surface-soft: #2b302c;
       --ink: #f5f7f3;
-      --muted: #9ca49d;
+      --muted: #adb5ae;
       --line: #3d443e;
       --acid: #eaff71;
+      --shadow: 0 34px 90px rgba(0, 0, 0, .42);
     }
 
     * { box-sizing: border-box; }
-    html { background: var(--bg); }
+    html, body { min-height: 100%; }
     body {
       margin: 0;
-      min-width: 320px;
-      min-height: 100vh;
-      background: var(--bg);
+      padding: 24px;
+      background: var(--canvas);
       color: var(--ink);
       font-family: var(--font);
+      display: grid;
+      place-items: center;
       -webkit-font-smoothing: antialiased;
     }
     button, a { color: inherit; font: inherit; }
-    button:focus-visible, a:focus-visible { outline: 3px solid var(--acid); outline-offset: 3px; }
-
-    .shell {
-      width: 100%;
-      min-height: 100vh;
-      margin: 0;
-      overflow: hidden;
-      background: var(--paper);
+    button:focus-visible, a:focus-visible {
+      outline: 3px solid color-mix(in srgb, var(--acid) 70%, var(--ink));
+      outline-offset: 3px;
     }
 
+    .shell {
+      width: min(1120px, 100%);
+      overflow: hidden;
+      border-radius: 30px;
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
     header {
       display: flex;
       align-items: flex-start;
-      gap: 24px;
-      padding: 42px 46px 34px;
+      gap: 20px;
+      padding: 28px 30px;
       border-bottom: 1px solid var(--line);
     }
-    .kicker {
-      margin: 0 0 10px;
+    .eyebrow {
+      margin: 0 0 8px;
       color: var(--muted);
-      font-size: 10px;
-      font-weight: 700;
-      letter-spacing: .16em;
+      font: 700 10px/1.2 var(--mono);
+      letter-spacing: .12em;
       text-transform: uppercase;
     }
     h1 {
       margin: 0;
-      font-size: clamp(42px, 6vw, 78px);
-      font-weight: 500;
-      line-height: .96;
-      letter-spacing: -.065em;
+      font-size: clamp(30px, 5vw, 58px);
+      line-height: 1;
+      letter-spacing: -.055em;
     }
-    .subtitle { max-width: 620px; margin: 18px 0 0; color: var(--muted); font-size: 13px; line-height: 1.7; }
-    .header-actions { display: flex; gap: 8px; margin-left: auto; }
-    .icon-button, .back-link {
-      height: 48px;
+    .subtitle {
+      max-width: 640px;
+      margin: 14px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.65;
+    }
+    .actions { display: flex; gap: 8px; margin-left: auto; }
+    .button {
+      min-height: 40px;
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      gap: 8px;
-      border: 0;
-      border-radius: 17px;
-      background: var(--card);
-      cursor: pointer;
-      text-decoration: none;
-    }
-    .icon-button { width: 48px; font-size: 18px; }
-    .back-link { padding: 0 17px; font-size: 11px; font-weight: 650; }
-
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 12px;
-      padding: 24px;
-    }
-    .concept {
-      min-width: 0;
-      position: relative;
-      display: flex;
-      flex-direction: column;
-      align-items: stretch;
-      min-height: 430px;
-      overflow: hidden;
-      border: 1px solid transparent;
-      border-radius: 29px;
-      background: var(--card);
-      color: var(--ink);
-      padding: 0;
-      text-align: left;
-      cursor: default;
-      transition: transform .35s cubic-bezier(.16,1,.3,1), border-color .2s ease, background .2s ease;
-    }
-    .concept:hover { transform: translateY(-4px); }
-    .concept.selected { border-color: var(--ink); background: var(--acid); color: #17181a; }
-    .recommended {
-      position: absolute;
-      top: 16px;
-      left: 16px;
-      z-index: 2;
-      padding: 6px 9px;
-      border-radius: 99px;
-      background: var(--ink);
-      color: var(--paper);
-      font-size: 8px;
-      font-weight: 750;
-      letter-spacing: .08em;
-      text-transform: uppercase;
-    }
-    .logo-canvas {
-      width: 100%;
-      height: 240px;
-      display: grid;
-      place-items: center;
-      margin: 0;
-      border: 0;
-      border-bottom: 1px solid var(--line);
-      background: var(--paper);
-      color: var(--ink);
-      cursor: pointer;
-    }
-    .concept.selected .logo-canvas { border-color: rgba(23,24,26,.14); }
-    .logo-canvas img {
-      width: 122px;
-      height: 122px;
-      color: var(--ink);
-      transition: transform .55s cubic-bezier(.16,1,.3,1);
-    }
-    html[data-theme="dark"] .logo-canvas img { filter: invert(1); }
-    .concept:hover .logo-canvas img { transform: scale(1.07) rotate(-2deg); }
-    .concept-copy { display: flex; flex-direction: column; flex: 1; padding: 22px; }
-    .concept-meta { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-    .concept-number { color: var(--muted); font: 9px/1.2 ui-monospace, monospace; }
-    .size-sample {
-      display: inline-flex;
-      align-items: center;
       gap: 7px;
-      color: var(--muted);
-      font: 8px/1 ui-monospace, monospace;
-      text-transform: uppercase;
-      white-space: nowrap;
-    }
-    .size-sample img { width: 26px; height: 26px; }
-    html[data-theme="dark"] .concept:not(.selected) .size-sample img { filter: invert(1); }
-    .concept.selected .concept-number, .concept.selected p { color: #555b39; }
-    .concept.selected .size-sample { color: #555b39; }
-    h2 { margin: 12px 0 4px; font-size: 21px; font-weight: 650; letter-spacing: -.035em; }
-    .category { font: 9px ui-monospace, monospace; letter-spacing: .1em; text-transform: uppercase; }
-    .concept p { margin: 17px 0 0; color: var(--muted); font-size: 11px; line-height: 1.65; }
-    .download {
-      width: max-content;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      margin-top: auto;
-      padding-top: 18px;
-      color: currentColor;
-      font-size: 10px;
-      font-weight: 700;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: var(--surface-soft);
+      padding: 0 13px;
       text-decoration: none;
+      font-size: 11px;
+      font-weight: 750;
+      cursor: pointer;
     }
+    .icon-button { width: 40px; padding: 0; font-size: 17px; }
 
-    .selection {
+    .content {
       display: grid;
-      grid-template-columns: auto minmax(0, 1fr) auto;
-      gap: 18px;
-      align-items: center;
-      margin: 0 24px 24px;
-      padding: 18px 20px;
-      border-radius: 23px;
-      background: #17181a;
-      color: #fff;
+      grid-template-columns: minmax(320px, 1.15fr) minmax(280px, .85fr);
+      gap: 16px;
+      padding: 22px;
     }
-    .selection-mark {
-      width: 60px;
-      height: 60px;
+    .hero, .details {
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      background: var(--surface-soft);
+    }
+    .hero {
+      min-height: 520px;
       display: grid;
       place-items: center;
-      border-radius: 18px;
+      padding: 40px;
+    }
+    .mark-field {
+      width: min(330px, 75vw);
+      aspect-ratio: 1;
+      display: grid;
+      place-items: center;
+      border-radius: 28%;
       background: var(--acid);
       color: #17181a;
     }
-    .selection-mark img { width: 43px; height: 43px; }
-    .selection-label { color: #939b95; font-size: 9px; letter-spacing: .09em; text-transform: uppercase; }
-    .selection h3 { margin: 4px 0 0; font-size: 15px; }
-    .selection a {
-      display: inline-flex;
+    .mark-field img { width: 70%; height: 70%; }
+    .details {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .detail-copy { padding: 26px; }
+    .detail-copy h2 { margin: 0; font-size: 22px; letter-spacing: -.035em; }
+    .detail-copy p { margin: 12px 0 0; color: var(--muted); font-size: 12px; line-height: 1.7; }
+    .samples { margin-top: auto; border-top: 1px solid var(--line); }
+    .sample-row {
+      min-height: 86px;
+      display: flex;
       align-items: center;
-      gap: 7px;
-      padding: 11px 14px;
-      border-radius: 14px;
-      background: #fff;
+      gap: 14px;
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--line);
+    }
+    .sample-row:last-child { border-bottom: 0; }
+    .sample {
+      display: grid;
+      place-items: center;
+      flex: 0 0 auto;
+      border-radius: 12px;
+      background: var(--acid);
       color: #17181a;
-      font-size: 10px;
-      font-weight: 700;
-      text-decoration: none;
+    }
+    .sample img { width: 72%; height: 72%; }
+    .sample.app { width: 46px; height: 46px; }
+    .sample.favicon { width: 28px; height: 28px; border-radius: 8px; }
+    .sample.terminal { width: 46px; height: 46px; background: #17181a; }
+    .sample.terminal img { filter: invert(1); }
+    .sample-copy strong { display: block; font-size: 12px; }
+    .sample-copy span { display: block; margin-top: 3px; color: var(--muted); font-size: 10.5px; }
+    .download { margin: 18px 26px 26px; background: var(--ink); color: var(--surface); border-color: var(--ink); }
+    html[data-theme="dark"] .download { background: var(--acid); color: #17181a; border-color: var(--acid); }
+
+    footer {
+      padding: 0 22px 22px;
+      color: var(--muted);
+      font: 9px/1.6 var(--mono);
+      text-align: center;
+      text-transform: uppercase;
+      letter-spacing: .1em;
     }
 
-    footer { padding: 18px 24px 28px; color: var(--muted); font: 9px/1.7 ui-monospace, monospace; text-align: center; text-transform: uppercase; letter-spacing: .12em; }
-
-    @media (max-width: 960px) {
-      .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-      header { flex-direction: column; }
-      .header-actions { margin-left: 0; }
-    }
-    @media (max-width: 620px) {
-      header { padding: 30px 22px; }
-      .grid { grid-template-columns: 1fr; padding: 12px; }
-      .selection { grid-template-columns: auto 1fr; margin: 0 12px 12px; }
-      .selection a { grid-column: 1 / -1; justify-content: center; }
+    @media (max-width: 780px) {
+      body { padding: 0; }
+      .shell { min-height: 100vh; border-radius: 0; }
+      header { flex-direction: column; padding: 24px 20px; }
+      .actions { margin-left: 0; }
+      .content { grid-template-columns: 1fr; padding: 14px; }
+      .hero { min-height: 360px; }
     }
     @media (prefers-reduced-motion: reduce) {
-      * { transition-duration: .01ms !important; }
+      *, *::before, *::after { transition-duration: .01ms !important; }
     }
   </style>
 </head>
@@ -252,123 +204,54 @@
   <main class="shell">
     <header>
       <div>
-        <p class="kicker">Port Start · Logo design exploration</p>
-        <h1>Stable ports.<br>Distinct marks.</h1>
-        <p class="subtitle">Six compact symbols explore listener ownership, proxy flow, handoff, wake-on-traffic, and worktree routing. Twin Listener is currently installed for its direct expression of advertised and backend ports.</p>
+        <p class="eyebrow">Port Start · Brand mark</p>
+        <h1>One place for every worktree run.</h1>
+        <p class="subtitle">Port Matrix is the product mark for the local process manager. Its modular P mirrors the worktrees, processes, commands, and declared ports gathered into one searchable view.</p>
       </div>
-      <div class="header-actions">
-        <button class="icon-button" id="themeToggle" aria-label="Toggle theme"><i class="ph ph-moon-stars"></i></button>
-        <a class="back-link" href="./"><i class="ph ph-arrow-left"></i>Prototype</a>
+      <div class="actions">
+        <button class="button icon-button" id="themeToggle" aria-label="Toggle light and dark mode"><i class="ph ph-moon-stars"></i></button>
+        <a class="button" href="./"><i class="ph ph-arrow-left"></i>Prototype</a>
       </div>
     </header>
 
-    <section class="grid" aria-label="Logo concepts">
-      <article class="concept" data-name="Port Gate" data-file="./assets/logos/port-gate.svg">
-        <button class="logo-canvas" type="button" aria-label="Select Port Gate" aria-pressed="false"><img src="./assets/logos/port-gate.svg" alt=""></button>
-        <div class="concept-copy">
-          <div class="concept-meta"><span class="concept-number">01 / Geometry + line</span><span class="size-sample"><span>26px</span><img src="./assets/logos/port-gate.svg" alt=""></span></div>
-          <h2>Port Gate</h2>
-          <span class="category">Geometry + line</span>
-          <p>A stable rounded listener contains a source node and open route. It reads as both a network socket and a process becoming reachable.</p>
-          <a class="download" href="./assets/logos/port-gate.svg" download>Download SVG <i class="ph ph-download-simple"></i></a>
-        </div>
-      </article>
-
-      <article class="concept selected" data-name="Twin Listener" data-file="./assets/logos/twin-listener.svg">
-        <span class="recommended">Currently used</span>
-        <button class="logo-canvas" type="button" aria-label="Select Twin Listener" aria-pressed="true"><img src="./assets/logos/twin-listener.svg" alt=""></button>
-        <div class="concept-copy">
-          <div class="concept-meta"><span class="concept-number">02 / Selected</span><span class="size-sample"><span>26px</span><img src="./assets/logos/twin-listener.svg" alt=""></span></div>
-          <h2>Twin Listener</h2>
-          <span class="category">Boolean overlap</span>
-          <p>Two offset ports describe the advertised address and its run-specific backend. Their shared center is the daemon-controlled connection.</p>
-          <a class="download" href="./assets/logos/twin-listener.svg" download>Download SVG <i class="ph ph-download-simple"></i></a>
-        </div>
-      </article>
-
-      <article class="concept" data-name="Port Matrix" data-file="./assets/logos/port-matrix.svg">
-        <button class="logo-canvas" type="button" aria-label="Select Port Matrix" aria-pressed="false"><img src="./assets/logos/port-matrix.svg" alt=""></button>
-        <div class="concept-copy">
-          <div class="concept-meta"><span class="concept-number">03 / Dot matrix</span><span class="size-sample"><span>26px</span><img src="./assets/logos/port-matrix.svg" alt=""></span></div>
+    <section class="content">
+      <div class="hero" aria-label="Port Matrix mark on the Port Start accent color">
+        <div class="mark-field"><img src="./assets/logos/port-matrix.svg" alt="Port Matrix mark"></div>
+      </div>
+      <article class="details">
+        <div class="detail-copy">
+          <p class="eyebrow">Selected identity</p>
           <h2>Port Matrix</h2>
-          <span class="category">Rounded modules</span>
-          <p>A modular P emerges from seven rounded sockets. The faded final cell suggests an armed service waiting to become active.</p>
-          <a class="download" href="./assets/logos/port-matrix.svg" download>Download SVG <i class="ph ph-download-simple"></i></a>
+          <p>Seven rounded cells form a compact P. The final muted cell keeps the shape lively at both interface and browser-icon sizes without tying the identity to network behavior.</p>
         </div>
-      </article>
-
-      <article class="concept" data-name="Handoff Orbit" data-file="./assets/logos/handoff-orbit.svg">
-        <button class="logo-canvas" type="button" aria-label="Select Handoff Orbit" aria-pressed="false"><img src="./assets/logos/handoff-orbit.svg" alt=""></button>
-        <div class="concept-copy">
-          <div class="concept-meta"><span class="concept-number">04 / Line system</span><span class="size-sample"><span>26px</span><img src="./assets/logos/handoff-orbit.svg" alt=""></span></div>
-          <h2>Handoff Orbit</h2>
-          <span class="category">Arc transfer</span>
-          <p>Alternating arcs move ownership between large and small endpoints, translating literal port handoff into a restrained cyclic mark.</p>
-          <a class="download" href="./assets/logos/handoff-orbit.svg" download>Download SVG <i class="ph ph-download-simple"></i></a>
+        <div class="samples" aria-label="Mark size examples">
+          <div class="sample-row"><span class="sample app"><img src="./assets/logos/port-matrix.svg" alt=""></span><span class="sample-copy"><strong>Application mark</strong><span>46px · dashboard header and launch surfaces</span></span></div>
+          <div class="sample-row"><span class="sample favicon"><img src="./assets/logos/port-matrix.svg" alt=""></span><span class="sample-copy"><strong>Browser icon</strong><span>28px · local dashboard tab</span></span></div>
+          <div class="sample-row"><span class="sample terminal"><img src="./assets/logos/port-matrix.svg" alt=""></span><span class="sample-copy"><strong>Terminal surface</strong><span>High-contrast use alongside CLI output</span></span></div>
         </div>
-      </article>
-
-      <article class="concept" data-name="Proxy Bridge" data-file="./assets/logos/proxy-bridge.svg">
-        <button class="logo-canvas" type="button" aria-label="Select Proxy Bridge" aria-pressed="false"><img src="./assets/logos/proxy-bridge.svg" alt=""></button>
-        <div class="concept-copy">
-          <div class="concept-meta"><span class="concept-number">05 / Node network</span><span class="size-sample"><span>26px</span><img src="./assets/logos/proxy-bridge.svg" alt=""></span></div>
-          <h2>Proxy Bridge</h2>
-          <span class="category">Connected topology</span>
-          <p>Two durable endpoints connect through a soft bend and central relay, capturing raw traffic forwarding without becoming diagrammatic.</p>
-          <a class="download" href="./assets/logos/proxy-bridge.svg" download>Download SVG <i class="ph ph-download-simple"></i></a>
-        </div>
-      </article>
-
-      <article class="concept" data-name="Wake Signal" data-file="./assets/logos/wake-signal.svg">
-        <button class="logo-canvas" type="button" aria-label="Select Wake Signal" aria-pressed="false"><img src="./assets/logos/wake-signal.svg" alt=""></button>
-        <div class="concept-copy">
-          <div class="concept-meta"><span class="concept-number">06 / Layered system</span><span class="size-sample"><span>26px</span><img src="./assets/logos/wake-signal.svg" alt=""></span></div>
-          <h2>Wake Signal</h2>
-          <span class="category">Lines + circle</span>
-          <p>Parallel traffic lines converge on an active node inside a circular boundary, emphasizing wake-on-request and continuous proxy flow.</p>
-          <a class="download" href="./assets/logos/wake-signal.svg" download>Download SVG <i class="ph ph-download-simple"></i></a>
-        </div>
+        <a class="button download" href="./assets/logos/port-matrix.svg" download><i class="ph ph-download-simple"></i>Download SVG</a>
       </article>
     </section>
-
-    <section class="selection" aria-live="polite">
-      <div class="selection-mark"><img id="selectedMark" src="./assets/logos/twin-listener.svg" alt=""></div>
-      <div><span class="selection-label">Selected direction</span><h3 id="selectedName">Twin Listener</h3></div>
-      <a id="selectedDownload" href="./assets/logos/twin-listener.svg" download>Download selected <i class="ph ph-download-simple"></i></a>
-    </section>
-
-    <footer>Editable SVG · currentColor · viewBox 0 0 100 100 · 2026</footer>
+    <footer>Editable SVG · currentColor · viewBox 0 0 100 100</footer>
   </main>
 
   <script>
     (() => {
       const root = document.documentElement;
-      const cards = [...document.querySelectorAll(".concept")];
-      const selectedName = document.getElementById("selectedName");
-      const selectedMark = document.getElementById("selectedMark");
-      const selectedDownload = document.getElementById("selectedDownload");
       const themeButton = document.getElementById("themeToggle");
 
-      cards.forEach(card => {
-        card.querySelector(".logo-canvas").addEventListener("click", () => {
-          cards.forEach(item => {
-            const selected = item === card;
-            item.classList.toggle("selected", selected);
-            item.querySelector(".logo-canvas").setAttribute("aria-pressed", String(selected));
-          });
-          selectedName.textContent = card.dataset.name;
-          selectedMark.src = card.dataset.file;
-          selectedDownload.href = card.dataset.file;
-        });
-      });
+      function paintThemeIcon() {
+        themeButton.querySelector("i").className =
+          root.dataset.theme === "dark" ? "ph ph-sun" : "ph ph-moon-stars";
+      }
 
       themeButton.addEventListener("click", () => {
         const theme = root.dataset.theme === "dark" ? "light" : "dark";
         root.dataset.theme = theme;
         localStorage.setItem("port-start-logo-theme", theme);
-        themeButton.querySelector("i").className = theme === "dark" ? "ph ph-sun" : "ph ph-moon-stars";
+        paintThemeIcon();
       });
-      themeButton.querySelector("i").className = root.dataset.theme === "dark" ? "ph ph-sun" : "ph ph-moon-stars";
+      paintThemeIcon();
     })();
   </script>
 </body>
