@@ -33,8 +33,9 @@ npm run serve
 Then open <http://127.0.0.1:4174/>. The brand mark reference is available at
 <http://127.0.0.1:4174/logo-showcase.html>.
 
-Use `npm test` for deterministic UI checks. The browser keyboard-flow check
-requires Node.js 22 or newer, its global `WebSocket`, and Google Chrome:
+Use `npm test` for deterministic UI checks. It requires Node.js 22 or newer and
+jq 1.6 or newer. The browser keyboard-flow check additionally requires Node's
+global `WebSocket` and Google Chrome:
 
 ```sh
 npm run test:browser

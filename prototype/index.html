@@ -27,7 +27,7 @@
     --canvas: #aeb9b2; --shell: #f7f8f6; --surface: #ffffff; --surface-soft: #edf0ec; --surface-quiet: #f2f4f1;
     --ink: #17181a; --ink-soft: #353834; --muted: #626a63; --line: #dfe3de; --rail: #18191c;
     --acid: #efff83; --acid-ink: #1a1c17; --focus: #17181a; --focus-inverse: #efff83; --good: #2f8c69; --warning: #bd7d25; --danger: #c6525d;
-    --badge-good-ink: #28765a; --badge-danger-ink: #ad4650; --badge-warning-ink: #90601d; --manifest-ink: #6c59c2;
+    --badge-good-ink: #267052; --badge-danger-ink: #ad4650; --badge-warning-ink: #8b5b18; --manifest-ink: #6c59c2;
     --log-time: #78827d; --shadow: 0 30px 85px rgba(38, 50, 43, .2);
     --radius-shell: 30px; --radius-card: 20px; --radius-control: 14px;
     --font: "Manrope", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
@@ -37,7 +37,7 @@
     --canvas: #111715; --shell: #222623; --surface: #2b302c; --surface-soft: #323833; --surface-quiet: #262b27;
     --ink: #f5f7f3; --ink-soft: #dfe4de; --muted: #adb5ae; --line: #3d443e; --rail: #0e100f;
     --acid: #eaff71; --acid-ink: #141713; --focus: #eaff71; --focus-inverse: #eaff71; --good: #75d2a9; --warning: #f2b85f; --danger: #ff8290;
-    --badge-good-ink: #75d2a9; --badge-danger-ink: #ff8795; --badge-warning-ink: #f2b85f; --manifest-ink: #ad99ff;
+    --badge-good-ink: #75d2a9; --badge-danger-ink: #ff929f; --badge-warning-ink: #f2b85f; --manifest-ink: #ad99ff;
     --shadow: 0 34px 90px rgba(0, 0, 0, .42);
   }
   * { box-sizing: border-box; }
@@ -66,6 +66,7 @@
   .proto-bar .seg { display: flex; background: rgba(255,255,255,.08); border-radius: 999px; padding: 3px; gap: 2px; }
   .proto-bar button { border: 0; background: transparent; color: #d8dbd6; padding: 6px 12px; border-radius: 999px; font-size: 12px; font-weight: 600; }
   .proto-bar button.on { background: var(--acid); color: var(--acid-ink); }
+  .proto-bar[inert] { opacity: .35; pointer-events: none; }
 
   .frame { width: 100%; max-width: 1360px; height: 92vh; max-height: 900px; background: var(--shell); border-radius: var(--radius-shell); box-shadow: var(--shadow); overflow: hidden; display: grid; grid-template-rows: auto minmax(0,1fr); position: relative; }
 
@@ -411,8 +412,8 @@
           <p>Retention defaults and dashboard protection.</p>
           <div class="setting-row"><div><strong>Run output</strong><span>Maximum retained for each run</span></div><div class="value">50 MiB</div></div>
           <div class="setting-row"><div><strong>Runs per definition</strong><span>Newest process or command runs retained</span></div><div class="value">20 runs</div></div>
-          <div class="setting-row"><div><strong>Administration password</strong><span>Loopback access currently requires no password</span></div><button class="btn" id="passwordPreview">Set password</button></div>
-          <div class="setting-row"><div><strong>Exposure warning</strong><span>Preview the required non-loopback warning</span></div><button class="btn" id="accessPreview">Preview</button></div>
+          <div class="setting-row"><div><strong>Administration password</strong><span>No password is set for loopback access</span></div><div class="value">Not set</div></div>
+          <div class="setting-row"><div><strong>Exposure notice</strong><span>See the notice shown when this dashboard is available beyond this device</span></div><button class="btn" id="accessPreview">Show notice</button></div>
         </article>
       </div>
     </section>
@@ -694,6 +695,7 @@
 
   function setBackgroundInert(value) {
     document.querySelector('.top').inert = value;
+    document.querySelector('.proto-bar').inert = value;
     views.forEach(view => { view.inert = value; });
   }
 
@@ -1785,10 +1787,7 @@
 
   document.getElementById('accessPreview').addEventListener('click', () => {
     document.getElementById('accessBanner').hidden = false;
-    showToast('Exposure warning previewed', 'warning-circle');
-  });
-  document.getElementById('passwordPreview').addEventListener('click', () => {
-    showToast('Password setup would open here', 'lock-key');
+    showToast('Exposure notice shown', 'warning-circle');
   });
 
   document.querySelectorAll('.proto-bar [data-state]').forEach(btn => {

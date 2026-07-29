@@ -28,6 +28,21 @@ test("CLI first-run flow continues diagnostics and selects deterministically", a
     "utf8",
   );
   const script = firstRunShell(cli);
+  let jqVersion;
+  try {
+    jqVersion = await executeFile("jq", ["--version"]);
+  } catch {
+    assert.fail(
+      "jq 1.6 or newer is required for the documented CLI walkthrough test; see README.md",
+    );
+  }
+  const version = jqVersion.stdout.trim().match(/^jq-(\d+)\.(\d+)/);
+  assert.ok(
+    version &&
+      (Number(version[1]) > 1 ||
+        (Number(version[1]) === 1 && Number(version[2]) >= 6)),
+    "jq 1.6 or newer is required for the documented CLI walkthrough test",
+  );
   const fixtureDirectory = await mkdtemp(join(tmpdir(), "port-start-cli-docs-"));
   const fakeCli = join(fixtureDirectory, "port-start");
   const callsPath = join(fixtureDirectory, "calls.log");
@@ -69,10 +84,11 @@ esac
     const calls = await readFile(callsPath, "utf8");
     assert.match(calls, /^process logs proc_a --run latest$/m);
     assert.match(calls, /^open proc_a:http_a$/m);
-    assert.match(calls, /^worktree deregister wt_fixture$/m);
+    assert.doesNotMatch(calls, /^worktree deregister /m);
+    assert.doesNotMatch(calls, /^run list .*--include-deregistered$/m);
     assert.match(
-      calls,
-      /^run list --worktree wt_fixture --include-deregistered$/m,
+      cli,
+      /## Removal-hook teardown[\s\S]*?port-start worktree deregister "\$PWD"[\s\S]*?port-start run list --worktree "\$PWD" --include-deregistered/,
     );
   } finally {
     await rm(fixtureDirectory, { recursive: true, force: true });

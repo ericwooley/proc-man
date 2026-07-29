@@ -153,14 +153,20 @@ without changing its visual hierarchy.
     The selected row remains focused in that region while the corresponding
     output stays directly below it with at least one complete log entry visible
     at 390 × 844.
+25. Overlay containment now includes the prototype state controls, so pointer
+    input cannot replace an open drawer or dialog. Light-theme state labels meet
+    text contrast requirements, showcase icon glyphs stay out of accessible
+    names, and Administration presents current access state with one functional
+    notice action.
 
 ## Verification
 
-- `npm test`: 30 tests passed
+- `npm test`: 31 tests passed
 - `npm run test:browser`: worktree, process, command, log, and focus behavior passed
 - External icons: local Phosphor icon font
 - Product artwork: external `port-matrix.svg`; no inline or handcrafted SVG in
   the HTML surfaces
-- Light and dark secondary-copy contrast: deterministic WCAG AA checks passed
+- Light and dark secondary-copy and state-label contrast: deterministic WCAG AA
+  checks passed
 
 final result: passed

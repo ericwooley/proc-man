@@ -9,6 +9,10 @@ import { connectCdp } from "./cdp-client.mjs";
 
 const chromeBinary = process.env.CHROME_BIN ?? "/usr/bin/google-chrome";
 const prototypeUrl = new URL("../prototype/index.html", import.meta.url).href;
+const logoShowcaseUrl = new URL(
+  "../prototype/logo-showcase.html",
+  import.meta.url,
+).href;
 
 function cssColorToRgb(value) {
   const numbers = value.match(/\d*\.?\d+/g)?.map(Number) ?? [];
@@ -106,6 +110,7 @@ try {
   cdp = await connectCdp(page.webSocketDebuggerUrl);
   await cdp.call("Page.enable");
   await cdp.call("Runtime.enable");
+  await cdp.call("Accessibility.enable");
   await cdp.call("Emulation.setDeviceMetricsOverride", {
     width: 1440,
     height: 1000,
@@ -509,6 +514,44 @@ try {
       topInert: true,
       title: "feature/checkout-redesign",
     },
+  );
+  const prototypeStatePoint = await evaluate(`(() => {
+    const button = document.querySelector('.proto-bar [data-state="empty"]');
+    const rect = button.getBoundingClientRect();
+    return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+  })()`);
+  await cdp.call("Input.dispatchMouseEvent", {
+    type: "mousePressed",
+    x: prototypeStatePoint.x,
+    y: prototypeStatePoint.y,
+    button: "left",
+    clickCount: 1,
+  });
+  await cdp.call("Input.dispatchMouseEvent", {
+    type: "mouseReleased",
+    x: prototypeStatePoint.x,
+    y: prototypeStatePoint.y,
+    button: "left",
+    clickCount: 1,
+  });
+  assert.deepEqual(
+    await evaluate(`({
+      prototypeBarInert: document.querySelector(".proto-bar").inert,
+      prototypeBarPointerEvents: getComputedStyle(
+        document.querySelector(".proto-bar")
+      ).pointerEvents,
+      drawerOpen: document.getElementById("drawer").classList.contains("open"),
+      populatedState: document.querySelector(
+        '.proto-bar [data-state="populated"]'
+      ).classList.contains("on")
+    })`),
+    {
+      prototypeBarInert: true,
+      prototypeBarPointerEvents: "none",
+      drawerOpen: true,
+      populatedState: true,
+    },
+    "prototype state controls should not escape an open modal surface",
   );
   assert.deepEqual(
     await evaluate(`(() => {
@@ -1776,6 +1819,23 @@ try {
     })`),
     { view: true, count: "0", empty: true, visibleCards: 0 },
     "the empty-state switch should tell one coherent zero-registration story",
+  );
+
+  await cdp.call("Page.navigate", { url: logoShowcaseUrl });
+  await waitFor(
+    `document.readyState === "complete"`,
+    "the brand showcase should load",
+  );
+  const showcaseAccessibility = await cdp.call(
+    "Accessibility.getFullAXTree",
+  );
+  assert.deepEqual(
+    showcaseAccessibility.nodes
+      .filter(node => node.role?.value === "link")
+      .map(node => node.name?.value)
+      .sort(),
+    ["Download SVG", "Prototype"],
+    "showcase links should expose clean names without icon-font glyphs",
   );
 
   console.log("Worktree, process, command, log, and focus behavior passed.");

@@ -27,6 +27,27 @@ function contrastRatio(first, second) {
   return (lighter + 0.05) / (darker + 0.05);
 }
 
+function mixHexColors(foreground, background, foregroundWeight) {
+  const foregroundChannels = foreground
+    .replace("#", "")
+    .match(/.{2}/g)
+    .map(channel => Number.parseInt(channel, 16));
+  const backgroundChannels = background
+    .replace("#", "")
+    .match(/.{2}/g)
+    .map(channel => Number.parseInt(channel, 16));
+  return `#${foregroundChannels
+    .map((channel, index) =>
+      Math.round(
+        channel * foregroundWeight +
+          backgroundChannels[index] * (1 - foregroundWeight),
+      )
+        .toString(16)
+        .padStart(2, "0"),
+    )
+    .join("")}`;
+}
+
 function cssToken(block, name) {
   return block.match(new RegExp(`--${name}:\\s*(#[0-9a-f]{6})`, "i"))?.[1];
 }
@@ -225,6 +246,16 @@ test("prototype uses the local icon family and external product mark instead of 
   assert.match(brand, /Port Matrix is the product mark/);
   assert.doesNotMatch(dashboard, /<svg\b/i);
   assert.doesNotMatch(brand, /<svg\b/i);
+  for (const icon of brand.matchAll(/<i\b[^>]*>/g)) {
+    assert.match(
+      icon[0],
+      /aria-hidden="true"/,
+      "brand-showcase icon glyphs should be decorative",
+    );
+  }
+  assert.doesNotMatch(dashboard, /id="passwordPreview"/);
+  assert.doesNotMatch(dashboard, /required non-loopback warning/i);
+  assert.doesNotMatch(dashboard, /Password setup would open here/i);
   assert.deepEqual(logoEntries.sort(), ["port-matrix.svg"]);
 });
 
@@ -248,8 +279,28 @@ test("light and dark body-copy tokens meet WCAG AA contrast", async () => {
     const rail = cssToken(block, "rail");
     const shell = cssToken(block, "shell");
     const surface = cssToken(block, "surface");
+    const surfaceSoft = cssToken(block, "surface-soft");
+    const good = cssToken(block, "good");
+    const warning = cssToken(block, "warning");
+    const danger = cssToken(block, "danger");
+    const badgeGoodInk = cssToken(block, "badge-good-ink");
+    const badgeWarningInk = cssToken(block, "badge-warning-ink");
+    const badgeDangerInk = cssToken(block, "badge-danger-ink");
     assert.ok(
-      ink && muted && focus && focusInverse && rail && shell && surface,
+      ink &&
+        muted &&
+        focus &&
+        focusInverse &&
+        rail &&
+        shell &&
+        surface &&
+        surfaceSoft &&
+        good &&
+        warning &&
+        danger &&
+        badgeGoodInk &&
+        badgeWarningInk &&
+        badgeDangerInk,
       `${theme} tokens should be present`,
     );
     assert.ok(
@@ -269,6 +320,25 @@ test("light and dark body-copy tokens meet WCAG AA contrast", async () => {
       contrastRatio(focusInverse, rail) >= 3,
       `${theme} inverse focus indicator should meet 3:1 on dark surfaces`,
     );
+    for (const [label, stateInk, stateBackground] of [
+      ["tile running", badgeGoodInk, mixHexColors(good, surface, 0.18)],
+      ["tile mixed", badgeWarningInk, mixHexColors(warning, surface, 0.18)],
+      ["tile stopped", muted, surfaceSoft],
+      ["tile stale", badgeDangerInk, mixHexColors(danger, surface, 0.16)],
+      ["process running", badgeGoodInk, mixHexColors(good, surface, 0.18)],
+      [
+        "process transitional",
+        badgeWarningInk,
+        mixHexColors(warning, surface, 0.18),
+      ],
+      ["process failed", badgeDangerInk, mixHexColors(danger, surface, 0.16)],
+      ["run stopped or canceled", muted, surfaceSoft],
+    ]) {
+      assert.ok(
+        contrastRatio(stateInk, stateBackground) >= 4.5,
+        `${theme} ${label} text should meet 4.5:1`,
+      );
+    }
   }
 });
 
@@ -280,6 +350,7 @@ test("browser prerequisites and override are documented", async () => {
   const packageData = JSON.parse(packageJson);
 
   assert.match(readme, /Node\.js 22/i);
+  assert.match(readme, /jq 1\.6 or newer/i);
   assert.match(readme, /global `WebSocket`/i);
   assert.match(readme, /CHROME_BIN/);
   assert.match(readme, /registration and deregistration/);
@@ -382,6 +453,7 @@ test("design QA evidence is durable inside the repository", async () => {
   );
 
   assert.doesNotMatch(designQa, /\/tmp\//);
+  assert.match(designQa, /`npm test`: 31 tests passed/);
   for (const asset of [
     "jump-to-endpoint.png",
     "implementation-desktop.png",

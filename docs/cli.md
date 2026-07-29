@@ -411,19 +411,30 @@ endpoint_selector="$(
 if [ -n "$endpoint_selector" ]; then
   port-start open "$endpoint_selector" || :
 fi
-
-port-start worktree deregister "$worktree_selector" || :
-port-start run list --worktree "$worktree_selector" --include-deregistered
 ```
 
 The inventory output supplies selectors for every registered command as well;
 agents choose the intended command by name or purpose and pass its selector to
 `port-start command run`. The sample sorts opaque selectors before choosing a
 repeatable process and HTTP(S) endpoint, even when the service returns the same
-inventory in a different order. Lifecycle, log, open, and deregistration errors
-remain visible but do not prevent later diagnostics or retained-run discovery.
-Bootstrap, registration, selector extraction, and inventory failures stop the
-walkthrough because later actions would have no valid target.
+inventory in a different order. Lifecycle, log, and open errors remain visible
+without hiding later diagnostics. Bootstrap, registration, selector extraction,
+and inventory failures stop the walkthrough because later actions would have no
+valid target. The worktree remains registered after onboarding.
+
+## Removal-hook teardown
+
+A worktree-removal hook runs this separate cleanup path before deleting the
+directory:
+
+```sh
+port-start worktree deregister "$PWD"
+port-start run list --worktree "$PWD" --include-deregistered
+```
+
+The first command stops active runs and removes current definitions. The second
+shows the retained history that remains available under the configured
+retention policy.
 
 The embedded manifest JSON Schema and OpenAPI document make the CLI
 self-describing to automated agents.
