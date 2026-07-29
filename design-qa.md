@@ -97,7 +97,9 @@ without changing its visual hierarchy.
     at 1440 × 1000. Deregistration names the worktree, active-run impact, and
     retained-log behavior before confirmation. Drawer tabs use roving focus and
     arrow/Home/End navigation, decorative icons are excluded from accessible
-    names, and dashboard endpoint actions use 32-pixel targets.
+    names, and dashboard endpoint actions use 32-pixel targets. The drawer
+    focus trap filters the roving set by actual tab order, including forward
+    and reverse wrapping when the selected panel has no controls.
 
 ## Verification
 

@@ -341,12 +341,21 @@ try {
     "endpoints",
     "Home should move to the first drawer tab",
   );
+  await press("ArrowLeft", "ArrowLeft");
+  assert.equal(
+    await evaluate(`document.activeElement.dataset.tab`),
+    "logs",
+    "Left Arrow should wrap to the previous drawer tab",
+  );
+  await press("Home", "Home");
 
   await evaluate(`(() => {
     const drawer = document.getElementById("drawer");
     const focusable = [...drawer.querySelectorAll(
       "a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex='-1'])"
-    )].filter(element => element.getClientRects().length > 0);
+    )].filter(element =>
+      element.tabIndex >= 0 && element.getClientRects().length > 0
+    );
     focusable.at(-1).focus();
   })()`);
   await press("Tab", "Tab");
@@ -499,6 +508,19 @@ try {
   await waitFor(
     `document.activeElement.id === "drawerClose"`,
     "the registered worktree should open",
+  );
+  await evaluate(`document.querySelector('[data-tab="endpoints"]').focus()`);
+  await press("Tab", "Tab");
+  assert.equal(
+    await evaluate(`document.activeElement.id`),
+    "drawerClose",
+    "Tab from the active roving tab should wrap within a control-free drawer panel",
+  );
+  await press("Tab", "Tab", 8);
+  assert.equal(
+    await evaluate(`document.activeElement.dataset.tab`),
+    "endpoints",
+    "Shift+Tab from the close button should reverse-wrap to the active drawer tab",
   );
   await evaluate(`document.querySelector('[data-tab="logs"]').click()`);
   assert.deepEqual(
