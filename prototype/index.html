@@ -1814,10 +1814,10 @@
     if (index < 0) return
     const label = PROCESSES[index].label
     const id = PROCESSES[index].id
-    const retainedRunCount = processRuns(PROCESSES[index]).length
     PROCESSES.splice(index, 1)
     state.openLogs.delete(id)
     state.selectedRuns.delete(id)
+    const retainedRunCount = RUNS_BY_PROCESS[id]?.length || 0
     closeDialog()
     render()
     const runNoun = retainedRunCount === 1 ? "run remains" : "runs remain"
