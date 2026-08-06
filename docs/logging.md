@@ -2,19 +2,13 @@
 
 ## Goals
 
-Logs make every managed process and registered-command invocation inspectable
-during execution and after completion without turning SQLite into a
-high-volume append log.
+Every service run and task run has inspectable output during execution and
+after completion.
 
-Port Start captures both stdout and stderr, tags their source, assigns a
-run-local sequence number in receive order, and timestamps each record.
-Cross-stream ordering reflects the order in which the daemon receives data; the
-operating system cannot provide a stronger total-order guarantee for separate
-pipes.
+Port Start captures stdout and stderr, assigns a run-local sequence, and adds a
+receive timestamp. Separate pipes cannot provide a stronger total order.
 
 ## Record format
-
-Durable segments use newline-delimited JSON:
 
 ```json
 {"seq":42,"time":"2026-07-24T22:15:03.123Z","stream":"stderr","text":"address already in use\n","partial":false}
@@ -22,112 +16,78 @@ Durable segments use newline-delimited JSON:
 
 Fields:
 
-- `seq`: monotonically increasing within one run;
-- `time`: daemon receive time in UTC;
-- `stream`: `stdout` or `stderr`;
-- `text`: UTF-8 text;
-- `partial`: the record is a bounded fragment of a line that exceeded the
-  reader's record size.
-
-Invalid UTF-8 is replaced for the structured representation. The replacement is
-reported in run metadata; byte-exact binary output is outside the V1 log
-contract.
+- `seq` increases within one run.
+- `time` is the UTC daemon receive time.
+- `stream` is `stdout` or `stderr`.
+- `text` contains UTF-8 output.
+- `partial` marks a bounded fragment of a large line.
 
 ## Files and metadata
 
-Each run owns a directory of numbered append-only NDJSON segments. A segment
-targets 5 MiB and completes after the first whole record that crosses that
-target. SQLite stores the run-to-segment relationship, first and last sequence,
-byte count, and truncation flags.
+Each run owns numbered append-only NDJSON segments. SQLite stores segment
+sequence ranges, byte counts, and truncation state.
 
-Segments are written through a bounded, non-blocking fan-out:
+The writer:
 
-1. stdout and stderr are always drained so the child can continue;
-2. durable writes receive every record until retention limits require rotation;
-3. live subscribers receive records through bounded buffers;
-4. a slow subscriber gets a gap event and can resume from disk if the sequence
-   is retained.
+1. Always drain child pipes.
+2. Write retained records.
+3. Send records to bounded subscriber buffers.
+4. reports gaps to slow subscribers.
 
-The default size policy retains the newest output. When a run exceeds 50 MiB,
-the oldest completed segments are deleted and the run is marked truncated.
-Downloads and searches state the retained sequence range.
+The default retains the newest 50 MiB for one run. Deleted segments update the
+retained sequence range.
 
 ## Search
 
-Server-side search supports:
+Search supports:
 
-- literal text;
-- Go RE2 regular expressions;
-- case-sensitive or case-insensitive matching;
-- stdout, stderr, or both;
-- process, command, worktree, run, and timestamp filters;
-- cursor-based pagination.
+- Literal text or Go RE2.
+- Case sensitivity.
+- Stdout, stderr, or both.
+- Process ID or label.
+- Repeated tag filters.
+- Process kind and run state.
+- Time range.
+- cursor pagination.
 
-Search scans retained segments in sequence order. V1 does not maintain a
-full-text index. The bounded default log size keeps scans predictable.
-
-The CLI and administration API expose the same search contract. Use
-`port-start run search` or `POST /api/v1/run-search` for output across runs,
-including retained runs from deregistered worktrees. Use
-`GET /api/v1/runs/{id}/logs` for one run. Both forms share stream, timestamp,
-query, and cursor filters.
+Repeated tags use AND semantics. Search includes retained runs from removed
+processes when requested.
 
 ## Streaming
 
-The SPA and CLI follow an SSE stream beginning after a supplied sequence.
-Existing retained records are sent first, followed by live records and run-state
-events.
+The SPA and CLI follow SSE from a sequence cursor. The server sends retained
+records first and then live records.
 
-On reconnect:
-
-- the client supplies the last sequence;
-- retained missing records are replayed;
-- if retention has deleted the requested range, the server sends
-  `retention_gap` with the earliest available sequence.
+On reconnect, the client supplies its last sequence. The server replays retained
+records or reports `retention_gap`.
 
 ## Downloads
 
-One run can be downloaded as:
+One run can download as:
 
-- `text`: a combined timeline with timestamp and stream prefix;
-- `ndjson`: the durable structured records.
+- Combined text with time and stream prefixes.
+- NDJSON with durable record fields.
 
-Downloads target one selected run and stream from disk with
-`Content-Disposition`; the response is not assembled wholly in memory.
-Cross-run CLI and API search matches use the same `seq`, `time`, `stream`,
-`text`, and `partial` field names and add `run_id` so each match remains
-attributable. A user can then download any matching run individually.
+The server streams files from disk and does not load a complete download into
+memory.
 
-## Retention policy
+## Retention
 
-Global defaults are:
+Defaults:
 
-- maximum 50 MiB retained for one run;
-- newest 20 runs retained per definition;
+- 50 MiB for one run.
+- 20 runs for one process.
 - no age limit.
 
-Definitions may override any constraint or set unlimited retention. Constraints
-are combined: data is eligible for removal when it violates any configured
-maximum.
+A process can override each limit or select unlimited retention. Retention runs
+during rotation, terminal transitions, definition updates, periodic age scans,
+and startup recovery.
 
-Retention runs:
-
-- during segment rotation;
-- after a run reaches a terminal state;
-- after worktree registration or imperative definition update;
-- periodically for age limits;
-- during startup recovery.
-
-Deregistered-definition history remains until its retention policy deletes it,
-unless deregistration explicitly requests log purge. Automatic deletion of a
-worktree after the 24-hour missing-path grace period purges that worktree's
-logs.
+Removed process history remains until retention deletes it. Explicit
+deregistration can request log purge.
 
 ## Daemon logs
 
-Daemon operational logs are separate from managed-run logs. They are structured
-and include request IDs, worktree/definition/run identifiers, lifecycle
-transitions, and process exits.
-
-They exclude passwords, session tokens, full inherited environments, and
-manifest environment values marked or named like secrets.
+Daemon logs contain request IDs, process IDs, run IDs, lifecycle transitions,
+and exits. They exclude passwords, tokens, full inherited environments, and
+secret manifest values.

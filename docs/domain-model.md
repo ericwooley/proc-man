@@ -3,82 +3,85 @@
 ## Aggregate structure
 
 ```text
-Repository
-└── Worktree
-    ├── Process definition
-    │   ├── Declared port
-    │   └── Run
-    │       └── Log record
-    └── Command definition
-        └── Run
-            └── Log record
+Process definition
+├── Label
+├── Tags
+├── Declared ports
+└── Runs
+    └── Log records
 ```
 
-Standalone imperative definitions may exist without a worktree.
+Manifest source data records provenance and reconciliation ownership. It is not
+a parent resource in the product model.
 
-## Entities
+## Process definition
 
-### Repository
+A process definition is the durable configuration for one executable. It has:
 
-A local Git repository identity derived from the canonical Git common directory.
-Repository name and remote metadata are presentation data, not identity.
+- An opaque stable ID.
+- A required human label.
+- Zero or more normalized tags.
+- Kind `service` or `task`.
+- Manifest or imperative source ownership.
+- Argv or an explicit shell string.
+- A working directory and environment overrides.
+- Zero or more declared ports.
+- stop, task, and log-retention limits.
 
-### Worktree
+Labels are presentation data and need not be unique. Selectors use opaque IDs.
+Manifest entries also have a stable key for idempotent reconciliation. The
+dashboard does not show that key as the process identity.
 
-A canonical filesystem path belonging to a repository. Its identity is the
-combination of repository identity and canonical worktree root. Branch, commit,
-manifest path, and display label are observed metadata.
+## Tags
 
-A worktree is `active`, `missing`, or `deleting`.
+Tags are process metadata for discovery and grouping. V1 stores free-form
+normalized tags. The server trims whitespace, converts tags to lowercase, and
+rejects duplicates after normalization.
 
-### Process definition
+Repeated tag filters use AND semantics. When the dashboard groups by tag, one
+process can appear in several groups. Each row uses the same process ID and
+state. Aggregate counts count unique process IDs.
 
-The durable configuration for one named, supervised, long-running command.
-Important attributes are:
+## Process kinds
 
-- stable identifier and unique name within its worktree;
-- configuration source: `manifest` or `imperative`;
-- command kind and value;
-- working directory and environment overrides;
-- zero or more named declared ports;
-- stop timeout and log-retention configuration.
+### Service
 
-Manifest-owned configuration changes through worktree registration.
-Lifecycle actions remain available from every client.
+A service is a long-running process. It supports Start, Stop, and Restart. It
+has at most one active run.
 
-### Command definition
+### Task
 
-The durable configuration for a named one-shot action such as `test`, `migrate`,
-or `seed`. It contains a command, working directory, environment overrides,
-optional execution timeout, and log-retention policy. Each invocation creates an
-independent run and may be canceled while active.
+A task is a one-shot process. It supports Run and Cancel. Each invocation has
+its own run. Separate invocations can overlap.
 
-### Declared port
+Both kinds use the same labels, tags, declared ports, run history, log capture,
+retention, and discovery model.
 
-A named endpoint that a process is configured to use. It records an explicit
-port number, host, protocol hint (`tcp`, `http`, or `https`), and optional URL
-path.
+## Declared port
 
-The declaration supports discovery, links, and launch-time substitution. Socket
-availability and ownership remain properties of the launched application and
-operating system.
+A declared port records a name, explicit port number, host, protocol hint, and
+optional HTTP path. It supports discovery, links, launch substitution, and run
+snapshots.
 
-### Run
+The child process owns its sockets. A declaration does not reserve a port and
+does not affect process state.
 
-One process start or command invocation. A run snapshots the effective command,
-working directory, environment overrides, declared ports, and execution
-configuration so history remains intelligible after re-registration.
+## Run
 
-It records the trigger, timestamps, PID/process group, exit code, error, terminal
-reason, and log metadata.
+A run is one service start or task invocation. It snapshots the label, tags,
+kind, command, working directory, environment overrides, declared ports, and
+execution limits.
 
-### Log record
+A run records its trigger, timestamps, process identity, exit code, terminal
+reason, and log metadata. History remains clear after the process definition
+changes or disappears.
 
-One tagged process-output record with a run-local monotonically increasing
-sequence number, timestamp, stream (`stdout` or `stderr`), text, and partial-line
-indicator when applicable.
+## Log record
 
-## Process states
+A log record has a run-local sequence number, receive timestamp, stream,
+text, and partial-line marker.
+
+## Service states
 
 ```text
                          start
@@ -96,119 +99,60 @@ indicator when applicable.
     └─────────────── stopping
 ```
 
-The observable state set is:
+The state set is `stopped`, `starting`, `running`, `stopping`, and `failed`.
+A missing working directory does not create another durable state. Start or Run
+returns `cwd_unavailable`.
 
-- `stopped`: registered with no active run;
-- `starting`: one launch is in progress;
-- `running`: the managed process group is alive;
-- `stopping`: termination is in progress;
-- `failed`: the latest launch could not create a running process;
-- `stale`: the owning worktree path is missing and new starts are blocked.
-
-At most one active run exists for a process definition. Concurrent Start actions
-for a process that is `starting` or `running` return the existing run rather
-than launching duplicates.
-
-### Process actions
-
-- **Start** behaves by current state:
-  - from `stopped` or `failed`, create a new run;
-  - from `starting` or `running`, return the existing run unchanged;
-  - from `stopping`, return `invalid_state` so the caller can retry after the
-    process reaches `stopped`;
-  - from `stale`, return `worktree_stale`.
-- **Stop** begins termination from `starting` or `running`, returns the existing
-  stop operation from `stopping`, and succeeds without changing state from
-  `stopped`, `failed`, or `stale`.
-- **Restart** creates a new run from `stopped` or `failed`; from `starting`,
-  `running`, or `stopping`, it waits for termination and then creates one new
-  run; concurrent Restart requests for the same current run join that one
-  restart operation; from `stale`, Restart returns `worktree_stale`.
-- **Deregister** stops the process and removes its active definition.
-
-### Command actions
-
-- **Run** creates a new command invocation. For a worktree-associated command
-  whose worktree is `missing`, Run returns `worktree_stale`; standalone
-  imperative commands are unaffected.
-- **Cancel** terminates one active invocation.
-- **Deregister** cancels every active invocation, then removes the current
-  command definition.
-
-Command invocations do not change a process definition's state.
-
-## Configuration changes during a run
-
-Every run uses the configuration snapshot taken when it launched. Updating an
-imperative definition or re-registering a manifest-owned definition stores the
-configuration for the next run and does not alter or stop an active run.
-
-While a process is active, status responses expose both:
-
-- `active_run.configuration`, including the ports and command used by the
-  running process; and
-- `configured`, the definition that the next run will use.
-
-CLI and dashboard links use the active run's declared ports while a process is
-`starting`, `running`, or `stopping`. They use the configured definition while
-the process is `stopped`, `failed`, or `stale`. When the values differ, clients
-label the configured values as pending the next start.
+Start returns the current run while a service is starting or running. Stop is
+idempotent. Concurrent Restart requests join one replacement operation.
 
 ## Run states
 
-A run moves through:
+A run moves through `starting`, `running`, and `stopping`, then reaches
+`exited`, `failed`, `canceled`, or `interrupted`.
 
-- `starting`;
-- `running`;
-- `stopping`;
-- one terminal state: `exited`, `failed`, `canceled`, or `interrupted`.
+A child launch moves the run to `running`. A normal exit records the exit code.
+A launch error creates a failed run. Port declarations do not determine state.
 
-Successful child creation moves a run to `running`. A normal process exit records
-its exit code and returns a process definition to `stopped`. A launch error
-creates a failed run. Port declarations do not determine run state.
+## Configuration changes during a run
 
-The daemon does not relaunch a process after exit. A new run always follows an
-explicit action.
+Each run keeps its launch snapshot. An update changes the next run only.
+Responses expose `configured` and `active_run.configuration` when they differ.
 
-## Worktree reconciliation
+Clients use active-run ports while the run is active. They use configured ports
+when no run is active. Clients label changed configured ports as next-run
+values.
 
-`worktree register` is idempotent for the tuple:
+## Manifest reconciliation
+
+`port-start register` reads a process manifest and reconciles entries by:
 
 ```text
-canonical Git common directory
-+ canonical worktree root
-+ definition kind
-+ definition name
+canonical manifest path
++ process key
 ```
 
 Registration:
 
-1. validates the complete manifest;
-2. resolves the worktree and relative working directories;
-3. computes the desired process, command, and declared-port set;
-4. creates or updates matching manifest-owned definitions;
-5. stops and deregisters manifest-owned definitions no longer present;
-6. leaves imperative definitions unchanged;
-7. reports all changes in human-readable or JSON form.
+1. Validate the complete manifest.
+2. Resolve each relative working directory from the manifest directory.
+3. Create or update matching manifest-owned processes.
+4. Stop and deregister removed manifest-owned processes.
+5. Leave imperative processes unchanged.
+6. Return stable process selectors and a change plan.
 
-The daemon periodically checks registered worktree roots. A missing root is
-marked `missing`, its process definitions project as `stale`, and its managed
-processes and command invocations are stopped. New worktree-associated process
-and command runs return `worktree_stale` until the path returns. If it returns
-within 24 hours, the worktree becomes `active` and its process definitions
-return to `stopped`; nothing starts automatically. After 24 hours the
-registration and retained logs are removed.
+`port-start deregister --source` stops active runs and removes current
+definitions from that manifest source. Retained runs remain until retention
+deletes them, unless the request purges logs.
 
 ## Invariants
 
-1. At most one non-terminal run exists for a process definition.
-2. Every process port name is unique within that process.
-3. Every declared port is explicit; registration does not synthesize a value.
-4. Process state follows the managed process group rather than endpoint state.
-5. A manifest-owned definition changes only through worktree registration.
-6. CLI and SPA actions go through the daemon API.
-7. Every run snapshots its command, working directory, declared ports, and
-   relevant environment overrides.
-8. Deregistering a worktree stops every active run associated with it.
-9. Updating a definition never changes the configuration snapshot of an active
-   run.
+1. A service has at most one non-terminal run.
+2. Every process has one label and one stable ID.
+3. Tags are unique within one process after normalization.
+4. Every declared port number is explicit.
+5. Process state follows the child process group.
+6. Every client action uses the daemon API.
+7. Every run snapshots its execution configuration.
+8. Updating a definition does not change an active run.
+9. Removing a definition stops or cancels its active runs.

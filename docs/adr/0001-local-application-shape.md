@@ -2,51 +2,37 @@
 
 - Status: Accepted
 - Date: 2026-07-29
+- Updated: 2026-08-06
 
 ## Context
 
-Port Start is a local development tool for registering and operating processes
-associated with Git worktrees. It must provide permanent administration through
-a CLI and web application, supervise process groups, persist configuration, and
-retain process logs.
+Port Start must provide permanent local process administration through a CLI
+and web application. It must supervise process groups, persist configuration,
+and retain logs.
 
-The same lifecycle rules must apply whether an action comes from a person,
-worktree hook, coding agent, CLI script, or browser session.
+The same lifecycle rules must apply to people, coding agents, scripts, and
+browser sessions.
 
 ## Decision
 
 - Implement the daemon and CLI in Go.
-- Persist durable application data in SQLite.
-- Implement the administration UI as a React application built with Vite and
-  served as a single-page application.
-- Reserve one permanent administration port for the control plane.
-- Embed the production frontend and SQLite migrations in the Go binary.
-- Make the daemon the sole owner of managed-process and run state.
-- Make the CLI and SPA clients of one documented administration API.
-- Support Linux and macOS as a per-user local-development service.
+- Persist structured state in SQLite.
+- Implement the UI in React and Vite.
+- Reserve one administration port.
+- Embed frontend assets and migrations in the Go binary.
+- Make the daemon the only owner of process and run state.
+- Make the CLI and SPA clients of one API.
+- Support Linux and macOS as per-user services.
 
 ## Consequences
 
-- Process supervision and log capture continue when the interactive dashboard
-  and launching CLI session close.
-- The CLI and SPA observe the same validation and lifecycle behavior.
-- A single installed binary serves the complete application.
-- High-volume process output is stored outside SQLite according to ADR 0005.
-- Windows and multi-user scheduling remain outside V1.
+- Process supervision continues after a CLI or browser session closes.
+- The CLI and SPA use the same validation and lifecycle behavior.
+- One installed binary serves the application.
+- High-volume output stays outside SQLite.
 
-## Alternatives considered
+## Alternatives
 
-### Separate daemon, CLI, and frontend distributions
-
-Independent release cycles add local installation and version-compatibility
-work without improving the single-user workflow.
-
-### Desktop application as the lifecycle authority
-
-An interactive desktop session would make background process supervision and
-CLI-first worktree hooks less reliable.
-
-### CLI access directly to SQLite
-
-Direct database writes create several lifecycle authorities and cannot safely
-coordinate active process groups or live log streams.
+Separate distributions add installation and version work. A desktop authority
+cannot provide reliable background supervision. Direct SQLite access creates
+several lifecycle authorities.

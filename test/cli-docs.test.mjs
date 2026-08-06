@@ -16,7 +16,7 @@ const executeFile = promisify(execFile);
 
 function firstRunShell(cli) {
   const section = cli.match(
-    /The root help includes this manifest-independent first-run path[\s\S]*?```sh\n([\s\S]*?)\n```/,
+    /## First-run path[\s\S]*?```sh\n([\s\S]*?)\n```/,
   );
   assert.ok(section, "CLI docs should contain the root first-run shell block");
   return section[1];
@@ -55,13 +55,10 @@ case "$*" in
   "daemon install --now")
     exit 0
     ;;
-  "worktree register --json")
-    printf '%s\\n' '{"ok":true,"data":{"worktree":{"selector":"wt_fixture"}}}'
+  "register --json")
+    printf '%s\\n' '{"ok":true,"data":{"processes":[{"selector":"proc_z","kind":"task","endpoints":[]},{"selector":"proc_a","kind":"service","endpoints":[{"selector":"endpoint_https_b","protocol":"https"},{"selector":"endpoint_http_a","protocol":"http"}]}]}}'
     ;;
-  "process list --worktree wt_fixture --json")
-    printf '%s\\n' '{"ok":true,"data":{"processes":[{"selector":"proc_z","endpoints":[{"selector":"proc_z:http_z","protocol":"http"}]},{"selector":"proc_a","endpoints":[{"selector":"proc_a:https_b","protocol":"https"},{"selector":"proc_a:http_a","protocol":"http"}]}]}}'
-    ;;
-  "process start --worktree wt_fixture")
+  "process start proc_a")
     exit 7
     ;;
   *)
@@ -83,12 +80,14 @@ esac
     });
     const calls = await readFile(callsPath, "utf8");
     assert.match(calls, /^process logs proc_a --run latest$/m);
-    assert.match(calls, /^open proc_a:http_a$/m);
-    assert.doesNotMatch(calls, /^worktree deregister /m);
-    assert.doesNotMatch(calls, /^run list .*--include-deregistered$/m);
+    assert.match(calls, /^open endpoint_http_a$/m);
+    assert.match(calls, /^process list$/m);
+    assert.match(calls, /^process start proc_a$/m);
+    assert.doesNotMatch(calls, /^worktree /m);
+    assert.doesNotMatch(calls, /^command /m);
     assert.match(
       cli,
-      /## Removal-hook teardown[\s\S]*?port-start worktree deregister "\$PWD"[\s\S]*?port-start run list --worktree "\$PWD" --include-deregistered/,
+      /## Worktree hook example[\s\S]*?port-start register --json[\s\S]*?port-start deregister --source "\$PWD\/\.port-start\.yaml"/,
     );
   } finally {
     await rm(fixtureDirectory, { recursive: true, force: true });

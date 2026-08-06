@@ -2,114 +2,120 @@
 
 ## Purpose
 
-Port Start makes agent-created development worktrees easy to find and operate.
-A worktree registers its named processes, optional one-shot commands, and the
-ports each process expects to use. The registration becomes a durable inventory
-available from a CLI, HTTP API, and browser dashboard.
+Port Start provides one local inventory for development processes. Each process
+has a label, tags, execution configuration, runs, and retained logs. A process
+can be a long-running service or a one-shot task.
 
-Developers can start, stop, and restart supervised processes; run registered
-commands; inspect current state; open declared HTTP endpoints; and search,
-follow, or download captured output without first reconstructing how a
-worktree was configured.
+Developers and automation can register processes, find them without knowing
+their source directory, execute them, inspect declared ports, and read current
+or historical logs.
+
+Git worktrees are one source of process registrations. They do not create a
+separate resource, page, or ownership hierarchy.
 
 ## Users
 
-The primary user is a developer running Port Start as their own operating-system
-user on a Linux or macOS workstation. Automated coding agents and worktree
-creation scripts are first-class clients. V1 is single-user and single-host.
+The primary user is a developer who runs Port Start under one operating-system
+account on Linux or macOS. Coding agents and local automation are supported
+clients. V1 is single-user and single-host.
 
 ## Required capabilities
 
-### Worktree registration
+### Process registration
 
-- Register a Git worktree from a checked-in `.port-start.yaml`.
-- Make registration idempotent so creation hooks can call it repeatedly.
-- Deregister a worktree explicitly from its removal hook.
-- Group registered processes, commands, declared ports, runs, and logs by Git
-  repository and worktree.
-- Detect missing worktree paths, stop their active processes, and remove their
-  registration after a 24-hour grace period.
-- Support standalone imperative registrations for tools that are not associated
-  with a Git worktree.
+- Register one process through the CLI or API.
+- Apply a versioned process manifest idempotently.
+- Deregister one process or all processes from one manifest source.
+- Require a human label and accept zero or more tags.
+- Keep labels non-unique and use opaque IDs for actions.
+- Preserve manifest or imperative source metadata for configuration changes.
+- Keep source metadata out of primary navigation, filtering, and grouping.
 
-### Managed processes
+### Inventory
 
-- Register, inspect, update, start, stop, restart, and deregister a named
-  long-running process.
-- Execute each process in its configured worktree directory and login-shell
-  environment.
-- Run each process in its own process group and terminate the group predictably.
-- Keep at most one active run for a process definition.
-- Report process state independently of declared-port state.
+- List all registered processes in one primary view.
+- Search labels, tags, declared ports, and launch metadata.
+- Filter by multiple tags, kind, state, and attention state.
+- Group matching processes by tag.
+- Show one process in each matching tag group when grouping is active.
+- Keep every repeated row connected to the same stable process ID.
+- Show an `untagged` group for processes without tags.
+
+### Execution
+
+- Support `service` and `task` process kinds.
+- Start, stop, and restart a service.
+- Allow at most one active service run.
+- Run a task and cancel one active task run.
+- Preserve each task invocation as an independent run.
 - Start processes only through an explicit CLI, API, or dashboard action.
-- Start or stop all processes belonging to a worktree concurrently.
+- Run every child in its own process group.
+- Execute each child in its configured directory and login-shell environment.
 
-### Registered commands
+### Labels and tags
 
-- Register named one-shot commands such as `test`, `migrate`, or `seed`.
-- Execute and cancel a command from the CLI, API, or dashboard.
-- Preserve each invocation as a distinct run with its own status and logs.
-- Allow independent command invocations without changing long-running process
-  state.
+- Require a label from 1 through 120 Unicode characters.
+- Allow duplicate labels.
+- Accept up to 32 tags per process.
+- Store tags as unique lowercase strings after trimming whitespace.
+- Limit each tag to 63 characters.
+- Allow letters, numbers, period, underscore, hyphen, and colon.
+- Let the dashboard suggest existing tags without constraining new tags.
+- Apply repeated tag filters with AND semantics.
 
 ### Declared ports
 
 - Allow each process to declare zero or more named TCP ports.
-- Require explicit port numbers; registration does not allocate ports.
-- Store host, protocol, and optional URL path metadata for discoverability.
-- Display copyable addresses and browser links in the CLI and dashboard.
-- Expose declared values to the launched process through explicit placeholders
-  and environment variables.
-- Treat declarations as process configuration: the launched process remains the
-  socket owner and determines whether each endpoint is available.
-
-### Administration
-
-- Provide a permanent administration server at `127.0.0.1:13337` by default.
-- Serve a React/Vite SPA and a documented, versioned JSON API.
-- Provide a scriptable Go CLI with stable JSON output and complete help suitable
-  for humans and automated agents.
-- Support an optional administration password and configurable bind host.
-- Install and operate as a systemd user service on Linux or a LaunchAgent on
-  macOS.
+- Require explicit port numbers.
+- Store host, protocol, and optional URL path metadata.
+- Display copyable addresses and browser links.
+- Expose declared values through explicit launch placeholders.
+- Keep socket ownership and traffic outside Port Start.
 
 ### Logs
 
-- Capture stdout and stderr for every managed process and registered-command
-  invocation with ordering metadata.
-- Stream current output, search retained output with literal or regular
-  expression matching, and download it as text or structured records.
-- Retain multiple runs and support configurable size, count, age, and unlimited
-  retention policies.
+- Capture stdout and stderr for every run.
+- Stream current output.
+- Search retained output by text, tag, process, run state, and time.
+- Download one run as text or structured records.
+- Support configurable size, count, age, and unlimited retention.
+
+### Administration
+
+- Serve the application at `127.0.0.1:13337` by default.
+- Provide a React/Vite SPA and a versioned JSON API.
+- Provide a scriptable Go CLI with stable JSON output.
+- Support an optional administration password.
+- Install as a systemd user service or macOS LaunchAgent.
+
+## Worktree automation use case
+
+A worktree creation hook runs one idempotent manifest command from the new
+directory. The manifest registers normal processes and can add tags such as
+`project:storefront`, `branch:agent-42`, or `purpose:preview`.
+
+A worktree removal hook deregisters the manifest source before it removes the
+directory. No worktree record remains in Port Start.
 
 ## Success criteria
 
-Port Start is successful when all of the following are true:
-
-1. A worktree-creation hook can run one idempotent registration command and
-   receive its worktree, process, command, and declared-port inventory as JSON.
-2. A developer can identify and open the HTTP endpoint for any registered
-   worktree without inspecting its scripts or environment.
-3. A developer can start, stop, and restart a worktree process from both the CLI
-   and dashboard.
-4. A developer can run a registered one-shot command and inspect its result.
-5. Current and historical logs remain visible and searchable from the CLI and
-   dashboard.
-6. A worktree-removal hook can deregister the worktree, stop its managed
-   processes, and release its durable configuration.
-7. A daemon restart restores registrations and run history while accurately
-   marking previously active runs as interrupted.
+1. A user can find any process by label or tags.
+2. A user can group the process list by tags.
+3. A user can execute a service or task from the CLI and dashboard.
+4. A user can inspect current and historical logs for one process.
+5. A user can open or copy a declared endpoint.
+6. A script can apply and remove a manifest idempotently.
+7. A daemon restart restores process definitions and run history.
 
 ## Non-goals for V1
 
 - Windows support.
-- Multi-user isolation or permissions.
+- Multi-user isolation.
 - Remote orchestration across machines.
-- Containers, Kubernetes, or production workload scheduling.
-- Process dependency graphs or ordered worktree startup.
+- Containers or production workload scheduling.
+- Process dependency graphs.
 - Automatic restart policies.
-- Attaching to processes that were started outside Port Start.
-- Port allocation, listener ownership, traffic handling, or application
-  readiness inference.
-- TLS termination for managed endpoints or the administration server.
-- Editing manifest-owned definitions from the SPA or direct update commands.
+- Attaching to external processes.
+- Port allocation, listener ownership, traffic handling, or readiness checks.
+- TLS termination.
+- A dedicated repository or worktree inventory.

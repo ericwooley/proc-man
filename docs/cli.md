@@ -2,22 +2,22 @@
 
 ## Principles
 
-`port-start` is both a human interface and a stable automation interface.
+`port-start` supports people and automation.
 
-- Every control command talks to the daemon API.
-- Human output goes to stdout; diagnostics go to stderr.
-- `--json` produces stable machine-readable output and no decorative text.
-- Mutating commands support `--dry-run` when a useful validation or change plan
-  can be produced.
-- Prompts are used only when stdin is a TTY and a command explicitly permits
-  them. Automation never hangs waiting for input.
-- Ambiguous selectors fail with candidates instead of choosing implicitly.
+- Every command uses the daemon API.
+- Human output goes to stdout.
+- Diagnostics go to stderr.
+- `--json` returns stable machine data.
+- Useful mutations support `--dry-run`.
+- Automation never waits for input.
+- Ambiguous labels return candidates.
+- Opaque selectors remain unchanged between commands.
 
-Global endpoint resolution order is:
+The administration endpoint resolves in this order:
 
-1. `--admin-url`;
-2. `PORT_START_ADMIN_URL`;
-3. persisted CLI configuration;
+1. `--admin-url`.
+2. `PORT_START_ADMIN_URL`.
+3. Saved CLI configuration.
 4. `http://127.0.0.1:13337`.
 
 ## Command tree
@@ -32,11 +32,8 @@ port-start
 │   ├── stop
 │   ├── restart
 │   └── status
-├── worktree
-│   ├── register
-│   ├── deregister
-│   ├── list
-│   └── prune
+├── register
+├── deregister
 ├── process
 │   ├── register
 │   ├── update
@@ -46,12 +43,6 @@ port-start
 │   ├── start
 │   ├── stop
 │   ├── restart
-│   └── logs
-├── command
-│   ├── register
-│   ├── update
-│   ├── deregister
-│   ├── list
 │   ├── run
 │   ├── cancel
 │   └── logs
@@ -61,6 +52,8 @@ port-start
 │   ├── status
 │   └── logs
 │       └── download
+├── tag
+│   └── list
 ├── open
 ├── auth
 │   ├── set-password
@@ -74,256 +67,233 @@ port-start
 
 ## Daemon commands
 
-`port-start serve` runs the daemon in the foreground. Important flags are
+`port-start serve` runs the daemon in the foreground. Important flags include
 `--host`, `--port`, `--data-dir`, `--config`, and `--login-shell`.
 
-`port-start daemon install --now` installs the current executable as the user's
-systemd service or LaunchAgent and starts it. `--now=false` installs without
-starting. Uninstall keeps application data unless `--purge` is given.
+`port-start daemon install --now` installs and starts the user service.
+Uninstall keeps application data unless `--purge` is present.
 
-## Worktree registration
+## Manifest registration
 
 ```sh
-port-start worktree register
-port-start worktree register --file ./config/dev-processes.yaml
-port-start worktree register --dry-run --json
-port-start worktree deregister /path/to/worktree
-port-start worktree list --json
-port-start worktree prune --missing-for 24h
+port-start register
+port-start register --file ./config/dev-processes.yaml
+port-start register --dry-run --json
+port-start deregister --source "$PWD/.port-start.yaml"
 ```
 
-`register` returns repository and worktree identity, process definitions,
-command definitions, declared ports and links, and created, updated, or removed
-results. When re-registration changes an active process, the result distinguishes
-the active run's current links from configuration pending its next start. A
-worktree-creation hook can use the JSON form safely and repeatedly.
+`register` returns the canonical manifest source and the complete process
+inventory. Each process and endpoint includes an opaque selector.
 
-Every registration JSON result includes canonical, opaque action selectors at
-`.data.worktree.selector`, `.data.processes[].selector`,
-`.data.processes[].endpoints[].selector`, and `.data.commands[].selector`.
-Clients pass these values back unchanged; they do not derive selectors from a
-path basename, branch, or display name.
+Registration reconciles entries by manifest source and process key. It reports
+created, updated, removed, and unchanged processes. An active run keeps its
+launch snapshot when its definition changes.
 
-`deregister` stops active runs and removes current definitions. Historical runs
-remain under their retention policies unless `--purge-logs` is supplied.
+`deregister --source` stops or cancels active runs and removes current
+definitions from that source. Retained runs remain unless `--purge-logs` is
+present.
 
-## Inventory and discovery
-
-Agents and people can recover a worktree's registered names and endpoint keys
-without repeating registration:
+## Process inventory
 
 ```sh
-port-start process list --worktree "$PWD"
-port-start process list --worktree "$PWD" --json
-port-start command list --worktree "$PWD"
-port-start command list --worktree "$PWD" --json
+port-start process list
+port-start process list --tag project:storefront --tag frontend
+port-start process list --kind service --state running
+port-start process list --query 4310 --json
+port-start tag list
 ```
 
-`--worktree` accepts a canonical path, stable worktree ID, or unambiguous
-repository/worktree label. Omitting it lists definitions across every registered
-worktree. Ambiguous selectors fail with matching worktree candidates.
+Human output includes:
 
-Human `process list` output includes the canonical process selector, worktree,
-name, source, state, current run ID, and every declared endpoint. Each endpoint
-line includes its canonical endpoint selector, protocol, copyable address, and
-lifecycle label: `active` for the current run snapshot, `next_start` for
-changed configuration pending restart, or `configured` when no run is active.
-Human `command list` output includes the canonical command selector, worktree,
-name, source, active invocation count, and latest run result.
+- Process selector.
+- Label and tags.
+- Kind and state.
+- Current run ID.
+- Declared endpoints.
+- Source ownership.
+- latest run result.
 
-The JSON forms return the same inventory without display formatting.
-`process list --json` returns `processes`; each process contains `id`,
-`selector`, `name`, `source`, `state`, `current_run_id`, an `endpoints` array
-with `key`, `selector`, `protocol`, `address`, and `lifecycle`, and a `worktree`
-object with the worktree's stable ID, canonical selector, canonical path,
-repository ID, and observed branch. `command list --json` returns `commands`;
-each command contains `id`, `selector`, `name`, `source`,
-`active_invocation_count`, `latest_run`, and the same `worktree` object with its
-stable ID, canonical selector, canonical path, repository ID, and observed
-branch. The value is `null` for standalone imperative definitions. Supplying
-`--worktree` filters these arrays without changing their response shape.
+The JSON form returns `processes` and `next_cursor`. Each process contains:
 
-The discovery results feed directly into status, endpoint, execution, and log
-commands:
+- `id` and `selector`.
+- `label`, `tags`, and `kind`.
+- `source`.
+- `state` for services.
+- `active_runs`.
+- `latest_run`.
+- `endpoints`.
+
+Repeated `--tag` flags use AND semantics. `--query` searches labels, tags,
+launch metadata, and declared ports.
+
+Labels can repeat. A label selects a process only when it matches one process.
+An ambiguous label returns matching selectors.
+
+The inventory feeds later commands:
 
 ```sh
-port-start process status my-worktree/web
-port-start open my-worktree/web:http
-port-start command run my-worktree/test
-port-start process logs my-worktree/web --run latest
+port-start process status proc_01...
+port-start process start proc_01...
+port-start process logs proc_01... --run latest
+port-start open endpoint_01...
 ```
 
 ## Imperative registration
 
-Long-running process:
+Long-running service:
 
 ```sh
-port-start process register web \
+port-start process register \
+  --label "Storefront web" \
+  --kind service \
+  --tag project:storefront \
+  --tag frontend \
   --port http=http://127.0.0.1:4310/ \
   --cwd "$PWD" \
-  -- npm run dev -- --host 127.0.0.1 --port 4310
+  -- npm run dev -- --port 4310
 ```
 
-One-shot command:
+One-shot task:
 
 ```sh
-port-start command register test \
+port-start process register \
+  --label "Storefront test suite" \
+  --kind task \
+  --tag project:storefront \
+  --tag test \
   --cwd "$PWD" \
   -- npm test
 ```
 
-`command deregister` cancels every active invocation before removing the current
-definition. Retained runs remain available according to their retention policy
-unless `--purge-logs` is supplied.
-
-Shell strings use an explicit flag:
+Shell strings require `--shell`:
 
 ```sh
-port-start command register migrate \
+port-start process register \
+  --label "Database migration" \
+  --kind task \
+  --tag migration \
   --cwd "$PWD/apps/api" \
   --shell 'exec ./scripts/migrate'
 ```
 
-When run inside a Git worktree, an imperative definition is associated with
-that worktree for display unless `--standalone` is supplied. It remains
-imperatively owned and editable.
+Imperative definitions support `process update`. Manifest-owned definitions
+return `manifest_owned` and show their source path.
 
-## Process lifecycle
-
-Processes may be selected by stable ID, unambiguous name, or
-`worktree/name`:
+## Labels and tags
 
 ```sh
-port-start process start my-worktree/web
-port-start process stop web
+port-start process update proc_01... --label "Storefront preview"
+port-start process update proc_01... --add-tag preview
+port-start process update proc_01... --remove-tag deprecated
+```
+
+The server normalizes tags. The CLI prints the normalized result. `tag list`
+returns existing tags and unique process counts for autocomplete and filters.
+
+## Service lifecycle
+
+```sh
+port-start process start proc_01...
+port-start process stop proc_01...
 port-start process restart proc_01...
-port-start process status web --json
+port-start process status proc_01... --json
 ```
 
-Start creates a run from `stopped` or `failed`, returns the existing run from
-`starting` or `running`, returns `invalid_state` from `stopping`, and returns
-`worktree_stale` from `stale`. Stop is idempotent and joins an in-progress stop.
-Restart waits for any active run to terminate and creates exactly one new run;
-concurrent Restart requests join that operation. Restart returns
-`worktree_stale` from `stale`. No lifecycle command is triggered by traffic to a
-declared port.
+Start returns the active run while the service is starting or running. Stop is
+idempotent. Restart creates one replacement run after termination.
 
-Worktree-wide operations are:
+These actions return `invalid_kind` for tasks. Traffic to a declared port never
+starts a process.
+
+## Task execution
 
 ```sh
-port-start process start --worktree /path/to/worktree
-port-start process stop --worktree /path/to/worktree
+port-start process run proc_02...
+port-start process run proc_02... --wait
+port-start process cancel proc_02... --run run_01...
 ```
 
-They operate concurrently and return a result for every process rather than
-failing fast after the first error.
+Each invocation receives a run ID, terminal result, and logs. Separate task
+runs can overlap. `--wait` streams output and maps the child result to the CLI
+exit contract.
 
-## Registered command execution
-
-```sh
-port-start command run my-worktree/test
-port-start command run migrate --json
-port-start command cancel run_01...
-```
-
-Each invocation receives its own run ID, exit result, and logs. A command run
-can outlive the invoking CLI unless `--wait` is supplied. With `--wait`, stdout
-and stderr stream to the terminal and the CLI exits with the registered
-command's result mapped to the stable Port Start exit contract.
-
-A worktree-associated `command run` returns `worktree_stale` while its worktree
-path is missing. Cancel remains available for an invocation that was already
-active when the path disappeared. Standalone imperative commands are
-unaffected.
+Run returns `invalid_kind` for services.
 
 ## Ports and links
 
 ```sh
-port-start process status web
-port-start open my-worktree/web:http
+port-start process status proc_01...
+port-start open endpoint_01...
 ```
 
-Process status prints every declared endpoint alongside process state. While a
-process is active, it prints and opens endpoints from the run's launch snapshot.
-If the stored definition has changed, status also labels the next-run endpoints
-as pending. When no run is active, it uses the stored definition.
+Status shows every declared endpoint. Active runs use their launch snapshot.
+Stopped processes use configured values. Changed next-run values receive a
+`next_start` label.
 
-`open` selects a named HTTP(S) declaration and launches the user's browser. It
-reports a copyable address for TCP declarations.
+`open` starts the user browser for HTTP or HTTPS. It prints a copyable address
+for TCP.
 
-Declared ports come from registration. CLI commands do not allocate, reserve, or
-change them.
+Port Start does not allocate, reserve, own, forward, or proxy ports.
 
-Standalone definitions omit `PORT_START_WORKTREE_ROOT`. Supplying
-`{worktree_root}` for a standalone process or command is a validation error;
-`--cwd` remains its explicit execution root.
-
-## Logs
+## Runs and logs
 
 ```sh
-port-start run list --worktree "$PWD" --include-deregistered
-port-start run list --kind process --name web --state failed --since 24h
-port-start run list --worktree "$PWD" --include-deregistered --json
-port-start run search 'ready|error' --worktree "$PWD" --regex --ignore-case
-port-start process logs web --run latest
-port-start process logs web --follow
-port-start command logs test --run latest
-port-start run logs run_01... --grep 'ready|error' --regex --ignore-case
+port-start run list --tag project:storefront --include-deregistered
+port-start run list --kind service --state failed --since 24h
+port-start run search 'ready|error' --tag frontend --regex --ignore-case
+port-start process logs proc_01... --run latest
+port-start process logs proc_01... --follow
 port-start run logs run_01... --stream stderr --since 15m
 port-start run logs download run_01... --format ndjson --output run.ndjson
 ```
 
-`run list` is the discovery path for current and retained history. It supports
-`--worktree`, `--kind process|command`, `--name`, `--state`, `--since`,
-`--until`, and `--include-deregistered`. The last flag includes retained runs
-whose process or command definition was removed by deregistration. Human output
-includes run ID, worktree snapshot, definition kind and name, state, start and
-end times, and retention deadline.
+Run listings are newest-first and cursor-paginated. JSON returns `runs` and
+`next_cursor`.
 
-Both human and JSON listings are newest-first and cursor-paginated. `--limit`
-defaults to 50 and is capped at 500; `--cursor` continues from the prior page.
-JSON returns `runs` and `next_cursor`. Each run contains `id`,
-`worktree_snapshot`, `definition_kind`, `definition_name`, `state`,
-`started_at`, `ended_at`, `retained_until`, `worktree_registered`, and
-`definition_present`. The snapshot preserves identity from run start; the two
-booleans report query-time registration and definition presence. A missing
-`next_cursor` means the result is complete.
+Each run contains:
 
-`run search` searches retained stdout and stderr across the same filters. It
-accepts literal text by default plus `--regex`, `--ignore-case`, and `--stream`.
-Human matches include the run ID and a copyable follow-up command. JSON returns
-`matches` and `next_cursor`; each match contains `run_id` plus the canonical
-log-record fields `seq`, `time`, `stream`, `text`, and `partial`.
+- Run ID.
+- Process snapshot with label, tags, kind, and source.
+- State and timestamps.
+- Retention deadline.
+- current definition presence.
 
-Discovery hands directly into status and logs:
+Search uses literal text by default. `--regex` uses RE2. Follow mode resumes by
+sequence after a connection failure and reports retention gaps.
+
+## Worktree hook example
+
+A worktree can register normal processes without becoming a Port Start
+resource:
 
 ```sh
-port-start run status run_01...
-port-start run logs run_01... --grep 'ready|error' --regex --ignore-case
+cd /path/to/new-worktree
+port-start register --json
 ```
 
-Without `--follow`, logs exit after the retained result. Follow mode resumes by
-sequence number after transient API disconnects and reports retention gaps
-explicitly.
+Before removal:
+
+```sh
+port-start deregister --source "$PWD/.port-start.yaml"
+git worktree remove "$PWD"
+```
+
+The manifest can add branch or project tags when those values help discovery.
 
 ## Authentication
 
-`port-start auth set-password` reads and confirms a password from a TTY or reads
-one value from `--password-file`. A plaintext `--password` argument is omitted
-because process listings may expose it.
+`port-start auth set-password` reads a password from a TTY or
+`--password-file`. Commands resolve credentials from:
 
-When authentication is active, ordinary CLI commands resolve credentials from:
+1. `PORT_START_PASSWORD`.
+2. `--password-file`.
+3. an interactive prompt when permitted.
 
-1. `PORT_START_PASSWORD`;
-2. `--password-file`;
-3. an interactive prompt when allowed.
-
-The CLI exchanges the password for a short-lived API session for the duration of
-the command. Passwords and session tokens are never printed in JSON output.
+Passwords and session tokens never appear in JSON output.
 
 ## Machine output
 
-Successful JSON responses use:
+Success:
 
 ```json
 {
@@ -333,17 +303,16 @@ Successful JSON responses use:
 }
 ```
 
-Errors use:
+Error:
 
 ```json
 {
   "ok": false,
   "error": {
-    "code": "worktree_stale",
-    "message": "process web cannot start because its worktree is missing",
+    "code": "cwd_unavailable",
+    "message": "the process working directory is not available",
     "details": {
-      "worktree_id": "wt_01...",
-      "missing_since": "2026-07-29T18:15:00Z"
+      "process_id": "proc_01..."
     }
   }
 }
@@ -357,84 +326,68 @@ Stable exit codes:
 | `2` | Invalid invocation or validation failure |
 | `3` | Resource not found or ambiguous selector |
 | `4` | Lifecycle conflict |
-| `5` | Authentication or authorization failure |
+| `5` | Authentication failure |
 | `6` | Daemon unavailable |
-| `7` | Operation attempted but failed |
+| `7` | Attempted operation failed |
 
-## Help requirements
+## First-run path
 
-Every command's `--help` contains:
-
-- a one-sentence purpose and lifecycle effect;
-- complete argument and flag semantics, including defaults;
-- at least one copyable example and one `--json` example;
-- accepted enum values and selector forms;
-- whether it prompts or mutates state;
-- relevant environment variables;
-- expected exit codes and common errors;
-- a “next commands” section.
-
-The root help includes this manifest-independent first-run path. It uses `jq`
-to read the opaque selectors returned by the CLI and safely skips optional
-actions when a manifest has no processes or HTTP(S) endpoints:
+The root help includes this automation-safe path:
 
 ```sh
 set -u
 
 port-start daemon install --now || exit $?
-registration_json="$(port-start worktree register --json)" || exit $?
-worktree_selector="$(
-  printf '%s\n' "$registration_json" | jq -er '.data.worktree.selector'
-)" || exit $?
+registration_json="$(port-start register --json)" || exit $?
 
-port-start process list --worktree "$worktree_selector" || :
-port-start command list --worktree "$worktree_selector" || :
-port-start process start --worktree "$worktree_selector" || :
-
-process_inventory="$(
-  port-start process list --worktree "$worktree_selector" --json
-)" || exit $?
 process_selector="$(
-  printf '%s\n' "$process_inventory" |
+  printf '%s\n' "$registration_json" |
     jq -r '(.data.processes | sort_by(.selector) | .[0].selector) // empty'
 )"
-if [ -n "$process_selector" ]; then
+
+port-start process list
+
+if [ -n "$process_selector" ]
+then
+  process_kind="$(
+    printf '%s\n' "$registration_json" |
+      jq -r --arg selector "$process_selector" \
+        '.data.processes[] | select(.selector == $selector) | .kind'
+  )"
+  if [ "$process_kind" = "service" ]
+  then
+    port-start process start "$process_selector" || :
+  else
+    port-start process run "$process_selector" || :
+  fi
   port-start process logs "$process_selector" --run latest || :
 fi
 
 endpoint_selector="$(
-  printf '%s\n' "$process_inventory" |
+  printf '%s\n' "$registration_json" |
     jq -r '[.data.processes[].endpoints[] |
       select(.protocol == "http" or .protocol == "https")] |
       sort_by(.selector) | (.[0].selector // empty)'
 )"
-if [ -n "$endpoint_selector" ]; then
+
+if [ -n "$endpoint_selector" ]
+then
   port-start open "$endpoint_selector" || :
 fi
 ```
 
-The inventory output supplies selectors for every registered command as well;
-agents choose the intended command by name or purpose and pass its selector to
-`port-start command run`. The sample sorts opaque selectors before choosing a
-repeatable process and HTTP(S) endpoint, even when the service returns the same
-inventory in a different order. Lifecycle, log, and open errors remain visible
-without hiding later diagnostics. Bootstrap, registration, selector extraction,
-and inventory failures stop the walkthrough because later actions would have no
-valid target. The worktree remains registered after onboarding.
+Bootstrap, registration, and selector extraction failures stop the path. Later
+diagnostics remain visible.
 
-## Removal-hook teardown
+## Help requirements
 
-A worktree-removal hook runs this separate cleanup path before deleting the
-directory:
+Every command help page includes:
 
-```sh
-port-start worktree deregister "$PWD"
-port-start run list --worktree "$PWD" --include-deregistered
-```
-
-The first command stops active runs and removes current definitions. The second
-shows the retained history that remains available under the configured
-retention policy.
-
-The embedded manifest JSON Schema and OpenAPI document make the CLI
-self-describing to automated agents.
+- Purpose and lifecycle effect.
+- Arguments and flags with defaults.
+- One human example and one JSON example.
+- Selector forms.
+- Mutation and prompt behavior.
+- Environment variables.
+- Exit codes and common errors.
+- next commands.

@@ -2,135 +2,117 @@
 
 ## Principles
 
-Most behavior belongs in deterministic modules with plain inputs and outputs.
-Process, clock, filesystem, Git, SQLite, authentication entropy, and
-service-manager operations are injected boundaries.
+Deterministic modules own validation and state decisions. Inject process,
+filesystem, SQLite, clock, authentication, and service-manager boundaries.
 
-The suite follows a testing pyramid:
+Use this test pyramid:
 
-1. extensive pure and domain tests;
-2. focused integration tests with real local boundaries;
-3. a small number of end-to-end browser flows.
+1. Pure domain tests.
+2. Focused integration tests.
+3. limited end-to-end tests.
 
-Bug fixes begin with a failing regression test.
+Bug fixes start with a failing regression test.
 
 ## Pure tests
 
-### Domain and lifecycle
+### Labels, tags, and inventory
 
-- Every valid and invalid process/run state transition.
-- Start from stopped, failed, starting, running, stopping, and stale states.
-- Concurrent Start coalescing for starting and running processes.
-- Stop and Restart behavior from every process state, including concurrent
-  requests during stopping.
-- Concurrent Restart requests coalescing into one replacement run.
-- Stop, Restart, process exit, launch failure, cancel, and interruption.
-- Command invocation independence from process state.
-- Missing-worktree grace and restoration using a fake clock.
+- Label length and Unicode boundaries.
+- Duplicate labels with distinct IDs.
+- Tag trimming, lowercase normalization, validation, and duplicates.
+- Free-form tag creation and existing-tag suggestions.
+- Repeated tag filters with AND semantics.
+- Search across labels, tags, ports, and launch metadata.
+- Tag grouping with repeated process IDs and unique aggregate counts.
+- untagged grouping.
 
-### Manifest and reconciliation
+### Process lifecycle
 
-- Empty, malformed, unknown, duplicate, and boundary-value fields.
-- Zero, one, and multiple declared ports.
-- Port-name normalization and environment-variable collision detection.
-- Explicit port range, protocol, host, and URL-path validation.
-- Duplicate declared endpoints producing deterministic warnings.
-- Named port, worktree, definition, and run placeholder expansion.
-- Commands containing spaces, quotes, Unicode, empty arguments, and shell
-  metacharacters.
-- Manifest removal without affecting imperative definitions.
-- Re-registration during an active run preserving the run snapshot while
-  exposing next-run configuration.
-- Manifest-owned update rejection.
-- Dry-run plans matching committed reconciliation.
+- Every service state transition.
+- Concurrent Start and Restart coalescing.
+- Stop, exit, launch failure, and interruption.
+- Task invocation overlap and cancellation.
+- Invalid-kind actions.
+- Missing working-directory errors.
+- configuration updates during active runs.
+
+### Manifest and ports
+
+- Malformed, unknown, duplicate, and boundary fields.
+- Process key reconciliation.
+- Manifest removal without changing imperative processes.
+- Zero, one, and multiple ports.
+- Port normalization and overlap warnings.
+- Command arguments, shell strings, and placeholders.
+- dry-run plans matching committed reconciliation.
 
 ### Logs and retention
 
-- Interleaved stdout/stderr sequence assignment.
+- Stdout and stderr sequencing.
 - Partial and oversized lines.
-- Segment rotation retaining newest data.
-- Combined byte, count, and age constraints plus unlimited mode.
-- Literal and RE2 search, invalid expressions, casing, stream filtering, and
-  retention gaps.
+- Segment rotation.
+- Size, count, age, and unlimited retention.
+- Literal and RE2 search.
+- Label, tag, kind, state, and time filters.
+- retention gaps.
 
 ### API and authentication
 
-- Error-code and status mapping.
-- Password hashing and verification.
-- Session expiry and revocation.
-- Stable CLI JSON and exit-code mapping.
-- Worktree, process, command, run, and declared-port serialization.
+- Stable serialization and errors.
+- Password hashing and sessions.
+- CLI JSON and exit mapping.
+- process, tag, run, and port responses.
 
 ## Integration tests
 
-Use temporary data directories, real SQLite databases, and small purpose-built
-helper executables.
+Use temporary data directories, real SQLite, and small helper executables.
 
 Required cases:
 
-- fresh migration, sequential upgrades, WAL settings, and foreign keys;
-- second-daemon lock rejection;
-- idempotent registration and explicit deregistration;
-- argv and shell execution through a test login shell;
-- process Start coalescing and one-active-run enforcement;
-- process Stop, Restart, early exit, TERM-to-KILL escalation, and process-group
-  isolation;
-- independent and overlapping one-shot command invocations;
-- command timeout and cancellation;
-- named port placeholder and environment expansion;
-- standalone definition worktree-root placeholder rejection and environment
-  omission;
-- declared-port persistence without socket acquisition;
-- imperative update during an active run preserving active links and exposing
-  pending next-run links;
-- daemon restart marking unfinished runs interrupted without relaunching them;
-- PID-reuse protection during recovery;
-- log follow reconnect by sequence and retention-gap reporting;
-- missing worktree stop, restore, and 24-hour deletion;
-- systemd and LaunchAgent render/install adapters through test filesystem and
-  command fakes.
+- Migrations and daemon lock.
+- Imperative registration and deregistration.
+- Idempotent manifest reconciliation.
+- Argv and shell execution.
+- Service Start, Stop, Restart, and process-group termination.
+- Overlapping task runs and cancellation.
+- Declared-port persistence without socket acquisition.
+- Active-run snapshots during updates.
+- Restart recovery without relaunch.
+- Log follow and retention gaps.
+- Missing working-directory errors.
+- systemd and LaunchAgent adapters.
 
-Platform-specific process suites run on Linux and macOS. The Go race detector
-covers the supervisor, log fan-out, and event broadcasting.
+Linux and macOS run platform process suites. The Go race detector covers the
+supervisor, log fan-out, and event broadcaster.
 
 ## Frontend tests
 
-React component tests cover:
+React tests cover:
 
-- dashboard grouping and every worktree, process, command, and run state;
-- manifest-owned read-only messaging;
-- declared endpoint links and copy actions;
-- process Start, Stop, Restart, Start All, and Stop All;
-- one-shot command Run and Cancel;
-- login, logout, and expired sessions;
-- log filtering, following, reconnect gaps, and downloads;
-- empty, loading, partial-failure, and daemon-unavailable states.
-
-Contract tests validate frontend-generated types against the checked-in OpenAPI
-document.
+- One process inventory as the primary screen.
+- Label search and tag filters.
+- Tag grouping and repeated process identity.
+- Service and task actions.
+- Declared endpoints.
+- Runs, logs, search, follow, and downloads.
+- Manifest-owned messages.
+- Empty, loading, error, and daemon-unavailable states.
+- keyboard, focus, and responsive behavior.
 
 ## End-to-end tests
 
-Keep E2E coverage to critical user journeys:
-
-1. Register a fixture worktree, start its web process, open the declared HTTP
-   endpoint, follow logs, and stop the process.
-2. Run a fixture one-shot test command, observe its output, and inspect its
-   terminal result.
-3. Search and download logs from a completed run through both SPA and CLI.
-4. Start All and Stop All for a multi-process worktree and verify per-process
-   partial-failure reporting.
-5. Deregister a worktree and verify its active runs stop and its definitions
-   leave the current inventory.
+1. Register a service, filter it by tag, start it, inspect logs, and stop it.
+2. Register a task, run it, cancel another run, and inspect history.
+3. Group processes by tag and verify repeated rows use one process ID.
+4. Search and download logs from a completed run.
+5. Apply and remove a manifest source.
 
 ## Acceptance gates
 
-Before release:
-
-- Go unit, integration, race, and static-analysis checks pass.
-- Frontend unit tests, typecheck, and production build pass.
-- OpenAPI and manifest schema examples validate.
-- Linux and macOS service/process tests pass.
-- The embedded SPA is served from the release binary.
-- CLI help snapshots contain examples, JSON usage, environment variables, exit
-  codes, and next actions for every command.
+- Go unit, integration, race, and static checks pass.
+- Frontend tests, typecheck, and build pass.
+- OpenAPI and manifest examples validate.
+- Linux and macOS service tests pass.
+- The release binary serves the SPA.
+- CLI help includes examples, JSON, environment variables, errors, and next
+  actions.

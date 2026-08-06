@@ -1,17 +1,15 @@
-# Worktree manifest
+# Process manifest
 
-## File discovery
+## Discovery
 
-The canonical manifest name is `.port-start.yaml`.
+The canonical filename is `.port-start.yaml`.
 
-`port-start worktree register` searches from the current directory upward to the
-Git worktree root and reads `<worktree-root>/.port-start.yaml`. `--file` may
-select another file, but every relative path in that file still resolves from
-the detected worktree root.
+`port-start register` searches from the current directory upward and reads the
+nearest manifest. `--file` selects another file. Relative working directories
+resolve from the manifest directory.
 
-The manifest is declarative. A successful registration makes the worktree's
-manifest-owned process and command definitions match the file. Imperatively
-registered definitions are outside that reconciliation.
+The manifest is declarative. Registration makes the stored manifest-owned
+processes match the file. Imperative processes remain unchanged.
 
 ## Version 1
 
@@ -19,13 +17,17 @@ registered definitions are outside that reconciliation.
 version: 1
 
 defaults:
+  tags: [project:storefront]
   stop_timeout: 10s
   retention:
     max_bytes_per_run: 50MiB
     max_runs: 20
 
 processes:
-  - name: web
+  - key: web
+    label: Storefront web
+    kind: service
+    tags: [role:web, frontend]
     cwd: .
     ports:
       - name: http
@@ -33,184 +35,122 @@ processes:
         port: 4310
         protocol: http
         path: /
-      - name: inspector
-        host: 127.0.0.1
-        port: 9310
-        protocol: tcp
     command:
-      argv:
-        - npm
-        - run
-        - dev
-        - --
-        - --host
-        - 127.0.0.1
-        - --port
-        - "{port.http}"
-    env:
-      NODE_ENV: development
+      argv: [npm, run, dev, --, --port, "{port.http}"]
 
-commands:
-  - name: test
+  - key: test
+    label: Storefront test suite
+    kind: task
+    tags: [test]
     cwd: .
     command:
-      argv: ["npm", "test"]
-
-  - name: migrate
-    cwd: apps/api
-    command:
-      shell: exec ./scripts/migrate
-    timeout: 5m
+      argv: [npm, test]
+    timeout: 10m
 ```
 
-Unknown fields are errors. This protects checked-in configuration from silent
-misspellings.
+Unknown fields are errors.
 
 ## Top-level fields
 
 | Field | Required | Meaning |
 | --- | --- | --- |
-| `version` | Yes | Schema version. V1 accepts only integer `1`. |
-| `defaults` | No | Shared stop-timeout and retention defaults. |
-| `processes` | No | Long-running process definitions. Defaults to an empty list. |
-| `commands` | No | One-shot command definitions. Defaults to an empty list. |
+| `version` | Yes | Schema version. V1 accepts integer `1`. |
+| `defaults` | No | Shared tags, limits, and retention. |
+| `processes` | Yes | One or more process definitions. |
 
-At least one process or command is required. Names must be unique within their
-definition kind. A process and command may share a display name because selectors
-always include their kind.
-
-## Common definition fields
+## Process fields
 
 | Field | Required | Default | Meaning |
 | --- | --- | --- | --- |
-| `name` | Yes | — | Stable key matching `[a-zA-Z0-9][a-zA-Z0-9._-]{0,62}`. |
-| `cwd` | No | `.` | Worktree-relative execution directory, constrained to the worktree. |
-| `command` | Yes | — | Exactly one of `argv` or `shell`. |
-| `env` | No | `{}` | String-to-string environment overrides. |
-| `stop_timeout` | No | `10s` | Duration between SIGTERM and SIGKILL. |
-| `retention` | No | global/default | Log-retention constraints. |
+| `key` | Yes | None | Stable manifest key. |
+| `label` | Yes | None | Human label from 1 through 120 characters. |
+| `kind` | Yes | None | `service` or `task`. |
+| `tags` | No | `[]` | Free-form normalized tags. |
+| `cwd` | No | `.` | Directory relative to the manifest. |
+| `command` | Yes | None | Exactly one of `argv` or `shell`. |
+| `env` | No | `{}` | Environment overrides. |
+| `ports` | No | `[]` | Declared port metadata. |
+| `stop_timeout` | No | `10s` | TERM to KILL limit. |
+| `timeout` | No | Unlimited | Task run limit. |
+| `retention` | No | Defaults | Log-retention limits. |
 
-Command definitions additionally accept `timeout`, an optional positive maximum
-duration for one invocation. Process definitions additionally accept `ports`.
+Keys must be unique in one manifest. Labels can repeat. Default tags and
+process tags form one normalized set.
 
-### Command representation
+## Tags
 
-Argv form:
+A tag:
+
+- Trim whitespace and convert the tag to lowercase.
+- Require 1 through 63 characters.
+- Start with a letter or number.
+- Use letters, numbers, a period, an underscore, a hyphen, or a colon.
+- Keep the tag unique within one process after normalization.
+
+V1 accepts free-form tags. Clients suggest existing tags but do not constrain
+new values.
+
+## Command representation
+
+Argv is preferred:
 
 ```yaml
 command:
-  argv: ["npm", "run", "dev"]
+  argv: [npm, run, dev]
 ```
 
-Shell form:
+Shell form is explicit:
 
 ```yaml
 command:
-  shell: exec npm run dev
+  shell: exec ./scripts/migrate
 ```
 
-Argv is preferred because argument boundaries remain explicit. Both forms use
-the configured user login shell environment. Shell form opts into expansion,
-pipes, redirection, and compound-command semantics.
+Both forms use the configured login shell. Shell form permits shell expansion,
+pipes, redirection, and compound commands.
 
 ## Declared ports
 
-A process may declare zero or more ports:
-
 | Field | Required | Default | Meaning |
 | --- | --- | --- | --- |
-| `name` | Yes | — | Unique port key within the process. |
-| `host` | No | `127.0.0.1` | Host shown in addresses and links. |
-| `port` | Yes | — | Explicit integer from `1` through `65535`. |
+| `name` | Yes | None | Unique key within the process. |
+| `host` | No | `127.0.0.1` | Displayed host. |
+| `port` | Yes | None | Integer from 1 through 65535. |
 | `protocol` | No | `tcp` | `tcp`, `http`, or `https`. |
-| `path` | No | `/` | Link path for HTTP(S), beginning with `/`. |
+| `path` | No | `/` | HTTP path beginning with `/`. |
 
-`path` is invalid for `tcp`. Port Start stores these declarations for discovery,
-links, launch configuration, and run snapshots. The launched process binds its
-own sockets.
+The child binds its own sockets. Registration can warn about overlapping
+declarations, but it does not reject or reserve them.
 
-Two registered processes may declare the same host and port. Registration
-returns a warning listing the overlapping definitions so worktree tooling can
-surface likely configuration mistakes without treating metadata as a lock.
+Named ports provide placeholders and environment variables:
 
-### Substitutions and environment
-
-Named port placeholders are expanded in argv elements, shell strings, and
-environment values:
-
-| Placeholder | Meaning |
+| Value | Meaning |
 | --- | --- |
-| `{port.<name>}` | Numeric value of the named declared port. |
-| `{host.<name>}` | Host value of the named declared port. |
-| `{worktree_root}` | Canonical worktree root. |
-| `{definition_id}` | Stable process or command identifier. |
-| `{run_id}` | Identifier of the new run. |
+| `{port.http}` | Numeric port value. |
+| `{host.http}` | Declared host value. |
+| `{manifest_dir}` | Canonical manifest directory. |
+| `{definition_id}` | Stable process ID. |
+| `{run_id}` | New run ID. |
+| `PORT_START_PORT_HTTP` | Normalized port variable. |
+| `PORT_START_URL_HTTP` | HTTP or HTTPS URL. |
 
-For a port named `http`, the daemon also sets:
+## Reconciliation
 
-- `PORT_START_PORT_HTTP`;
-- `PORT_START_HOST_HTTP`;
-- `PORT_START_URL_HTTP` when the protocol is HTTP or HTTPS.
+`port-start register`:
 
-Every launch also receives `PORT_START_WORKTREE_ROOT`,
-`PORT_START_DEFINITION_ID`, and `PORT_START_RUN_ID`. Names are normalized to
-uppercase ASCII with non-alphanumeric characters replaced by underscores.
-Collisions after normalization are validation errors.
+1. Validate the file.
+2. Calculate the required process set.
+3. Create or update entries by manifest path and key.
+4. Stop and remove deleted manifest entries.
+5. Preserve active-run snapshots.
+6. Leave imperative processes unchanged.
 
-Application-specific variables remain explicit:
+`port-start register --dry-run` returns the same change plan without writes.
+`port-start deregister --source` removes processes from one manifest source.
 
-```yaml
-env:
-  PORT: "{port.http}"
-```
-
-Port Start's values win over conflicting manifest values for reserved
-`PORT_START_*` names.
-
-## Retention
-
-Retention constraints may be combined:
-
-```yaml
-retention:
-  max_bytes_per_run: 50MiB
-  max_runs: 20
-  max_age: 30d
-```
-
-Omitted constraints are unbounded. The explicit form below disables automatic
-deletion for the definition:
-
-```yaml
-retention:
-  unlimited: true
-```
-
-`unlimited: true` cannot be combined with another retention field.
-
-## Reconciliation and ownership
-
-Manifest ownership is recorded on every created definition.
-
-- Re-registration updates matching definitions by worktree identity, kind, and
-  name.
-- When a matching definition has an active run, that run keeps its launch
-  snapshot and the updated definition applies to its next run.
-- Definitions removed from the manifest are stopped, if active, and
-  deregistered.
-- Existing run history remains subject to retention.
-- Imperative definitions are unchanged.
-- The SPA and direct update commands direct configuration changes for
-  manifest-owned definitions to the manifest path.
-- Process lifecycle, command execution, logs, and explicit worktree
-  deregistration remain available as operational actions.
-
-The CLI exposes the embedded schema through:
+The CLI exposes the schema:
 
 ```sh
 port-start schema manifest
 port-start schema manifest --format json
 ```
-
-`worktree register --dry-run` performs discovery, parsing, validation, overlap
-analysis, and reconciliation planning without writing state.
