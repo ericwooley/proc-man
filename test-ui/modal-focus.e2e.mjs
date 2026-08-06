@@ -155,6 +155,104 @@ try {
     "Storefront web",
   );
   await evaluate(
+    `document.querySelector('[data-open-process="proc_storefront_web"]').click()`,
+  );
+  await waitFor(
+    `!document.getElementById("processDetail").hidden`,
+    "The process detail page did not open.",
+  );
+  assert.deepEqual(
+    await evaluate(`({
+      hash: location.hash,
+      title: document.querySelector(".detail-title").textContent,
+      processId: document.querySelector("[data-detail-process-id]").textContent,
+      command: document.querySelector("[data-detail-command]").textContent,
+      directory: document.querySelector("[data-detail-directory]").textContent,
+      ports: document.querySelectorAll("[data-detail-port]").length,
+      runs: document.querySelectorAll("[data-detail-run]").length,
+      logLines: document.querySelectorAll(".detail-log-line").length
+    })`),
+    {
+      hash: "#process/proc_storefront_web",
+      title: "Storefront web",
+      processId: "proc_storefront_web",
+      command: "npm run dev -- --port 4310",
+      directory: "~/code/storefront",
+      ports: 2,
+      runs: 2,
+      logLines: 52,
+    },
+  );
+  await evaluate(
+    `document.querySelector("[data-detail-environment-toggle]").click()`,
+  );
+  assert.match(
+    await evaluate(
+      `document.querySelector("[data-detail-environment]").textContent`,
+    ),
+    /NODE_ENV=development/,
+  );
+  await evaluate(`document.getElementById("detailFocusLogs").click()`);
+  assert.equal(
+    await evaluate(
+      `document.querySelector(".detail-scroll").classList.contains("logs-focused")`,
+    ),
+    true,
+  );
+  await evaluate(`document.getElementById("detailFocusLogs").click()`);
+  await evaluate(`document.getElementById("detailStdout").click()`);
+  assert.equal(
+    await evaluate(`document.querySelectorAll(".detail-log-line").length`),
+    3,
+    "The stderr-only detail filter should show three records.",
+  );
+  await evaluate(`document.getElementById("detailStdout").click()`);
+  await evaluate(
+    `document.querySelector('[data-detail-run="run_storefront_web_previous"]').click()`,
+  );
+  await waitFor(
+    `document.querySelector(".detail-log-body").textContent.includes(
+      "Previous Storefront web run stopped cleanly"
+    )`,
+    "The retained run logs did not appear on the detail page.",
+  );
+  await evaluate(
+    `document.querySelector('[data-detail-run="run_storefront_web_current"]').click()`,
+  );
+  await evaluate(`(() => {
+    const input = document.getElementById("detailLogSearch");
+    input.value = "upstream timeout";
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  })()`);
+  assert.equal(
+    await evaluate(`document.querySelectorAll(".detail-log-line").length`),
+    3,
+    "The detail log search should show three matching records.",
+  );
+  await evaluate(`document.getElementById("detailDownload").click()`);
+  assert.equal(
+    await evaluate(`document.getElementById("toast").textContent`),
+    "Prepared Current run logs for Storefront web.",
+  );
+  await evaluate(`document.getElementById("detailBack").click()`);
+  await waitFor(
+    `document.getElementById("processDetail").hidden`,
+    "The detail back action did not restore the process inventory.",
+  );
+  assert.deepEqual(
+    await evaluate(`({
+      hash: location.hash,
+      search: document.getElementById("processSearch").value,
+      rows: document.querySelectorAll(".process-entry").length
+    })`),
+    {
+      hash: "",
+      search: "4310",
+      rows: 1,
+    },
+    "Returning from details should preserve the inventory filters.",
+  );
+  await evaluate(
     `document.querySelector('button[title="Processes"]').click()`,
   );
   await waitFor(
@@ -299,7 +397,7 @@ try {
     const input = document.querySelector(
       '[data-process-id="proc_storefront_web"] [data-log-search]'
     );
-    input.value = "cart";
+    input.value = "compiled client bundle";
     input.dispatchEvent(new Event("input", { bubbles: true }));
   })()`);
   assert.equal(

@@ -109,6 +109,7 @@
   }
   .proto-bar button:focus-visible, .log-panel button:focus-visible,
   .log-panel input:focus-visible, .log-panel select:focus-visible,
+  .detail-log-panel button:focus-visible, .detail-log-panel input:focus-visible,
   .rail button:focus-visible {
     outline-color: var(--focus-inverse);
   }
@@ -230,6 +231,7 @@
     padding: 18px 26px 14px;
     border-bottom: 1px solid var(--line);
   }
+  .top[hidden] { display: none; }
   .top-row { display: flex; align-items: center; gap: 12px; }
   .top-row h1 { margin: 0; font-size: 17px; font-weight: 800; }
   .top-row .muted { font-size: 11.5px; }
@@ -460,11 +462,17 @@
   .process-label {
     min-width: 0;
     overflow: hidden;
+    border: 0;
+    padding: 0;
+    background: transparent;
+    color: inherit;
     font-size: 12.5px;
     font-weight: 800;
+    text-align: left;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
+  .process-label:hover { text-decoration: underline; }
   .process-tags { display: flex; gap: 4px; flex-wrap: wrap; }
   .mini-tag {
     border: 0;
@@ -618,6 +626,294 @@
     vertical-align: middle;
   }
   @keyframes blink { 50% { opacity: 0; } }
+
+  .detail-view {
+    min-width: 0;
+    min-height: 0;
+    grid-row: 1 / -1;
+    display: flex;
+    flex-direction: column;
+    background: var(--shell);
+  }
+  .detail-view[hidden] { display: none; }
+  .detail-topbar {
+    min-height: 68px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 26px;
+    border-bottom: 1px solid var(--line);
+  }
+  .detail-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 7px 13px 7px 10px;
+    background: var(--surface);
+    font-size: 12px;
+    font-weight: 700;
+  }
+  .detail-back:hover { background: var(--surface-soft); }
+  .detail-topbar .theme-toggle { margin-left: auto; }
+  .detail-scroll {
+    min-height: 0;
+    overflow-y: auto;
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 12px;
+    padding: 18px 26px 24px;
+  }
+  .detail-heading {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .detail-kind-icon {
+    width: 40px;
+    height: 40px;
+    display: grid;
+    place-items: center;
+    flex: 0 0 auto;
+    border-radius: 12px;
+    background: var(--surface-soft);
+  }
+  .detail-kind-icon .ph { font-size: 18px; }
+  .detail-identity { min-width: 0; }
+  .detail-title-row {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    flex-wrap: wrap;
+  }
+  .detail-title {
+    margin: 0;
+    font-size: 19px;
+    font-weight: 800;
+  }
+  .detail-subtitle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 3px;
+    color: var(--muted);
+    font-size: 11px;
+  }
+  .detail-subtitle code { font-family: var(--mono); }
+  .detail-tags { display: flex; gap: 5px; margin-top: 7px; flex-wrap: wrap; }
+  .detail-tag {
+    border-radius: 999px;
+    padding: 3px 9px;
+    background: var(--surface-soft);
+    color: var(--tag-ink);
+    font-size: 10.5px;
+    font-weight: 700;
+  }
+  .detail-actions {
+    margin-left: auto;
+    display: flex;
+    gap: 7px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+  .detail-overview {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+  }
+  .detail-card {
+    min-width: 0;
+    min-height: 128px;
+    border: 1px solid var(--line);
+    border-radius: 15px;
+    padding: 12px 13px;
+    background: var(--surface);
+  }
+  .detail-card h3,
+  .detail-section-title {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0 0 9px;
+    color: var(--muted);
+    font-size: 10.5px;
+    font-weight: 800;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+  }
+  .detail-port-row {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    min-height: 27px;
+    font-family: var(--mono);
+    font-size: 10.5px;
+  }
+  .detail-port-row button { margin-left: auto; }
+  .detail-command {
+    overflow-x: auto;
+    margin: 0;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 9px 10px;
+    background: var(--surface-quiet);
+    font-family: var(--mono);
+    font-size: 11px;
+    white-space: pre;
+  }
+  .detail-directory {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 8px;
+    color: var(--muted);
+    font-size: 10.5px;
+  }
+  .detail-environment-summary {
+    color: var(--muted);
+    font-size: 11px;
+  }
+  .detail-environment {
+    display: flex;
+    gap: 5px;
+    margin-top: 8px;
+    flex-wrap: wrap;
+  }
+  .detail-env {
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    padding: 3px 7px;
+    background: var(--surface-quiet);
+    font-family: var(--mono);
+    font-size: 10px;
+  }
+  .detail-env-toggle {
+    margin-top: 8px;
+    border: 0;
+    padding: 0;
+    background: transparent;
+    color: var(--tag-ink);
+    font-size: 10.5px;
+    font-weight: 700;
+  }
+  .detail-runs {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    overflow-x: auto;
+    padding-bottom: 2px;
+  }
+  .detail-log-heading {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .detail-log-heading .detail-section-title { margin: 0; }
+  .detail-log-heading .btn { margin-left: auto; }
+  .detail-scroll.logs-focused .detail-context { display: none; }
+  .detail-scroll.logs-focused .detail-log-panel {
+    min-height: 0;
+    flex-basis: 100%;
+  }
+  .detail-run {
+    min-height: 38px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    flex: 0 0 auto;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 7px 11px;
+    background: var(--surface);
+    font-size: 10.5px;
+    font-weight: 700;
+  }
+  .detail-run.selected {
+    border-color: var(--ink);
+    background: var(--surface-soft);
+  }
+  .detail-run-meta { color: var(--muted); font-weight: 600; }
+  .detail-log-panel {
+    min-height: 390px;
+    overflow: hidden;
+    display: flex;
+    flex: 1 0 390px;
+    flex-direction: column;
+    border-radius: 16px;
+    background: var(--rail);
+    color: #d9e0da;
+  }
+  .detail-log-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    padding: 9px 12px;
+    border-bottom: 1px solid rgba(255, 255, 255, .09);
+  }
+  .detail-stream-filter {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    min-height: 30px;
+    padding: 0 8px;
+    color: #cbd0cb;
+    font-size: 10.5px;
+  }
+  .detail-stream-filter input { accent-color: var(--acid); }
+  .detail-log-search {
+    min-width: 210px;
+    flex: 1 1 260px;
+    border: 1px solid rgba(255, 255, 255, .12);
+    border-radius: 8px;
+    padding: 7px 9px;
+    background: rgba(255, 255, 255, .06);
+    color: #eef0ec;
+    font-size: 11px;
+  }
+  .detail-log-toolbar .btn {
+    border-color: rgba(255, 255, 255, .14);
+    background: rgba(255, 255, 255, .07);
+    color: #eef0ec;
+  }
+  .detail-log-toolbar .btn.on {
+    border-color: var(--acid);
+    background: var(--acid);
+    color: var(--acid-ink);
+  }
+  .detail-log-count {
+    padding: 7px 15px 0;
+    color: var(--log-time);
+    font-family: var(--mono);
+    font-size: 10px;
+  }
+  .detail-log-body {
+    min-height: 0;
+    overflow: auto;
+    flex: 1;
+    padding: 7px 15px 14px;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    line-height: 1.65;
+  }
+  .detail-log-line {
+    display: grid;
+    grid-template-columns: 88px minmax(0, 1fr);
+    gap: 9px;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  .detail-log-line.stderr .detail-log-message { color: #ff9aa4; }
+  .detail-log-cursor-line { display: flex; gap: 9px; }
+  .detail-empty {
+    display: grid;
+    place-items: center;
+    flex: 1;
+    color: var(--log-time);
+    text-align: center;
+  }
 
   .skeleton {
     margin-top: 16px;
@@ -775,6 +1071,8 @@
       grid-template-columns: 24px minmax(180px, 1fr) 94px minmax(150px, 1fr) auto;
     }
     .kind-label { display: none; }
+    .detail-overview { grid-template-columns: 1fr 1fr; }
+    .detail-card:last-child { grid-column: 1 / -1; }
   }
   @media (max-width: 820px) {
     body { padding: 0; }
@@ -801,6 +1099,17 @@
     .actions { grid-area: actions; justify-content: flex-start; flex-wrap: wrap; }
     .kind-label { display: none; }
     .process-error { padding-left: 48px; }
+    .detail-topbar { padding: 12px 18px; }
+    .detail-scroll { padding: 16px 18px 78px; }
+    .detail-heading { flex-wrap: wrap; }
+    .detail-actions {
+      width: 100%;
+      margin-left: 52px;
+      justify-content: flex-start;
+    }
+    .detail-overview { grid-template-columns: 1fr; }
+    .detail-card:last-child { grid-column: auto; }
+    .detail-log-panel { min-height: 440px; flex-basis: 440px; }
   }
   @media (max-width: 520px) {
     .proto-bar .tag { display: none; }
@@ -827,6 +1136,13 @@
     .tag-chip { flex: 0 0 auto; }
     .process-tags { max-height: 42px; overflow: hidden; }
     .dialog-actions { flex-wrap: wrap; }
+    .detail-topbar .theme-toggle { display: none; }
+    .detail-scroll { padding-inline: 14px; }
+    .detail-actions { margin-left: 0; }
+    .detail-log-search { order: 1; flex-basis: 100%; }
+    .detail-log-toolbar .btn { order: 2; }
+    .detail-stream-filter { order: 3; }
+    .detail-log-line { grid-template-columns: 78px minmax(0, 1fr); }
   }
 </style>
 </head>
@@ -857,7 +1173,7 @@
     </aside>
 
     <main class="main" id="application">
-      <header class="top">
+      <header class="top" id="inventoryHeader">
         <div class="top-row">
           <div>
             <h1>Processes</h1>
@@ -900,6 +1216,7 @@
       </header>
 
       <section class="body" id="processBody" aria-live="polite"></section>
+      <section class="detail-view" id="processDetail" aria-live="polite" hidden></section>
     </main>
 
     <div class="scrim" id="scrim"></div>
@@ -1077,16 +1394,17 @@
         id: "run_storefront_web_current",
         state: "running",
         when: "Current run",
-        lines: [
-          { time: "18:41:02.114", stream: "stdout", text: "Storefront web compiled client bundle in 812ms" },
-          { time: "18:41:15.902", stream: "stdout", text: "Storefront web GET /api/cart 200 12ms" }
-        ]
+        duration: "18m 42s",
+        started: "Today, 6:41pm",
+        lines: buildStorefrontLogs()
       },
       {
         id: "run_storefront_web_previous",
         state: "exited",
         code: 0,
         when: "Yesterday",
+        duration: "2h 14m",
+        started: "Yesterday, 6:02pm",
         lines: [
           { time: "17:02:11.220", stream: "stdout", text: "Previous Storefront web run stopped cleanly" }
         ]
@@ -1230,6 +1548,113 @@
     ]
   }
 
+  function buildStorefrontLogs() {
+    const lines = [
+      { time: "18:41:02.114", stream: "stdout", text: "Storefront web starting development server" },
+      { time: "18:41:02.340", stream: "stdout", text: "Storefront web compiled client bundle in 812ms" },
+      { time: "18:41:02.341", stream: "stdout", text: "Storefront web ready on http://127.0.0.1:4310/" },
+      { time: "18:41:02.402", stream: "stdout", text: "Storefront web inspector listening on 127.0.0.1:9310" }
+    ]
+    const routes = [
+      "/api/cart",
+      "/api/cart/summary",
+      "/api/products",
+      "/api/products/42",
+      "/api/session",
+      "/_next/static/chunks/app.js",
+      "/api/checkout/quote",
+      "/favicon.ico",
+      "/api/recommendations",
+      "/api/inventory/42"
+    ]
+
+    for (let index = 0; index < 48; index += 1) {
+      const seconds = String(4 + Math.floor(index / 2)).padStart(2, "0")
+      const milliseconds = String(100 + ((index * 137) % 899)).padStart(3, "0")
+      const route = routes[index % routes.length]
+      const isTimeout = [13, 29, 43].includes(index)
+      lines.push({
+        time: `18:41:${seconds}.${milliseconds}`,
+        stream: isTimeout ? "stderr" : "stdout",
+        text: isTimeout
+          ? `Storefront web GET ${route} 500 ${90 + index}ms - upstream timeout, retrying`
+          : `Storefront web GET ${route} ${index % 7 === 0 ? 304 : 200} ${6 + (index * 11) % 220}ms`
+      })
+    }
+
+    return lines
+  }
+
+  const PROCESS_DETAILS = {
+    proc_storefront_web: {
+      command: "npm run dev -- --port 4310",
+      directory: "~/code/storefront",
+      environment: [
+        ["NODE_ENV", "development"],
+        ["PORT_START_PORT_HTTP", "4310"],
+        ["PORT_START_HOST_HTTP", "127.0.0.1"],
+        ["PORT_START_URL_HTTP", "http://127.0.0.1:4310/"],
+        ["PORT_START_PROCESS_ID", "proc_storefront_web"],
+        ["PORT_START_RUN_ID", "run_storefront_web_current"]
+      ]
+    },
+    proc_storefront_api: {
+      command: "npm run api -- --port 4311",
+      directory: "~/code/storefront",
+      environment: [["NODE_ENV", "development"], ["PORT_START_PORT_HTTP", "4311"]]
+    },
+    proc_storefront_tests: {
+      command: "npm test",
+      directory: "~/code/storefront",
+      environment: [["NODE_ENV", "test"], ["CI", "false"]]
+    },
+    proc_storefront_migrate: {
+      command: "npm run db:migrate",
+      directory: "~/code/storefront",
+      environment: [["NODE_ENV", "development"], ["DATABASE_NAME", "storefront_dev"]]
+    },
+    proc_auth_service: {
+      command: "go run ./cmd/auth --port 4313",
+      directory: "~/code/platform",
+      environment: [["APP_ENV", "development"], ["PORT_START_PORT_HTTP", "4313"]]
+    },
+    proc_notification_worker: {
+      command: "go run ./cmd/worker",
+      directory: "~/code/platform",
+      environment: [["APP_ENV", "development"], ["QUEUE_NAME", "notifications"]]
+    },
+    proc_platform_api: {
+      command: "go run ./cmd/api --port 8090",
+      directory: "~/code/platform",
+      environment: [["APP_ENV", "development"], ["PORT_START_PORT_HTTP", "8090"]]
+    },
+    proc_seed_data: {
+      command: "go run ./cmd/seed",
+      directory: "~/code/platform",
+      environment: [["APP_ENV", "development"], ["SEED_PROFILE", "sample"]]
+    },
+    proc_docs_preview: {
+      command: "npm run docs:dev -- --port 4318",
+      directory: "~/code/docs",
+      environment: [["NODE_ENV", "development"], ["PORT_START_PORT_HTTP", "4318"]]
+    },
+    proc_ml_training: {
+      command: "python -m training.run --profile local",
+      directory: "~/code/ml",
+      environment: [["PYTHONUNBUFFERED", "1"], ["DEVICE", "cuda"]]
+    },
+    proc_vector_search: {
+      command: "python -m vector_api --port 8099",
+      directory: "~/code/ml",
+      environment: [["PYTHONUNBUFFERED", "1"], ["PORT_START_PORT_HTTP", "8099"]]
+    },
+    proc_local_proxy: {
+      command: "node scripts/generate-fixtures.mjs",
+      directory: "~/code/local-tools",
+      environment: [["NODE_ENV", "development"], ["FIXTURE_SET", "default"]]
+    }
+  }
+
   const state = {
     screen: "populated",
     query: "",
@@ -1241,6 +1666,14 @@
     openLogs: new Set(),
     selectedRuns: new Map(),
     logQueries: new Map(),
+    detailProcessId: null,
+    detailLogQuery: "",
+    detailStdout: true,
+    detailStderr: true,
+    detailFollow: true,
+    detailLogFocused: false,
+    detailEnvironmentExpanded: false,
+    detailOpenedFromInventory: false,
     collapsedGroups: new Set(),
     pendingDeregister: null,
     activeDialog: null,
@@ -1248,6 +1681,8 @@
   }
 
   const body = document.getElementById("processBody")
+  const inventoryHeader = document.getElementById("inventoryHeader")
+  const processDetail = document.getElementById("processDetail")
   const tagRow = document.getElementById("tagRow")
   const toast = document.getElementById("toast")
   let toastTimer
@@ -1395,6 +1830,32 @@
     `
   }
 
+  function detailProcessActions(process) {
+    if (process.kind === "task") {
+      const running = processState(process) === "running"
+      return `
+        <button class="btn" data-task-action="cancel" data-process-id="${process.id}"
+          ${running ? "" : "disabled"}>Cancel</button>
+        <button class="btn primary" data-task-action="run" data-process-id="${process.id}"
+          ${running ? "disabled" : ""}>${running ? "Running" : "Run"}</button>
+      `
+    }
+
+    const canStart = ["stopped", "failed"].includes(process.state)
+    const canStop = ["running", "starting"].includes(process.state)
+    const canRestart = process.state !== "stopping"
+    return `
+      <button class="btn icon-only" data-service-action="restart" data-process-id="${process.id}"
+        ${canRestart ? "" : "disabled"} aria-label="Restart ${escapeHtml(process.label)}">
+        <i class="ph ph-arrow-clockwise" aria-hidden="true"></i>
+      </button>
+      <button class="btn" data-service-action="stop" data-process-id="${process.id}"
+        ${canStop ? "" : "disabled"}>Stop</button>
+      <button class="btn primary" data-service-action="start" data-process-id="${process.id}"
+        ${canStart ? "" : "disabled"}>${process.state === "starting" ? "Starting" : "Start"}</button>
+    `
+  }
+
   function portMarkup(process) {
     if (!process.ports.length) return '<span class="muted">No declared ports</span>'
     return process.ports.map(port => {
@@ -1462,6 +1923,305 @@
     `
   }
 
+  function detailDefinition(process) {
+    return PROCESS_DETAILS[process.id] || {
+      command: process.kind === "service" ? "npm run dev" : "npm run task",
+      directory: "~/code/local",
+      environment: [["PORT_START_PROCESS_ID", process.id]]
+    }
+  }
+
+  function detailLogLines(process) {
+    const run = selectedRun(process)
+    if (!run) return []
+    const query = state.detailLogQuery.toLowerCase()
+    return run.lines.filter(line => {
+      if (line.stream === "stdout" && !state.detailStdout) return false
+      if (line.stream === "stderr" && !state.detailStderr) return false
+      return `${line.time} ${line.stream} ${line.text}`.toLowerCase().includes(query)
+    })
+  }
+
+  function detailLogBodyMarkup(process) {
+    const run = selectedRun(process)
+    const lines = detailLogLines(process)
+    if (!run) {
+      return '<div class="detail-empty">Run this process to create logs.</div>'
+    }
+    if (!lines.length) {
+      return '<div class="detail-empty">No log records match these filters.</div>'
+    }
+
+    return lines.map(line => `
+      <div class="detail-log-line ${line.stream}">
+        <span class="log-time">${escapeHtml(line.time)}</span>
+        <span class="detail-log-message">${escapeHtml(line.text)}</span>
+      </div>
+    `).join("") +
+      (state.detailFollow && ["running", "starting"].includes(run.state)
+        ? '<div class="detail-log-cursor-line"><span class="log-time">now</span><span class="log-cursor"></span></div>'
+        : "")
+  }
+
+  function detailRunMarkup(run, selected) {
+    const status = runState(run)
+    const exit = run.state === "exited" ? ` · exit ${run.code}` : ""
+    const duration = run.duration ? ` · ${run.duration}` : ""
+    return `
+      <button class="detail-run ${selected ? "selected" : ""}"
+        data-detail-run="${escapeHtml(run.id)}" aria-pressed="${selected}">
+        <span class="pill ${status}">${status}</span>
+        <span>${escapeHtml(run.when)}</span>
+        <span class="detail-run-meta">${escapeHtml(duration + exit)}</span>
+      </button>
+    `
+  }
+
+  function detailMarkup(process) {
+    const definition = detailDefinition(process)
+    const runs = processRuns(process)
+    const run = selectedRun(process)
+    const lines = detailLogLines(process)
+    const shownEnvironment = state.detailEnvironmentExpanded
+      ? definition.environment
+      : definition.environment.slice(0, 3)
+    const hiddenEnvironmentCount =
+      definition.environment.length - shownEnvironment.length
+    const live = run && ["running", "starting"].includes(run.state)
+
+    return `
+      <div class="detail-topbar">
+        <button class="detail-back" id="detailBack">
+          <i class="ph ph-arrow-left" aria-hidden="true"></i>
+          Back to Processes
+        </button>
+        <button class="theme-toggle" id="detailThemeToggle" aria-label="Use dark mode">
+          <i class="ph ph-moon" id="detailThemeIcon" aria-hidden="true"></i>
+        </button>
+      </div>
+      <div class="detail-scroll ${state.detailLogFocused ? "logs-focused" : ""}">
+        <div class="detail-heading detail-context">
+          <span class="detail-kind-icon">
+            <i class="ph ${process.kind === "service" ? "ph-terminal" : "ph-code"}" aria-hidden="true"></i>
+          </span>
+          <div class="detail-identity">
+            <div class="detail-title-row">
+              <h1 class="detail-title">${escapeHtml(process.label)}</h1>
+              <span class="pill ${processState(process)}">${processState(process)}</span>
+            </div>
+            <div class="detail-subtitle">
+              <code data-detail-process-id>${escapeHtml(process.id)}</code>
+              <span>·</span>
+              <span>${escapeHtml(process.kind)}</span>
+            </div>
+            <div class="detail-tags">
+              ${(process.tags.length ? process.tags : ["untagged"]).map(tag =>
+                `<span class="detail-tag">${escapeHtml(tag)}</span>`
+              ).join("")}
+            </div>
+          </div>
+          <div class="detail-actions">${detailProcessActions(process)}</div>
+        </div>
+
+        <div class="detail-overview detail-context">
+          <section class="detail-card">
+            <h3><i class="ph ph-plugs" aria-hidden="true"></i>Declared ports</h3>
+            ${process.ports.length
+              ? process.ports.map(port => {
+                  const url = portUrl(port)
+                  const action = port.protocol === "tcp"
+                    ? `<button class="btn icon-only" data-copy-port="${escapeHtml(url)}"
+                        aria-label="Copy ${escapeHtml(port.name)} endpoint">
+                        <i class="ph ph-copy" aria-hidden="true"></i>
+                      </button>`
+                    : `<button class="btn icon-only" data-open-port="${escapeHtml(url)}"
+                        aria-label="Open ${escapeHtml(port.name)} endpoint">
+                        <i class="ph ph-arrow-square-out" aria-hidden="true"></i>
+                      </button>`
+                  return `
+                    <div class="detail-port-row" data-detail-port>
+                      <span>${escapeHtml(port.name)}</span>
+                      <span>·</span>
+                      <span>${escapeHtml(port.host)}:${port.port}${escapeHtml(port.path || "")}</span>
+                      ${action}
+                    </div>
+                  `
+                }).join("")
+              : '<span class="muted">No declared ports</span>'
+            }
+          </section>
+
+          <section class="detail-card">
+            <h3><i class="ph ph-terminal-window" aria-hidden="true"></i>Launch command</h3>
+            <pre class="detail-command" data-detail-command>${escapeHtml(definition.command)}</pre>
+            <div class="detail-directory">
+              <i class="ph ph-folder" aria-hidden="true"></i>
+              <span data-detail-directory>${escapeHtml(definition.directory)}</span>
+            </div>
+          </section>
+
+          <section class="detail-card">
+            <h3><i class="ph ph-gear" aria-hidden="true"></i>Environment</h3>
+            <div class="detail-environment-summary">
+              ${definition.environment.length} variables set
+            </div>
+            <div class="detail-environment" data-detail-environment>
+              ${shownEnvironment.map(([name, value]) => `
+                <span class="detail-env">${escapeHtml(
+                  state.detailEnvironmentExpanded ? `${name}=${value}` : name
+                )}</span>
+              `).join("")}
+              ${hiddenEnvironmentCount > 0
+                ? `<span class="detail-env">+${hiddenEnvironmentCount} more</span>`
+                : ""
+              }
+            </div>
+            <button class="detail-env-toggle" data-detail-environment-toggle>
+              ${state.detailEnvironmentExpanded ? "Hide values" : "Show all values"}
+            </button>
+          </section>
+        </div>
+
+        <section class="detail-context">
+          <h3 class="detail-section-title">
+            <i class="ph ph-clock-counter-clockwise" aria-hidden="true"></i>
+            Run history
+          </h3>
+          <div class="detail-runs">
+            ${runs.length
+              ? runs.map(item => detailRunMarkup(item, item.id === run?.id)).join("")
+              : '<span class="muted">This process has no runs.</span>'
+            }
+          </div>
+        </section>
+
+        <div class="detail-log-heading">
+          <h3 class="detail-section-title">
+            <i class="ph ph-file-text" aria-hidden="true"></i>
+            Logs
+          </h3>
+          <button class="btn" id="detailFocusLogs"
+            aria-pressed="${state.detailLogFocused}">
+            <i class="ph ${state.detailLogFocused ? "ph-arrows-in" : "ph-arrows-out"}" aria-hidden="true"></i>
+            ${state.detailLogFocused ? "Show details" : "Focus logs"}
+          </button>
+        </div>
+
+        <section class="detail-log-panel">
+          <div class="detail-log-toolbar">
+            <label class="detail-stream-filter">
+              <input type="checkbox" id="detailStdout" ${state.detailStdout ? "checked" : ""}>
+              stdout
+            </label>
+            <label class="detail-stream-filter">
+              <input type="checkbox" id="detailStderr" ${state.detailStderr ? "checked" : ""}>
+              stderr
+            </label>
+            <label class="sr-only" for="detailLogSearch">Search the selected run logs</label>
+            <input class="detail-log-search" id="detailLogSearch"
+              value="${escapeHtml(state.detailLogQuery)}" placeholder="Search this run's logs">
+            <button class="btn ${state.detailFollow && live ? "on" : ""}" id="detailFollow"
+              aria-pressed="${state.detailFollow && live}" ${live ? "" : "disabled"}>
+              <i class="ph ph-waveform" aria-hidden="true"></i>
+              ${state.detailFollow && live ? "Following" : "Follow"}
+            </button>
+            <button class="btn" id="detailDownload" ${run ? "" : "disabled"}>
+              <i class="ph ph-download-simple" aria-hidden="true"></i>
+              Download
+            </button>
+          </div>
+          <div class="detail-log-count">
+            ${run ? `${lines.length} of ${run.lines.length} records · ${escapeHtml(run.when)}` : "No runs"}
+          </div>
+          <div class="detail-log-body">${detailLogBodyMarkup(process)}</div>
+        </section>
+      </div>
+    `
+  }
+
+  function renderDetail() {
+    const process = PROCESSES.find(item => item.id === state.detailProcessId)
+    if (!process) {
+      processDetail.innerHTML = `
+        <div class="detail-topbar">
+          <button class="detail-back" id="detailBack">
+            <i class="ph ph-arrow-left" aria-hidden="true"></i>
+            Back to Processes
+          </button>
+        </div>
+        <div class="detail-empty">This process is no longer registered.</div>
+      `
+      return
+    }
+    processDetail.innerHTML = detailMarkup(process)
+    document.title = `${process.label} - Port Start`
+    syncThemeControls()
+  }
+
+  function paintDetailLogView() {
+    const process = PROCESSES.find(item => item.id === state.detailProcessId)
+    const logBody = processDetail.querySelector(".detail-log-body")
+    const logCount = processDetail.querySelector(".detail-log-count")
+    if (!process || !logBody || !logCount) return
+    const run = selectedRun(process)
+    const lines = detailLogLines(process)
+    logBody.innerHTML = detailLogBodyMarkup(process)
+    logCount.textContent = run
+      ? `${lines.length} of ${run.lines.length} records · ${run.when}`
+      : "No runs"
+  }
+
+  function showInventoryRoute() {
+    state.detailProcessId = null
+    inventoryHeader.hidden = false
+    body.hidden = false
+    processDetail.hidden = true
+    document.title = "Port Start - Process manager"
+  }
+
+  function showDetailRoute(processId) {
+    state.detailProcessId = processId
+    inventoryHeader.hidden = true
+    body.hidden = true
+    processDetail.hidden = false
+    renderDetail()
+  }
+
+  function syncRoute() {
+    const match = location.hash.match(/^#process\/([^/]+)$/)
+    if (!match) {
+      showInventoryRoute()
+      return
+    }
+    showDetailRoute(decodeURIComponent(match[1]))
+  }
+
+  function openProcessDetail(processId) {
+    const process = PROCESSES.find(item => item.id === processId)
+    if (!process) return
+    state.detailOpenedFromInventory = true
+    state.detailLogQuery = ""
+    state.detailStdout = true
+    state.detailStderr = true
+    state.detailFollow = true
+    state.detailLogFocused = false
+    state.detailEnvironmentExpanded = false
+    const runs = processRuns(process)
+    if (runs[0]) state.selectedRuns.set(process.id, runs[0].id)
+    location.hash = `process/${encodeURIComponent(process.id)}`
+    if (state.detailProcessId === process.id) syncRoute()
+  }
+
+  function closeProcessDetail() {
+    if (state.detailOpenedFromInventory && location.hash) {
+      state.detailOpenedFromInventory = false
+      history.back()
+      return
+    }
+    history.replaceState(null, "", `${location.pathname}${location.search}`)
+    showInventoryRoute()
+  }
+
   function processMarkup(process, instanceKey) {
     const isOpen = state.openLogs.has(process.id)
     const tags = process.tags.length
@@ -1472,7 +2232,7 @@
 
     return `
       <article class="process-entry ${isOpen ? "open" : ""}" data-process-id="${process.id}">
-        <div class="process-row">
+        <div class="process-row" data-open-process-row="${process.id}">
           <button class="expand" data-toggle-logs="${process.id}" aria-expanded="${isOpen}"
             aria-label="${isOpen ? "Hide" : "Show"} logs for ${escapeHtml(process.label)}"
             ${process.kind === "task" && !process.lastRun ? "disabled" : ""}>
@@ -1483,7 +2243,8 @@
               <span class="kind-icon">
                 <i class="ph ${process.kind === "service" ? "ph-terminal" : "ph-code"}" aria-hidden="true"></i>
               </span>
-              <span class="process-label">${escapeHtml(process.label)}</span>
+              <button class="process-label" data-open-process="${process.id}"
+                aria-label="Open details for ${escapeHtml(process.label)}">${escapeHtml(process.label)}</button>
             </div>
             <div class="process-tags">${tags}</div>
           </div>
@@ -1540,6 +2301,7 @@
 
   function render() {
     renderTags()
+    if (state.detailProcessId) renderDetail()
     body.setAttribute("aria-busy", state.screen === "loading" ? "true" : "false")
 
     if (state.screen === "loading") {
@@ -1597,6 +2359,7 @@
     state.tags.clear()
     state.openLogs.clear()
     state.collapsedGroups.clear()
+    state.detailOpenedFromInventory = false
 
     document.getElementById("processSearch").value = ""
     document.getElementById("showServices").checked = true
@@ -1610,19 +2373,34 @@
       button.classList.toggle("on", button.dataset.state === "populated")
     })
 
+    if (location.hash) {
+      history.replaceState(null, "", `${location.pathname}${location.search}`)
+      showInventoryRoute()
+    }
     render()
     body.scrollTo({ top: 0 })
     showToast("Showing all processes.")
   }
 
+  function syncThemeControls() {
+    const theme = document.documentElement.dataset.theme
+    const dark = theme === "dark"
+    for (const [buttonId, iconId] of [
+      ["themeToggle", "themeIcon"],
+      ["detailThemeToggle", "detailThemeIcon"]
+    ]) {
+      const button = document.getElementById(buttonId)
+      const icon = document.getElementById(iconId)
+      if (!button || !icon) continue
+      button.setAttribute("aria-label", dark ? "Use light mode" : "Use dark mode")
+      icon.className = `ph ${dark ? "ph-sun" : "ph-moon"}`
+    }
+  }
+
   function setTheme(theme) {
     document.documentElement.dataset.theme = theme
     localStorage.setItem("port-start-prototype-theme", theme)
-    const button = document.getElementById("themeToggle")
-    const icon = document.getElementById("themeIcon")
-    const dark = theme === "dark"
-    button.setAttribute("aria-label", dark ? "Use light mode" : "Use dark mode")
-    icon.className = `ph ${dark ? "ph-sun" : "ph-moon"}`
+    syncThemeControls()
   }
 
   function serviceAction(process, action) {
@@ -1849,6 +2627,11 @@
     state.selectedRuns.delete(id)
     const retainedRunCount = RUNS_BY_PROCESS[id]?.length || 0
     closeDialog()
+    if (state.detailProcessId === id) {
+      state.detailOpenedFromInventory = false
+      history.replaceState(null, "", `${location.pathname}${location.search}`)
+      showInventoryRoute()
+    }
     render()
     const runNoun = retainedRunCount === 1 ? "run remains" : "runs remain"
     showToast(
@@ -1861,10 +2644,19 @@
       closeDialog()
       return
     }
+    if (event.key === "Escape" && state.detailProcessId) {
+      closeProcessDetail()
+      return
+    }
     trapDialogFocus(event)
   })
 
   document.addEventListener("input", event => {
+    if (event.target.id === "detailLogSearch") {
+      state.detailLogQuery = event.target.value
+      paintDetailLogView()
+      return
+    }
     const search = event.target.closest("[data-log-search]")
     if (!search) return
     const id = search.dataset.logSearch
@@ -1880,6 +2672,16 @@
   })
 
   document.addEventListener("change", event => {
+    if (event.target.id === "detailStdout") {
+      state.detailStdout = event.target.checked
+      paintDetailLogView()
+      return
+    }
+    if (event.target.id === "detailStderr") {
+      state.detailStderr = event.target.checked
+      paintDetailLogView()
+      return
+    }
     const runSelect = event.target.closest("[data-run-select]")
     if (!runSelect) return
     state.selectedRuns.set(runSelect.dataset.runSelect, runSelect.value)
@@ -1887,6 +2689,56 @@
   })
 
   document.addEventListener("click", event => {
+    if (event.target.closest("#detailBack")) {
+      closeProcessDetail()
+      return
+    }
+    if (event.target.closest("#detailThemeToggle")) {
+      setTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark")
+      return
+    }
+    const detailRun = event.target.closest("[data-detail-run]")
+    if (detailRun) {
+      state.selectedRuns.set(state.detailProcessId, detailRun.dataset.detailRun)
+      state.detailLogQuery = ""
+      state.detailFollow = true
+      renderDetail()
+      return
+    }
+    if (event.target.closest("[data-detail-environment-toggle]")) {
+      state.detailEnvironmentExpanded = !state.detailEnvironmentExpanded
+      renderDetail()
+      return
+    }
+    if (event.target.closest("#detailFollow")) {
+      state.detailFollow = !state.detailFollow
+      renderDetail()
+      return
+    }
+    if (event.target.closest("#detailFocusLogs")) {
+      state.detailLogFocused = !state.detailLogFocused
+      renderDetail()
+      return
+    }
+    if (event.target.closest("#detailDownload")) {
+      const process = PROCESSES.find(item => item.id === state.detailProcessId)
+      const run = selectedRun(process)
+      if (run) showToast(`Prepared ${run.when} logs for ${process.label}.`)
+      return
+    }
+    const processLink = event.target.closest("[data-open-process]")
+    if (processLink) {
+      openProcessDetail(processLink.dataset.openProcess)
+      return
+    }
+    const processRow = event.target.closest("[data-open-process-row]")
+    if (
+      processRow &&
+      !event.target.closest("button, a, input, select, label")
+    ) {
+      openProcessDetail(processRow.dataset.openProcessRow)
+      return
+    }
     const tag = event.target.closest("[data-filter-tag]")
     if (tag) {
       const value = tag.dataset.filterTag
@@ -1978,6 +2830,8 @@
   })
 
   render()
+  window.addEventListener("hashchange", syncRoute)
+  syncRoute()
 })()
 </script>
 </body>

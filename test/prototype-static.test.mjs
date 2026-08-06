@@ -157,6 +157,16 @@ test("filtering and tag grouping preserve process identity", async () => {
 test("process actions, logs, registration, and deregistration are wired", async () => {
   const html = await readFile(new URL("index.html", prototypeDirectory), "utf8");
 
+  assert.match(html, /id="processDetail"/);
+  assert.match(html, /function openProcessDetail\(processId/);
+  assert.match(html, /function detailMarkup\(process\)/);
+  assert.match(html, /data-open-process=/);
+  assert.match(html, /data-detail-run=/);
+  assert.match(html, /id="detailLogSearch"/);
+  assert.match(html, /id="detailStdout"/);
+  assert.match(html, /id="detailStderr"/);
+  assert.match(html, /id="detailFollow"/);
+  assert.match(html, /id="detailDownload"/);
   assert.match(html, /function serviceAction\(process, action\)/);
   assert.match(html, /function taskAction\(process, action\)/);
   assert.match(html, /function logMarkup\(process, instanceKey\)/);
