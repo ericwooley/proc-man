@@ -313,6 +313,47 @@ try {
     "Downloaded Current run logs for Storefront web.",
   );
   await evaluate(`(() => {
+    const stop = document.querySelector(
+      '#processDetail [data-service-action="stop"]'
+    );
+    stop.focus();
+    stop.click();
+  })()`);
+  await waitFor(
+    `document.querySelector("[data-detail-status]").textContent === "stopping"`,
+    "The detail service did not enter the stopping state.",
+  );
+  assert.equal(
+    await evaluate(`document.activeElement.matches("[data-detail-status]")`),
+    true,
+    "A disabled service action should move focus to the process status.",
+  );
+  await waitFor(
+    `document.querySelector("[data-detail-status]").textContent === "stopped"`,
+    "The detail service did not stop.",
+  );
+  assert.equal(
+    await evaluate(`document.activeElement.matches("[data-detail-status]")`),
+    true,
+    "The process status should keep focus after service completion.",
+  );
+  await evaluate(`(() => {
+    const start = document.querySelector(
+      '#processDetail [data-service-action="start"]'
+    );
+    start.focus();
+    start.click();
+  })()`);
+  await waitFor(
+    `document.querySelector("[data-detail-status]").textContent === "running"`,
+    "The detail service did not return to the running state.",
+  );
+  assert.equal(
+    await evaluate(`document.activeElement.matches("[data-detail-status]")`),
+    true,
+    "The process status should keep focus after a service starts.",
+  );
+  await evaluate(`(() => {
     const back = document.getElementById("detailBack");
     back.focus();
     back.click();
@@ -403,6 +444,28 @@ try {
     },
     "Grouped rows must share one process ID without duplicate DOM IDs.",
   );
+  await evaluate(`(() => {
+    const source = document.querySelector(
+      '[data-tag-group="preview"] ' +
+      '[data-open-process="proc_storefront_web"]'
+    );
+    source.focus();
+    source.click();
+  })()`);
+  await waitFor(
+    `!document.getElementById("processDetail").hidden`,
+    "The grouped process detail page did not open.",
+  );
+  await evaluate(`document.getElementById("detailBack").click()`);
+  await waitFor(
+    `document.getElementById("processDetail").hidden`,
+    "The grouped process detail page did not close.",
+  );
+  assert.equal(
+    await evaluate(`document.activeElement.dataset.processInstance`),
+    "group-preview-proc_storefront_web",
+    "Returning from details should restore the exact grouped process label.",
+  );
 
   await evaluate(`document.querySelector('[data-toggle-group="api"]').click()`);
   assert.equal(
@@ -426,6 +489,19 @@ try {
       '[data-process-id="proc_storefront_web"] .log-panel'
     ).hidden`,
     "Inline logs did not open.",
+  );
+  await evaluate(`(() => {
+    const select = document.querySelector(
+      '[data-process-id="proc_storefront_web"] [data-run-select]'
+    );
+    select.value = "run_storefront_web_current";
+    select.dispatchEvent(new Event("change", { bubbles: true }));
+  })()`);
+  await waitFor(
+    `document.querySelector(
+      '[data-process-id="proc_storefront_web"] .log-panel'
+    ).textContent.includes("Storefront web compiled client bundle")`,
+    "The original Storefront run logs did not appear.",
   );
   assert.match(
     await evaluate(
@@ -520,29 +596,53 @@ try {
     "The service did not start.",
   );
 
-  await evaluate(
-    `document.querySelector(
-      '[data-task-action="cancel"][data-process-id="proc_ml_training"]'
-    ).click()`,
+  await evaluate(`(() => {
+    const link = document.querySelector(
+      '[data-open-process="proc_ml_training"]'
+    );
+    link.focus();
+    link.click();
+  })()`);
+  await waitFor(
+    `!document.getElementById("processDetail").hidden`,
+    "The task detail page did not open.",
   );
+  await evaluate(`(() => {
+    const cancel = document.querySelector(
+      '#processDetail [data-task-action="cancel"]'
+    );
+    cancel.focus();
+    cancel.click();
+  })()`);
   assert.equal(
-    await evaluate(
-      `document.querySelector(
-        '[data-process-id="proc_ml_training"] .pill'
-      ).textContent`,
-    ),
+    await evaluate(`document.querySelector("[data-detail-status]").textContent`),
     "canceled",
   );
-  await evaluate(
-    `document.querySelector(
-      '[data-task-action="run"][data-process-id="proc_ml_training"]'
-    ).click()`,
+  assert.equal(
+    await evaluate(`document.activeElement.matches("[data-detail-status]")`),
+    true,
+    "A disabled task action should move focus to the process status.",
   );
+  await evaluate(`(() => {
+    const run = document.querySelector(
+      '#processDetail [data-task-action="run"]'
+    );
+    run.focus();
+    run.click();
+  })()`);
   await waitFor(
-    `document.querySelector(
-      '[data-process-id="proc_ml_training"] .pill'
-    ).textContent === "succeeded"`,
+    `document.querySelector("[data-detail-status]").textContent === "succeeded"`,
     "The task did not complete.",
+  );
+  assert.equal(
+    await evaluate(`document.activeElement.matches("[data-detail-status]")`),
+    true,
+    "The process status should keep focus after task completion.",
+  );
+  await evaluate(`document.getElementById("detailBack").click()`);
+  await waitFor(
+    `document.getElementById("processDetail").hidden`,
+    "The task detail page did not close.",
   );
 
   await evaluate(`Object.defineProperty(navigator, "clipboard", {

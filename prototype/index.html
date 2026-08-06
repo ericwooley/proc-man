@@ -1686,6 +1686,7 @@
     detailEnvironmentExpanded: false,
     detailOpenedFromInventory: false,
     detailReturnFocusProcessId: null,
+    detailReturnFocusInstanceKey: null,
     detailRestoreFocusOnInventory: false,
     collapsedGroups: new Set(),
     pendingDeregister: null,
@@ -1985,6 +1986,9 @@
     if (element.matches("[data-detail-environment-toggle]")) {
       return { type: "environmentToggle" }
     }
+    if (element.matches("[data-detail-status]")) {
+      return { type: "status" }
+    }
     if (element.dataset.serviceAction) {
       return {
         type: "serviceAction",
@@ -2012,19 +2016,28 @@
     if (key.type === "environmentToggle") {
       return processDetail.querySelector("[data-detail-environment-toggle]")
     }
+    if (key.type === "status") {
+      return processDetail.querySelector("[data-detail-status]")
+    }
     if (key.type === "serviceAction") {
-      return [...processDetail.querySelectorAll("[data-service-action]")]
+      const action = [...processDetail.querySelectorAll("[data-service-action]")]
         .find(element =>
           element.dataset.serviceAction === key.value &&
           element.dataset.processId === key.processId
         )
+      return action && !action.disabled
+        ? action
+        : processDetail.querySelector("[data-detail-status]")
     }
     if (key.type === "taskAction") {
-      return [...processDetail.querySelectorAll("[data-task-action]")]
+      const action = [...processDetail.querySelectorAll("[data-task-action]")]
         .find(element =>
           element.dataset.taskAction === key.value &&
           element.dataset.processId === key.processId
         )
+      return action && !action.disabled
+        ? action
+        : processDetail.querySelector("[data-detail-status]")
     }
     return null
   }
@@ -2123,7 +2136,9 @@
               <span>·</span>
               <span>${escapeHtml(process.kind)}</span>
               <span>·</span>
-              <span class="pill ${processState(process)}">${processState(process)}</span>
+              <span class="pill ${processState(process)}" data-detail-status
+                tabindex="-1" role="status"
+                aria-label="Process status: ${processState(process)}">${processState(process)}</span>
             </div>
             <div class="detail-tags">
               ${(process.tags.length ? process.tags : ["untagged"]).map(tag =>
@@ -2295,11 +2310,17 @@
     document.title = "Port Start - Process manager"
     if (state.detailRestoreFocusOnInventory) {
       const processId = state.detailReturnFocusProcessId
+      const instanceKey = state.detailReturnFocusInstanceKey
       const source = [...document.querySelectorAll("[data-open-process]")]
+        .find(element =>
+          element.dataset.openProcess === processId &&
+          element.dataset.processInstance === instanceKey
+        ) || [...document.querySelectorAll("[data-open-process]")]
         .find(element => element.dataset.openProcess === processId)
       const focusTarget = source || document.getElementById("processSearch")
       state.detailRestoreFocusOnInventory = false
       state.detailReturnFocusProcessId = null
+      state.detailReturnFocusInstanceKey = null
       focusTarget.focus({ preventScroll: true })
     }
   }
@@ -2325,7 +2346,7 @@
     showDetailRoute(decodeURIComponent(match[1]))
   }
 
-  function openProcessDetail(processId) {
+  function openProcessDetail(processId, instanceKey = null) {
     const process = PROCESSES.find(item => item.id === processId)
     if (!process) return
     state.detailOpenedFromInventory = true
@@ -2336,6 +2357,7 @@
     state.detailLogFocused = false
     state.detailEnvironmentExpanded = false
     state.detailReturnFocusProcessId = process.id
+    state.detailReturnFocusInstanceKey = instanceKey
     const runs = processRuns(process)
     if (runs[0]) state.selectedRuns.set(process.id, runs[0].id)
     location.hash = `process/${encodeURIComponent(process.id)}`
@@ -2363,7 +2385,8 @@
 
     return `
       <article class="process-entry ${isOpen ? "open" : ""}" data-process-id="${process.id}">
-        <div class="process-row" data-open-process-row="${process.id}">
+        <div class="process-row" data-open-process-row="${process.id}"
+          data-process-instance="${escapeHtml(instanceKey)}">
           <button class="expand" data-toggle-logs="${process.id}" aria-expanded="${isOpen}"
             aria-label="${isOpen ? "Hide" : "Show"} logs for ${escapeHtml(process.label)}"
             ${process.kind === "task" && !process.lastRun ? "disabled" : ""}>
@@ -2375,6 +2398,7 @@
                 <i class="ph ${process.kind === "service" ? "ph-terminal" : "ph-code"}" aria-hidden="true"></i>
               </span>
               <button class="process-label" data-open-process="${process.id}"
+                data-process-instance="${escapeHtml(instanceKey)}"
                 aria-label="Open details for ${escapeHtml(process.label)}">${escapeHtml(process.label)}</button>
             </div>
             <div class="process-tags">${tags}</div>
@@ -2861,7 +2885,10 @@
     }
     const processLink = event.target.closest("[data-open-process]")
     if (processLink) {
-      openProcessDetail(processLink.dataset.openProcess)
+      openProcessDetail(
+        processLink.dataset.openProcess,
+        processLink.dataset.processInstance
+      )
       return
     }
     const processRow = event.target.closest("[data-open-process-row]")
@@ -2869,7 +2896,10 @@
       processRow &&
       !event.target.closest("button, a, input, select, label")
     ) {
-      openProcessDetail(processRow.dataset.openProcessRow)
+      openProcessDetail(
+        processRow.dataset.openProcessRow,
+        processRow.dataset.processInstance
+      )
       return
     }
     const tag = event.target.closest("[data-filter-tag]")
