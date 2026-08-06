@@ -4,16 +4,16 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light dark">
-<title>Port Start — Worktree process manager</title>
+<title>Port Start - Process manager</title>
 <link rel="icon" href="./assets/logos/port-matrix.svg" type="image/svg+xml">
 <link rel="stylesheet" href="./assets/phosphor/style.css">
 <script>
   (() => {
-    const saved = localStorage.getItem("port-start-prototype-theme");
+    const saved = localStorage.getItem("port-start-prototype-theme")
     document.documentElement.dataset.theme =
       saved ??
-      (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
-  })();
+      (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")
+  })()
 </script>
 <style>
   @font-face {
@@ -24,1786 +24,1647 @@
   }
 
   :root {
-    --canvas: #aeb9b2; --shell: #f7f8f6; --surface: #ffffff; --surface-soft: #edf0ec; --surface-quiet: #f2f4f1;
-    --ink: #17181a; --ink-soft: #353834; --muted: #626a63; --line: #dfe3de; --rail: #18191c;
-    --acid: #efff83; --acid-ink: #1a1c17; --focus: #17181a; --focus-inverse: #efff83; --good: #2f8c69; --warning: #bd7d25; --danger: #c6525d;
-    --badge-good-ink: #267052; --badge-good-bg: #daeae4; --badge-danger-ink: #ad4650; --badge-danger-bg: #f8eaeb; --badge-warning-ink: #8b5b18; --badge-warning-bg: #f3e8d8; --manifest-ink: #6c59c2;
-    --log-time: #78827d; --shadow: 0 30px 85px rgba(38, 50, 43, .2);
-    --radius-shell: 30px; --radius-card: 20px; --radius-control: 14px;
+    --canvas: #aeb9b2;
+    --shell: #f7f8f6;
+    --surface: #ffffff;
+    --surface-soft: #edf0ec;
+    --surface-quiet: #f2f4f1;
+    --ink: #17181a;
+    --ink-soft: #353834;
+    --muted: #626a63;
+    --line: #dfe3de;
+    --rail: #18191c;
+    --acid: #efff83;
+    --acid-ink: #1a1c17;
+    --focus: #17181a;
+    --focus-inverse: #efff83;
+    --good: #28765a;
+    --warning: #8b5b18;
+    --danger: #ad4650;
+    --badge-good-ink: #267052;
+    --badge-good-bg: #daeae4;
+    --badge-danger-ink: #ad4650;
+    --badge-danger-bg: #f8eaeb;
+    --badge-warning-ink: #8b5b18;
+    --badge-warning-bg: #f3e8d8;
+    --tag-ink: #6653b8;
+    --log-time: #9ba59f;
+    --shadow: 0 30px 85px rgba(38, 50, 43, .2);
+    --radius-shell: 30px;
+    --radius-card: 18px;
+    --radius-control: 12px;
     --font: "Manrope", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
     --mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
   }
+
   html[data-theme="dark"] {
-    --canvas: #111715; --shell: #222623; --surface: #2b302c; --surface-soft: #323833; --surface-quiet: #262b27;
-    --ink: #f5f7f3; --ink-soft: #dfe4de; --muted: #adb5ae; --line: #3d443e; --rail: #0e100f;
-    --acid: #eaff71; --acid-ink: #141713; --focus: #eaff71; --focus-inverse: #eaff71; --good: #75d2a9; --warning: #f2b85f; --danger: #ff8290;
-    --badge-good-ink: #75d2a9; --badge-good-bg: #384d43; --badge-danger-ink: #ff929f; --badge-danger-bg: #4d3d3c; --badge-warning-ink: #f2b85f; --badge-warning-bg: #4f4835; --manifest-ink: #ad99ff;
+    --canvas: #111715;
+    --shell: #222623;
+    --surface: #2b302c;
+    --surface-soft: #323833;
+    --surface-quiet: #262b27;
+    --ink: #f5f7f3;
+    --ink-soft: #dfe4de;
+    --muted: #adb5ae;
+    --line: #3d443e;
+    --rail: #0e100f;
+    --acid: #eaff71;
+    --acid-ink: #141713;
+    --focus: #eaff71;
+    --focus-inverse: #eaff71;
+    --good: #75d2a9;
+    --warning: #f2b85f;
+    --danger: #ff8290;
+    --badge-good-ink: #75d2a9;
+    --badge-good-bg: #384d43;
+    --badge-danger-ink: #ff929f;
+    --badge-danger-bg: #4d3d3c;
+    --badge-warning-ink: #f2b85f;
+    --badge-warning-bg: #4f4835;
+    --tag-ink: #b3a2ff;
+    --log-time: #9ba59f;
     --shadow: 0 34px 90px rgba(0, 0, 0, .42);
   }
+
   * { box-sizing: border-box; }
   html, body { height: 100%; }
-  body { margin: 0; background: var(--canvas); color: var(--ink); font-family: var(--font); font-size: 14px; line-height: 1.45; -webkit-font-smoothing: antialiased; display: grid; place-items: center; padding: 22px; }
-  button, input, select, textarea { font: inherit; color: inherit; }
+  body {
+    margin: 0;
+    background: var(--canvas);
+    color: var(--ink);
+    font-family: var(--font);
+    font-size: 13.5px;
+    line-height: 1.45;
+    -webkit-font-smoothing: antialiased;
+    display: grid;
+    place-items: center;
+    padding: 22px;
+  }
+  button, input { font: inherit; color: inherit; }
   button { cursor: pointer; }
-  button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, a:focus-visible,
-  .proc-item:focus-visible, .cmd-item:focus-visible, .cmd-run:focus-visible {
+  button[disabled] { cursor: not-allowed; opacity: .46; }
+  button:focus-visible, input:focus-visible, a:focus-visible {
     outline: 3px solid var(--focus);
     outline-offset: 2px;
   }
-  .proto-bar button:focus-visible,
-  .snippet button:focus-visible,
-  .log-toolbar input:focus-visible {
+  .proto-bar button:focus-visible, .log-panel button:focus-visible,
+  .log-panel input:focus-visible, .rail button:focus-visible {
     outline-color: var(--focus-inverse);
   }
-  button[disabled] { opacity: .45; cursor: not-allowed; }
+  .ph { font-size: 16px; line-height: 1; flex: 0 0 auto; }
   .mono { font-family: var(--mono); }
   .muted { color: var(--muted); }
-  .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
-  .ph { font-size: 16px; line-height: 1; flex: 0 0 auto; }
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
 
-  .proto-bar { position: fixed; top: 14px; left: 50%; transform: translateX(-50%); z-index: 300; display: flex; align-items: center; gap: 10px; background: rgba(20, 22, 20, .88); color: #f1f3ee; padding: 8px 8px 8px 14px; border-radius: 999px; box-shadow: 0 12px 30px rgba(0,0,0,.3); font-size: 12px; backdrop-filter: blur(6px); }
-  .proto-bar span.tag { font-weight: 700; opacity: .7; }
-  .proto-bar .seg { display: flex; background: rgba(255,255,255,.08); border-radius: 999px; padding: 3px; gap: 2px; }
-  .proto-bar button { border: 0; background: transparent; color: #d8dbd6; padding: 6px 12px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+  .proto-bar {
+    position: fixed;
+    top: 14px;
+    left: 50%;
+    z-index: 300;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transform: translateX(-50%);
+    border-radius: 999px;
+    padding: 8px 8px 8px 14px;
+    background: rgba(20, 22, 20, .9);
+    color: #f1f3ee;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, .3);
+    backdrop-filter: blur(6px);
+    font-size: 12px;
+  }
+  .proto-bar .tag { font-weight: 750; opacity: .72; }
+  .proto-bar .seg {
+    display: flex;
+    gap: 2px;
+    padding: 3px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, .08);
+  }
+  .proto-bar button {
+    border: 0;
+    border-radius: 999px;
+    padding: 6px 12px;
+    background: transparent;
+    color: #d8dbd6;
+    font-size: 12px;
+    font-weight: 650;
+  }
   .proto-bar button.on { background: var(--acid); color: var(--acid-ink); }
-  .proto-bar[inert] { opacity: .35; pointer-events: none; }
 
-  .frame { width: 100%; max-width: 1360px; height: 92vh; max-height: 900px; background: var(--shell); border-radius: var(--radius-shell); box-shadow: var(--shadow); overflow: hidden; display: grid; grid-template-rows: auto minmax(0,1fr); position: relative; }
+  .frame {
+    width: 100%;
+    max-width: 1420px;
+    height: 92vh;
+    max-height: 920px;
+    overflow: hidden;
+    display: grid;
+    grid-template-columns: 76px minmax(0, 1fr);
+    border-radius: var(--radius-shell);
+    background: var(--shell);
+    box-shadow: var(--shadow);
+    position: relative;
+  }
+  .rail {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 18px 0;
+    background: var(--rail);
+    color: #eef0ec;
+  }
+  .brand {
+    width: 40px;
+    height: 40px;
+    display: grid;
+    place-items: center;
+    margin-bottom: 14px;
+    border-radius: 12px;
+    background: var(--acid);
+    color: var(--acid-ink);
+  }
+  .brand-symbol {
+    width: 24px;
+    height: 24px;
+    background: currentColor;
+    -webkit-mask: url("./assets/logos/port-matrix.svg") center / contain no-repeat;
+    mask: url("./assets/logos/port-matrix.svg") center / contain no-repeat;
+  }
+  .rail button {
+    width: 46px;
+    height: 46px;
+    border: 0;
+    border-radius: 13px;
+    background: transparent;
+    color: #c7cbc5;
+    display: grid;
+    place-items: center;
+  }
+  .rail button:hover { background: rgba(255, 255, 255, .06); color: #fff; }
+  .rail button.active { background: rgba(239, 255, 131, .14); color: var(--acid); }
+  .rail .spacer { flex: 1; }
 
-  .top { min-width: 0; padding: 22px 30px 16px; border-bottom: 1px solid var(--line); }
-  .top-row { display: flex; align-items: center; gap: 14px; }
-  .brand-mark { width: 34px; height: 34px; border-radius: 10px; background: var(--acid); color: var(--acid-ink); display: grid; place-items: center; font-weight: 800; }
-  .brand-symbol { width: 21px; height: 21px; background: currentColor; -webkit-mask: url("./assets/logos/port-matrix.svg") center / contain no-repeat; mask: url("./assets/logos/port-matrix.svg") center / contain no-repeat; }
-  .top-row h1 { font-size: 15px; margin: 0; font-weight: 800; }
-  .top-row .muted { font-size: 12px; }
-  .top-actions { margin-left: auto; display: flex; align-items: center; gap: 8px; }
-  .theme-toggle { width: 36px; height: 36px; border-radius: 11px; border: 1px solid var(--line); background: var(--surface); display: grid; place-items: center; }
-  .register-button { height: 36px; border: 1px solid var(--ink); border-radius: 11px; padding: 0 13px; background: var(--ink); color: var(--shell); font-size: 11.5px; font-weight: 750; display: inline-flex; align-items: center; gap: 6px; }
-  html[data-theme="dark"] .register-button { border-color: var(--acid); background: var(--acid); color: var(--acid-ink); }
-  .primary-nav { display: flex; gap: 4px; margin-top: 16px; }
-  .nav-button { border: 0; border-radius: 11px; padding: 8px 12px; background: transparent; color: var(--muted); font-size: 12px; font-weight: 720; display: inline-flex; align-items: center; gap: 6px; }
-  .nav-button:hover { color: var(--ink); background: var(--surface-soft); }
-  .nav-button.active { color: var(--ink); background: var(--surface); box-shadow: inset 0 0 0 1px var(--line); }
-  .nav-count { min-width: 18px; padding: 1px 5px; border-radius: 99px; background: var(--surface-soft); font-size: 9px; text-align: center; }
+  .main {
+    min-width: 0;
+    min-height: 0;
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+  .top {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 18px 26px 14px;
+    border-bottom: 1px solid var(--line);
+  }
+  .top-row { display: flex; align-items: center; gap: 12px; }
+  .top-row h1 { margin: 0; font-size: 17px; font-weight: 800; }
+  .top-row .muted { font-size: 11.5px; }
+  .top-actions { margin-left: auto; display: flex; gap: 8px; }
+  .theme-toggle, .register-button {
+    min-height: 36px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--surface);
+  }
+  .theme-toggle { width: 36px; display: grid; place-items: center; }
+  .register-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0 12px;
+    background: var(--ink);
+    color: var(--shell);
+    border-color: var(--ink);
+    font-size: 11.5px;
+    font-weight: 750;
+  }
+  html[data-theme="dark"] .register-button {
+    background: var(--acid);
+    color: var(--acid-ink);
+    border-color: var(--acid);
+  }
 
-  .jump-wrap { position: relative; margin-top: 16px; }
-  .jump-field { display: flex; align-items: center; gap: 10px; background: var(--surface); border: 1.5px solid var(--line); border-radius: 18px; padding: 13px 16px; box-shadow: var(--shadow); }
-  .jump-field:focus-within { border-color: var(--ink); }
-  html[data-theme="dark"] .jump-field:focus-within { border-color: var(--acid); }
-  .jump-field input { flex: 1; border: 0; background: transparent; outline: none; font-size: 15px; }
-  .jump-field kbd { font-family: var(--mono); font-size: 11px; background: var(--surface-soft); border: 1px solid var(--line); border-radius: 6px; padding: 3px 6px; color: var(--muted); }
-  .jump-wrap[hidden] { display: none; }
+  .toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .search-field {
+    min-width: 220px;
+    max-width: 340px;
+    flex: 1 1 220px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-control);
+    background: var(--surface);
+  }
+  .search-field:focus-within { border-color: var(--ink); }
+  .search-field input {
+    width: 100%;
+    border: 0;
+    outline: 0;
+    background: transparent;
+    font-size: 12.5px;
+  }
+  .seg-filter {
+    display: flex;
+    gap: 2px;
+    padding: 3px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: var(--surface-quiet);
+  }
+  .seg-filter button {
+    border: 0;
+    border-radius: 999px;
+    padding: 6px 12px;
+    background: transparent;
+    color: var(--muted);
+    font-size: 11.5px;
+    font-weight: 700;
+  }
+  .seg-filter button.on {
+    background: var(--surface);
+    color: var(--ink);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, .08);
+  }
+  .kind-toggle { display: flex; align-items: center; gap: 6px; }
+  .kind-toggle label {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 6px 11px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: var(--surface);
+    color: var(--muted);
+    font-size: 11.5px;
+    font-weight: 700;
+  }
+  .kind-toggle input { accent-color: var(--ink); }
+  .group-control {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--muted);
+    font-size: 11.5px;
+    font-weight: 700;
+  }
+  .switch {
+    position: relative;
+    width: 38px;
+    height: 22px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: var(--surface-soft);
+  }
+  .switch::after {
+    content: "";
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--surface);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, .25);
+    transition: transform .15s ease;
+  }
+  .switch.on { background: var(--ink); }
+  html[data-theme="dark"] .switch.on { background: var(--acid); }
+  .switch.on::after { transform: translateX(16px); }
 
-  .jump-results { position: absolute; top: calc(100% + 8px); left: 0; right: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 18px; box-shadow: var(--shadow); max-height: 340px; overflow-y: auto; z-index: 40; }
-  .jump-results[hidden] { display: none; }
-  .jr-group { padding: 8px 10px 4px; font-size: 10.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 800; }
-  .jr-item { width: 100%; display: flex; align-items: center; gap: 10px; text-align: left; padding: 9px 14px; border: 0; background: transparent; border-radius: 12px; }
-  .jr-item:hover, .jr-item.hi { background: var(--surface-soft); }
-  .jr-item .jr-ic { width: 30px; height: 30px; border-radius: 9px; background: var(--surface-quiet); display: grid; place-items: center; flex: 0 0 auto; }
-  .jr-item .jr-main { min-width: 0; flex: 1; }
-  .jr-item .jr-title { font-weight: 700; font-size: 13px; display: flex; align-items: center; gap: 6px; }
-  .jr-item .jr-sub { font-size: 11.5px; color: var(--muted); }
-  .jr-item .jr-addr { font-family: var(--mono); font-size: 11.5px; color: var(--muted); flex: 0 0 auto; }
-  .jr-empty { padding: 26px 16px; text-align: center; color: var(--muted); font-size: 12.5px; }
+  .tag-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .tag-label {
+    margin-right: 4px;
+    color: var(--muted);
+    font-size: 10.5px;
+    font-weight: 800;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+  }
+  .tag-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 11px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: var(--surface);
+    color: var(--tag-ink);
+    font-size: 11.5px;
+    font-weight: 700;
+  }
+  .tag-chip:hover { border-color: var(--tag-ink); }
+  .tag-chip.on { background: var(--tag-ink); color: #fff; border-color: var(--tag-ink); }
+  .tag-chip .count { opacity: .72; font-weight: 600; }
+  .clear-filters {
+    border: 0;
+    padding: 4px;
+    background: transparent;
+    color: var(--muted);
+    font-size: 11.5px;
+    font-weight: 700;
+    text-decoration: underline;
+  }
 
-  .body { min-width: 0; overflow-y: auto; padding: 22px 30px 40px; }
-  .view[hidden] { display: none; }
-  .grid-head { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
-  .grid-head h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 800; margin: 0; }
-  .filter-chip { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 5px 11px; font-size: 11.5px; font-weight: 700; }
-  .filter-chip.on { background: var(--ink); color: var(--shell); border-color: var(--ink); }
-  html[data-theme="dark"] .filter-chip.on { background: var(--acid); color: var(--acid-ink); border-color: var(--acid); }
+  .body { overflow-y: auto; padding: 6px 26px 34px; }
+  .summary {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 16px;
+    color: var(--muted);
+    font-size: 11.5px;
+  }
+  .summary strong { color: var(--ink); }
+  .process-list, .tag-group {
+    margin-top: 10px;
+    overflow: hidden;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-card);
+    background: var(--surface);
+  }
+  .tag-group { margin-top: 18px; }
+  .group-head {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 11px 16px;
+    border: 0;
+    border-bottom: 1px solid var(--line);
+    background: var(--surface-quiet);
+    text-align: left;
+  }
+  .group-head:hover { background: var(--surface-soft); }
+  .group-head .ph-caret-right { transition: transform .15s ease; }
+  .tag-group:not(.collapsed) .group-head .ph-caret-right { transform: rotate(90deg); }
+  .tag-group.collapsed .group-rows { display: none; }
+  .group-name {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    color: var(--tag-ink);
+    font-size: 12.5px;
+    font-weight: 800;
+  }
+  .group-count { color: var(--muted); font-size: 10.5px; font-weight: 700; }
 
-  .wt-grid { min-width: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
-  .wt-tile { min-width: 0; text-align: left; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-card); padding: 16px; display: flex; flex-direction: column; gap: 10px; }
-  .wt-tile:hover { border-color: var(--ink-soft); }
-  .wt-tile:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
-  .wt-tile .th { display: flex; align-items: flex-start; gap: 8px; }
-  .wt-tile .branch { font-weight: 800; font-size: 13.5px; font-family: var(--mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .wt-tile .repo { font-size: 11.5px; color: var(--muted); }
-  .status-dot { width: 9px; height: 9px; border-radius: 50%; flex: 0 0 auto; margin-top: 4px; }
-  .status-dot.running { background: var(--good); box-shadow: 0 0 0 3px color-mix(in srgb, var(--good) 22%, transparent); }
-  .status-dot.mixed { background: var(--warning); box-shadow: 0 0 0 3px color-mix(in srgb, var(--warning) 22%, transparent); }
-  .status-dot.stopped { background: var(--muted); }
-  .status-dot.stale { background: var(--danger); box-shadow: 0 0 0 3px color-mix(in srgb, var(--danger) 22%, transparent); }
-
-  .endpoint-list { display: flex; flex-direction: column; gap: 5px; }
-  .endpoint-list .ep { display: flex; align-items: center; gap: 7px; font-size: 12px; }
-  .endpoint-list .ep .nm { color: var(--muted); min-width: 62px; }
-  .endpoint-list .ep .addr { font-family: var(--mono); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .endpoint-list .ep button { min-width: 32px; min-height: 32px; border: 0; border-radius: 9px; background: transparent; color: var(--muted); display: inline-flex; align-items: center; justify-content: center; }
-  .endpoint-list .ep button:hover { color: var(--good); }
-  .none-declared { font-size: 12px; color: var(--muted); font-style: normal; }
-
-  .tile-foot { margin-top: auto; display: flex; align-items: center; gap: 8px; padding-top: 6px; border-top: 1px solid var(--line); }
-  .tile-foot .pill { font-size: 10.5px; font-weight: 700; padding: 3px 8px; border-radius: 999px; text-transform: uppercase; }
-  .tile-foot .pill.running { color: var(--badge-good-ink); background: var(--badge-good-bg); }
-  .tile-foot .pill.mixed { color: var(--badge-warning-ink); background: var(--badge-warning-bg); }
-  .tile-foot .pill.stopped { color: var(--muted); background: var(--surface-soft); }
-  .tile-foot .pill.stale { color: var(--badge-danger-ink); background: var(--badge-danger-bg); }
-  .tile-foot .view-btn { margin-left: auto; border: 1px solid var(--line); background: var(--surface); border-radius: 10px; padding: 6px 11px; font-size: 11.5px; font-weight: 700; display: inline-flex; align-items: center; gap: 5px; }
-  .tile-foot .view-btn:hover { background: var(--surface-soft); }
-
-  /* skeleton */
-  .sk { background: linear-gradient(90deg, var(--surface-soft) 25%, var(--surface-quiet) 37%, var(--surface-soft) 63%); background-size: 400% 100%; animation: sk 1.4s ease infinite; border-radius: 8px; }
-  @keyframes sk { 0% { background-position: 100% 50%; } 100% { background-position: 0 50%; } }
-
-  .empty { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 80px 30px; gap: 12px; color: var(--muted); }
-  .empty .glyph { width: 56px; height: 56px; border-radius: 18px; background: var(--surface-soft); display: grid; place-items: center; color: var(--ink); margin-bottom: 6px; }
-  .empty h3 { margin: 0; color: var(--ink); font-size: 16px; }
-  .empty p { margin: 0; max-width: 380px; font-size: 13px; }
-  .snippet { margin-top: 8px; background: var(--rail); color: #eaff9a; font-family: var(--mono); font-size: 12px; padding: 10px 14px; border-radius: 12px; display: flex; align-items: center; gap: 10px; }
-  .snippet button { background: rgba(255,255,255,.1); border: 0; color: #fff; border-radius: 7px; padding: 4px 6px; }
-
-  /* drawer */
-  .scrim { position: absolute; inset: 0; background: rgba(10,12,10,.35); opacity: 0; pointer-events: none; transition: opacity .2s ease; z-index: 50; }
-  .scrim.open { opacity: 1; pointer-events: auto; }
-  .drawer { position: absolute; top: 0; right: 0; bottom: 0; width: 460px; max-width: 92%; background: var(--surface); box-shadow: -20px 0 50px rgba(0,0,0,.18); transform: translateX(calc(100% + 24px)); visibility: hidden; pointer-events: none; transition: transform .22s ease, visibility 0s linear .22s; z-index: 60; display: flex; flex-direction: column; }
-  .drawer.open { transform: translateX(0); visibility: visible; pointer-events: auto; transition-delay: 0s; }
-  .drawer-head { padding: 18px 20px 12px; border-bottom: 1px solid var(--line); }
-  .drawer-head .dh-top { display: flex; align-items: flex-start; gap: 10px; }
-  .drawer-head h3 { margin: 0; font-size: 15px; font-weight: 800; font-family: var(--mono); }
-  .drawer-head .repo { font-size: 11.5px; color: var(--muted); margin-top: 3px; }
-  .drawer-close { margin-left: auto; width: 30px; height: 30px; border-radius: 9px; border: 1px solid var(--line); background: var(--surface); display: grid; place-items: center; flex: 0 0 auto; }
-  .drawer-path { margin-top: 8px; font-family: var(--mono); font-size: 11px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
-  .copy-btn { border: 1px solid var(--line); background: var(--surface); border-radius: 8px; padding: 3px 6px; display: inline-flex; align-items: center; gap: 4px; font-size: 11px; }
-  .copy-btn:hover { background: var(--surface-soft); }
-  .copy-btn.danger { margin-left: auto; color: var(--badge-danger-ink); }
-
-  .dr-tabs { display: flex; gap: 4px; padding: 10px 16px 0; border-bottom: 1px solid var(--line); }
-  .dr-tab { border: 0; background: transparent; padding: 9px 12px; font-size: 12.5px; font-weight: 700; color: var(--muted); border-bottom: 2px solid transparent; }
-  .dr-tab.active { color: var(--ink); border-color: var(--ink); }
-  html[data-theme="dark"] .dr-tab.active { border-color: var(--acid); }
-
-  .dr-body { flex: 1; overflow-y: auto; padding: 16px 20px 30px; }
-  .dr-pane[hidden] { display: none; }
-
-  .banner { margin-bottom: 14px; border-radius: 14px; padding: 12px 14px; display: flex; gap: 9px; align-items: flex-start; font-size: 12px; }
-  .banner.warn { background: color-mix(in srgb, var(--warning) 14%, var(--surface)); border: 1px solid color-mix(in srgb, var(--warning) 40%, var(--line)); color: var(--badge-warning-ink); }
-  .banner.warn strong { color: var(--ink); }
-
-  .proc-item { border: 1px solid var(--line); border-radius: 16px; padding: 12px 14px; margin-bottom: 10px; }
-  .bulk-actions { border: 1px solid var(--line); border-radius: 16px; padding: 12px 14px; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; background: var(--surface-quiet); }
-  .bulk-actions .bulk-copy { min-width: 0; margin-right: auto; display: grid; gap: 2px; }
-  .bulk-actions .bulk-copy strong { font-size: 12.5px; }
-  .bulk-actions .bulk-copy span { color: var(--muted); font-size: 10.5px; }
-  .bulk-result { border: 1px solid var(--line); border-radius: 14px; padding: 10px 12px; margin: -2px 0 10px; background: var(--surface); font-size: 11.5px; }
-  .bulk-result strong { display: block; margin-bottom: 5px; }
-  .bulk-result ul { margin: 0; padding-left: 18px; color: var(--muted); }
-  .proc-item .pi-top { display: flex; align-items: center; gap: 8px; }
-  .proc-item .pi-name { font-weight: 800; font-size: 13px; }
-  .proc-item .pi-actions { margin-left: auto; display: flex; gap: 6px; }
-  .btn { border: 1px solid var(--line); background: var(--surface); border-radius: 10px; padding: 7px 11px; font-weight: 700; font-size: 11.5px; display: inline-flex; align-items: center; gap: 6px; }
+  .process-entry + .process-entry { border-top: 1px solid var(--line); }
+  .process-row {
+    display: grid;
+    grid-template-columns: 26px minmax(210px, 1.5fr) 100px minmax(180px, 1.5fr) 82px auto;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 16px;
+  }
+  .process-row:hover { background: var(--surface-quiet); }
+  .expand {
+    width: 24px;
+    height: 24px;
+    display: grid;
+    place-items: center;
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    background: var(--surface);
+  }
+  .expand .ph { font-size: 12px; transition: transform .15s ease; }
+  .process-entry.open .expand .ph { transform: rotate(90deg); }
+  .identity { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+  .identity-top { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .kind-icon {
+    width: 22px;
+    height: 22px;
+    display: grid;
+    place-items: center;
+    flex: 0 0 auto;
+    border-radius: 6px;
+    background: var(--surface-soft);
+  }
+  .kind-icon .ph { font-size: 13px; }
+  .process-label {
+    min-width: 0;
+    overflow: hidden;
+    font-size: 12.5px;
+    font-weight: 800;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .process-tags { display: flex; gap: 4px; flex-wrap: wrap; }
+  .mini-tag {
+    border: 0;
+    border-radius: 999px;
+    padding: 2px 7px;
+    background: var(--surface-soft);
+    color: var(--tag-ink);
+    font-size: 10px;
+    font-weight: 700;
+  }
+  .mini-tag:hover { background: var(--tag-ink); color: #fff; }
+  .pill {
+    width: max-content;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    border-radius: 999px;
+    padding: 3px 7px;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+  .pill::before {
+    content: "";
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+  }
+  .pill.running, .pill.succeeded {
+    color: var(--badge-good-ink);
+    background: var(--badge-good-bg);
+  }
+  .pill.starting, .pill.stopping {
+    color: var(--badge-warning-ink);
+    background: var(--badge-warning-bg);
+  }
+  .pill.failed {
+    color: var(--badge-danger-ink);
+    background: var(--badge-danger-bg);
+  }
+  .pill.stopped, .pill.canceled, .pill.never {
+    color: var(--muted);
+    background: var(--surface-soft);
+  }
+  .ports { min-width: 0; display: flex; gap: 5px; flex-wrap: wrap; }
+  .port-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 7px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--surface-quiet);
+    font-size: 10.5px;
+  }
+  .port-chip button {
+    min-width: 24px;
+    min-height: 24px;
+    display: grid;
+    place-items: center;
+    border: 0;
+    background: transparent;
+    color: var(--muted);
+  }
+  .port-chip button:hover { color: var(--good); }
+  .kind-label { color: var(--muted); font-size: 11px; white-space: nowrap; }
+  .actions { display: flex; justify-content: flex-end; gap: 5px; }
+  .btn {
+    min-height: 31px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    padding: 6px 9px;
+    border: 1px solid var(--line);
+    border-radius: 9px;
+    background: var(--surface);
+    font-size: 11px;
+    font-weight: 700;
+  }
   .btn:hover:not([disabled]) { background: var(--surface-soft); }
   .btn.primary { background: var(--ink); color: var(--shell); border-color: var(--ink); }
   .btn.danger { background: var(--danger); color: #fff; border-color: var(--danger); }
-  .btn.danger:hover:not([disabled]) { background: color-mix(in srgb, var(--danger) 86%, var(--ink)); }
-  html[data-theme="dark"] .btn.primary { background: var(--acid); color: var(--acid-ink); border-color: var(--acid); }
-  html[data-theme="dark"] .btn.danger { color: var(--acid-ink); }
-  .pill { display: inline-flex; align-items: center; gap: 5px; font-size: 10.5px; font-weight: 700; padding: 3px 8px; border-radius: 999px; text-transform: uppercase; }
-  .pill::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
-  .pill.running, .pill.succeeded { color: var(--badge-good-ink); background: var(--badge-good-bg); }
-  .pill.stopped { color: var(--muted); background: var(--surface-soft); }
-  .pill.starting, .pill.stopping { color: var(--badge-warning-ink); background: var(--badge-warning-bg); }
-  .pill.failed { color: var(--badge-danger-ink); background: var(--badge-danger-bg); }
-  .pill.canceled { color: var(--muted); background: var(--surface-soft); }
-  .proc-item .pi-err { margin-top: 8px; font-size: 11.5px; color: var(--badge-danger-ink); display: flex; gap: 6px; }
-  .proc-item .pi-ports { margin-top: 9px; display: flex; flex-direction: column; gap: 5px; }
+  .btn.icon-only { width: 31px; padding: 0; }
+  html[data-theme="dark"] .btn.primary {
+    background: var(--acid);
+    color: var(--acid-ink);
+    border-color: var(--acid);
+  }
+  .process-error {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0 16px 9px 52px;
+    color: var(--badge-danger-ink);
+    font-size: 11px;
+  }
 
-  .ep-row { display: flex; align-items: center; gap: 8px; background: var(--surface-quiet); border: 1px solid var(--line); border-radius: 12px; padding: 8px 10px; font-size: 12px; }
-  .ep-row .addr { font-family: var(--mono); flex: 1; }
-  .ep-row button { border: 1px solid var(--line); background: var(--surface); border-radius: 8px; padding: 5px 7px; display: inline-flex; }
-  .ep-row button:hover { color: var(--good); }
-  .ep-row.pending { border-style: dashed; }
-  .ep-row .pending-tag { font-size: 9.5px; text-transform: uppercase; color: var(--badge-warning-ink); font-weight: 800; }
-
-  .cmd-item { border: 1px solid var(--line); border-radius: 14px; padding: 11px 13px; margin-bottom: 8px; }
-  .cmd-item .ci-top { display: flex; align-items: center; gap: 8px; }
-  .cmd-item .ci-name { font-weight: 800; font-size: 12.5px; display: flex; align-items: center; gap: 7px; }
-  .cmd-item .ci-actions { margin-left: auto; display: flex; gap: 6px; }
-  .cmd-runs { display: grid; gap: 6px; margin-top: 9px; }
-  .cmd-run { display: flex; align-items: center; gap: 8px; min-width: 0; padding: 7px 8px; border-radius: 10px; background: var(--surface-quiet); }
-  .cmd-run .run-id { min-width: 0; flex: 1; overflow: hidden; color: var(--muted); font: 10.5px var(--mono); text-overflow: ellipsis; white-space: nowrap; }
-
-  .run-picker { display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; }
-  .run-picker button { border: 1px solid var(--line); background: var(--surface); border-radius: 10px; padding: 6px 10px; font-size: 11.5px; font-weight: 700; }
-  .run-picker button.on { background: var(--ink); color: var(--shell); border-color: var(--ink); }
-  html[data-theme="dark"] .run-picker button.on { background: var(--acid); color: var(--acid-ink); }
-  .log-console { background: var(--rail); color: #d9e0da; border-radius: 14px; overflow: hidden; }
-  .log-toolbar { display: flex; gap: 8px; padding: 9px 12px; border-bottom: 1px solid rgba(255,255,255,.08); }
-  .log-toolbar input { flex: 1; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.1); border-radius: 8px; padding: 6px 9px; color: #eef0ec; font-size: 12px; }
-  .log-status { align-self: center; color: #b8c0ba; font-size: 11px; white-space: nowrap; }
-  .log-body { max-height: 280px; overflow-y: auto; padding: 10px 14px; font-family: var(--mono); font-size: 11.5px; line-height: 1.65; }
+  .log-panel { background: var(--rail); color: #d9e0da; }
+  .log-panel[hidden] { display: none; }
+  .log-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    border-bottom: 1px solid rgba(255, 255, 255, .08);
+  }
+  .log-toolbar input {
+    flex: 1;
+    border: 1px solid rgba(255, 255, 255, .1);
+    border-radius: 8px;
+    padding: 6px 9px;
+    background: rgba(255, 255, 255, .06);
+    color: #eef0ec;
+    font-size: 11.5px;
+  }
+  .log-toolbar .btn {
+    background: rgba(255, 255, 255, .06);
+    border-color: rgba(255, 255, 255, .12);
+    color: #eef0ec;
+  }
+  .log-body {
+    max-height: 170px;
+    overflow-y: auto;
+    padding: 9px 18px;
+    font-family: var(--mono);
+    font-size: 11px;
+    line-height: 1.6;
+  }
   .log-line { display: flex; gap: 10px; white-space: pre-wrap; word-break: break-word; }
-  .log-line .t { color: var(--log-time); flex: 0 0 auto; }
-  .log-line.stderr .m { color: #ff9aa4; }
-  .log-cursor { display: inline-block; width: 6px; height: 12px; background: var(--acid); margin-left: 2px; animation: blink 1s step-end infinite; vertical-align: middle; }
+  .log-time { color: var(--log-time); flex: 0 0 auto; }
+  .log-line.stderr .log-message { color: #ff9aa4; }
+  .log-cursor {
+    width: 6px;
+    height: 12px;
+    display: inline-block;
+    margin-left: 2px;
+    background: var(--acid);
+    animation: blink 1s step-end infinite;
+    vertical-align: middle;
+  }
   @keyframes blink { 50% { opacity: 0; } }
 
-  .logs-view, .admin-view { overflow-y: auto; padding: 22px 30px 40px; }
-  .section-heading { display: flex; align-items: flex-start; gap: 16px; margin-bottom: 16px; }
-  .section-heading h2 { margin: 0; font-size: 20px; letter-spacing: -.03em; }
-  .section-heading p { margin: 4px 0 0; color: var(--muted); font-size: 12px; }
-  .logs-layout { display: grid; grid-template-columns: minmax(260px, .7fr) minmax(0, 1.3fr); gap: 14px; min-height: 520px; }
-  .run-list, .global-log { border: 1px solid var(--line); border-radius: var(--radius-card); background: var(--surface); overflow: hidden; }
-  .run-list-head { padding: 13px; border-bottom: 1px solid var(--line); }
-  .run-list-head input, .admin-field { width: 100%; border: 1px solid var(--line); border-radius: 11px; background: var(--surface-quiet); padding: 9px 11px; }
-  .run-row { width: 100%; border: 0; border-bottom: 1px solid var(--line); background: transparent; padding: 12px 14px; text-align: left; display: grid; gap: 4px; }
-  .run-row:last-child { border-bottom: 0; }
-  .run-row:hover, .run-row.active { background: var(--surface-soft); }
-  .run-row-top { display: flex; align-items: center; gap: 8px; }
-  .run-row strong { font-size: 12px; }
-  .run-row small { color: var(--muted); font-size: 10.5px; }
-  .global-log { display: grid; grid-template-rows: auto minmax(0, 1fr); }
-  .global-log-head { padding: 14px 16px; border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 10px; }
-  .global-log-head strong { font-size: 12px; }
-  .global-log-head #globalLogDownload { margin-left: auto; }
-  .global-log .log-console { margin: 14px; min-height: 380px; }
-  .global-log .log-body { max-height: 430px; }
-
-  .admin-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
-  .settings-card { border: 1px solid var(--line); border-radius: var(--radius-card); background: var(--surface); overflow: hidden; }
-  .settings-card h3 { margin: 0; padding: 15px 16px 5px; font-size: 13px; }
-  .settings-card > p { margin: 0; padding: 0 16px 13px; color: var(--muted); font-size: 11.5px; }
-  .setting-row { min-height: 58px; padding: 12px 16px; border-top: 1px solid var(--line); display: flex; align-items: center; gap: 14px; }
-  .setting-row div:first-child { flex: 1; }
-  .setting-row strong { display: block; font-size: 11.5px; }
-  .setting-row span, .setting-row p { margin: 3px 0 0; color: var(--muted); font-size: 10.5px; }
-  .value { flex: 0 0 auto; border-radius: 9px; padding: 5px 8px; background: var(--surface-soft); font: 10.5px var(--mono); }
-  .access-warning { margin-bottom: 14px; border: 1px solid color-mix(in srgb, var(--danger) 45%, var(--line)); border-radius: 14px; background: color-mix(in srgb, var(--danger) 11%, var(--surface)); padding: 12px 14px; color: var(--badge-danger-ink); font-size: 11.5px; display: flex; align-items: center; gap: 9px; }
-
-  .modal-backdrop { position: absolute; inset: 0; z-index: 80; display: none; place-items: center; padding: 20px; background: rgba(10, 12, 10, .45); }
-  .modal-backdrop.open { display: grid; }
-  .modal { width: min(520px, 100%); border: 1px solid var(--line); border-radius: 22px; background: var(--surface); box-shadow: var(--shadow); padding: 20px; }
-  .modal-head { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 16px; }
-  .modal-head h2 { margin: 0; font-size: 18px; }
-  .modal-head p { margin: 4px 0 0; color: var(--muted); font-size: 11.5px; }
-  .modal-close { margin-left: auto; width: 32px; height: 32px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
-  .field { display: grid; gap: 6px; margin-top: 12px; }
-  .field label { font-size: 10px; font-weight: 750; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); }
-  .field input { width: 100%; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-quiet); padding: 10px 12px; }
-  .modal-note { margin: 14px 0 0; border-radius: 12px; padding: 10px 12px; background: var(--surface-soft); color: var(--muted); font-size: 11px; line-height: 1.55; }
-  .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
-
-  .toast { position: absolute; right: 22px; bottom: 20px; z-index: 120; display: flex; align-items: center; gap: 8px; border-radius: 12px; padding: 10px 13px; background: var(--rail); color: #f3f6f1; box-shadow: var(--shadow); font-size: 11.5px; transform: translateY(18px); opacity: 0; pointer-events: none; transition: .18s ease; }
-  .toast.show { transform: translateY(0); opacity: 1; }
-
-  @media (max-width: 980px) {
-    .wt-grid { grid-template-columns: repeat(2, 1fr); }
+  .skeleton {
+    margin-top: 16px;
+    overflow: hidden;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-card);
+    background: var(--surface);
   }
-  @media (max-width: 860px) {
+  .skeleton-row {
+    height: 72px;
+    margin: 12px 16px;
+    border-radius: 10px;
+    background: linear-gradient(90deg, var(--surface-soft) 25%, var(--surface-quiet) 37%, var(--surface-soft) 63%);
+    background-size: 400% 100%;
+    animation: skeleton 1.4s ease infinite;
+  }
+  @keyframes skeleton { from { background-position: 100% 50%; } to { background-position: 0 50%; } }
+  .empty-state {
+    min-height: 470px;
+    display: grid;
+    place-items: center;
+    padding: 40px 30px;
+    text-align: center;
+    color: var(--muted);
+  }
+  .empty-inner { max-width: 480px; display: grid; justify-items: center; gap: 12px; }
+  .empty-icon {
+    width: 56px;
+    height: 56px;
+    display: grid;
+    place-items: center;
+    margin-bottom: 4px;
+    border-radius: 18px;
+    background: var(--surface-soft);
+    color: var(--ink);
+  }
+  .empty-icon .ph { font-size: 27px; }
+  .empty-state h2 { margin: 0; color: var(--ink); font-size: 17px; }
+  .empty-state p { margin: 0; font-size: 13px; }
+  .snippet {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 8px;
+    padding: 10px 14px;
+    border-radius: 12px;
+    background: var(--rail);
+    color: #eaff9a;
+    font-family: var(--mono);
+    font-size: 11px;
+    text-align: left;
+  }
+  .snippet button {
+    min-width: 30px;
+    min-height: 30px;
+    display: grid;
+    place-items: center;
+    border: 0;
+    border-radius: 7px;
+    background: rgba(255, 255, 255, .1);
+    color: #fff;
+  }
+  .filter-empty { padding: 42px 20px; text-align: center; color: var(--muted); }
+  .error-card {
+    max-width: 520px;
+    display: grid;
+    gap: 10px;
+    padding: 22px;
+    border: 1px solid color-mix(in srgb, var(--danger) 48%, var(--line));
+    border-radius: var(--radius-card);
+    background: var(--surface);
+    text-align: left;
+  }
+  .error-card .ph { color: var(--danger); font-size: 24px; }
+  .error-card h2, .error-card p { margin: 0; }
+
+  .scrim {
+    position: absolute;
+    inset: 0;
+    z-index: 50;
+    display: none;
+    background: rgba(10, 12, 10, .48);
+  }
+  .scrim.open { display: block; }
+  .dialog {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    z-index: 60;
+    width: min(520px, calc(100% - 32px));
+    display: none;
+    transform: translate(-50%, -50%);
+    border: 1px solid var(--line);
+    border-radius: 20px;
+    background: var(--surface);
+    box-shadow: var(--shadow);
+  }
+  .dialog.open { display: block; }
+  .dialog-head {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 18px 20px 12px;
+    border-bottom: 1px solid var(--line);
+  }
+  .dialog-head h2 { margin: 0; font-size: 15px; }
+  .dialog-head p { margin: 3px 0 0; color: var(--muted); font-size: 11.5px; }
+  .dialog-close {
+    width: 32px;
+    height: 32px;
+    display: grid;
+    place-items: center;
+    margin-left: auto;
+    border: 1px solid var(--line);
+    border-radius: 9px;
+    background: var(--surface);
+  }
+  .dialog-body { display: grid; gap: 12px; padding: 18px 20px; }
+  .dialog-body pre {
+    max-height: 190px;
+    overflow: auto;
+    margin: 0;
+    padding: 14px;
+    border-radius: 12px;
+    background: var(--rail);
+    color: #eaff9a;
+    font-family: var(--mono);
+    font-size: 11px;
+    white-space: pre-wrap;
+  }
+  .dialog-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    padding: 0 20px 18px;
+  }
+  .toast {
+    position: absolute;
+    right: 22px;
+    bottom: 22px;
+    z-index: 100;
+    max-width: 360px;
+    display: none;
+    padding: 10px 14px;
+    border-radius: 11px;
+    background: var(--rail);
+    color: #f4f7f2;
+    box-shadow: 0 12px 34px rgba(0, 0, 0, .3);
+    font-size: 12px;
+  }
+  .toast.show { display: block; }
+
+  @media (max-width: 1050px) {
+    .process-row {
+      grid-template-columns: 24px minmax(180px, 1fr) 94px minmax(150px, 1fr) auto;
+    }
+    .kind-label { display: none; }
+  }
+  @media (max-width: 820px) {
     body { padding: 0; }
-    .frame { height: 100vh; max-height: none; border-radius: 0; }
-    .drawer { width: 100%; max-width: 100%; }
-    .wt-grid { grid-template-columns: 1fr; }
-    .proto-bar { top: auto; bottom: 10px; }
-    .body { padding-bottom: 64px; }
-    .logs-layout, .admin-grid { grid-template-columns: 1fr; }
-    .logs-view, .admin-view { padding-bottom: 70px; }
-    #globalRunList { max-height: min(32vh, 300px); overflow-y: auto; overscroll-behavior: contain; }
-    .register-button span { display: none; }
+    .frame { height: 100vh; max-height: none; border-radius: 0; grid-template-columns: 1fr; }
+    .rail { display: none; }
+    .proto-bar { top: auto; bottom: 10px; max-width: 94vw; }
+    .top { padding: 16px 18px 13px; }
+    .body { padding: 4px 18px 76px; }
+    .group-control { margin-left: 0; }
+    .process-row {
+      grid-template-columns: 24px minmax(0, 1fr);
+      grid-template-areas:
+        "expand identity"
+        ". status"
+        ". ports"
+        ". actions";
+      row-gap: 7px;
+      padding: 13px 14px;
+    }
+    .expand { grid-area: expand; }
+    .identity { grid-area: identity; }
+    .process-row > .pill { grid-area: status; }
+    .ports { grid-area: ports; }
+    .actions { grid-area: actions; justify-content: flex-start; flex-wrap: wrap; }
+    .kind-label { display: none; }
+    .process-error { padding-left: 48px; }
   }
-  @media (max-width: 560px) {
-    .top { padding: 18px 16px 12px; }
-    .top-row { gap: 10px; }
-    .top-row > div:nth-child(2) { min-width: 0; }
-    .top-actions { flex: 0 0 auto; }
-    .top-row .muted { display: none; }
-    .register-button { width: 36px; padding: 0; justify-content: center; }
-    .primary-nav { overflow-x: auto; }
-    .nav-button { white-space: nowrap; }
-    .jump-field { padding: 11px 12px; }
-    .body, .logs-view, .admin-view { padding-left: 16px; padding-right: 16px; }
+  @media (max-width: 520px) {
     .proto-bar .tag { display: none; }
-    .drawer-path { flex-wrap: wrap; }
-    .copy-btn.danger { margin-left: 0; }
-    .dr-tabs { overflow-x: auto; }
-    .bulk-actions { flex-wrap: wrap; }
-    .bulk-actions .bulk-copy { flex-basis: 100%; }
-    .bulk-actions > .btn { flex: 1; justify-content: center; }
-    .proc-item .pi-top { flex-wrap: wrap; }
-    .proc-item .pi-actions { width: 100%; margin-left: 0; justify-content: flex-end; }
-  }
-  @media (prefers-reduced-motion: reduce) {
-    *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
-    .drawer { transition-delay: 0s !important; }
+    .proto-bar button { padding: 6px 9px; }
+    .top-row .muted { display: none; }
+    .register-button span { display: none; }
+    .search-field { max-width: none; }
+    .seg-filter { order: 3; }
+    .tag-row { max-height: 76px; overflow-y: auto; }
+    .process-tags { max-height: 42px; overflow: hidden; }
+    .dialog-actions { flex-wrap: wrap; }
   }
 </style>
 </head>
 <body>
-
-  <div class="proto-bar">
-    <span class="tag">UI prototype</span>
-    <div class="seg" role="group" aria-label="Prototype data state">
+  <div class="proto-bar" aria-label="Prototype controls">
+    <span class="tag">Prototype state</span>
+    <div class="seg" role="group" aria-label="Select data state">
       <button class="on" data-state="populated">Populated</button>
       <button data-state="loading">Loading</button>
       <button data-state="empty">Empty</button>
+      <button data-state="error">Error</button>
     </div>
   </div>
 
-  <div class="frame" id="appFrame">
-    <div class="top">
-      <div class="top-row">
-        <div class="brand-mark" aria-hidden="true"><span class="brand-symbol"></span></div>
-        <div>
-          <h1>Port Start</h1>
-          <div class="muted">Find an endpoint, manage a process, or inspect a run</div>
-        </div>
-        <div class="top-actions">
-          <button class="register-button" id="registerOpen" aria-label="Register worktree"><i class="ph ph-plus" aria-hidden="true"></i><span>Register worktree</span></button>
-          <button class="theme-toggle" id="themeToggle" aria-label="Toggle light and dark mode"><i class="ph ph-moon-stars" id="themeIcon" aria-hidden="true"></i></button>
-        </div>
-      </div>
-      <nav class="primary-nav" aria-label="Primary navigation">
-        <button class="nav-button active" data-view-target="worktrees" aria-current="page"><i class="ph ph-git-branch" aria-hidden="true"></i>Worktrees <span class="nav-count" id="worktreeCount">6</span></button>
-        <button class="nav-button" data-view-target="logs"><i class="ph ph-terminal-window" aria-hidden="true"></i>Runs &amp; logs</button>
-        <button class="nav-button" data-view-target="admin"><i class="ph ph-sliders-horizontal" aria-hidden="true"></i>Administration</button>
-      </nav>
-      <div class="jump-wrap" id="jumpWrap">
-        <div class="jump-field">
-          <i class="ph ph-magnifying-glass" aria-hidden="true"></i>
-          <input type="text" id="jump" placeholder="Jump to a worktree, process, command, or port…" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="jumpResults">
-          <kbd>/</kbd>
-        </div>
-        <div class="jump-results" id="jumpResults" role="listbox" aria-label="Jump search results" hidden></div>
-      </div>
-    </div>
-
-    <section class="body view" id="body" data-view="worktrees">
-      <div class="grid-head">
-        <h2>Registered worktrees</h2>
-      </div>
-      <div class="wt-grid" id="wtGrid" aria-busy="false" aria-describedby="worktreeLoadingStatus"></div>
-      <div class="sr-only" id="worktreeLoadingStatus" role="status" aria-live="polite"></div>
-    </section>
-
-    <section class="logs-view view" data-view="logs" hidden>
-      <div class="section-heading">
-        <div><h2>Runs &amp; logs</h2><p>Search output across processes and one-shot commands.</p></div>
-      </div>
-      <div class="logs-layout">
-        <div class="run-list">
-          <div class="run-list-head"><input id="globalRunSearch" type="search" placeholder="Search worktrees, runs, or output"></div>
-          <div id="globalRunList"></div>
-        </div>
-        <div class="global-log">
-          <div class="global-log-head"><i class="ph ph-terminal-window" aria-hidden="true"></i><strong id="globalLogTitle">feature/checkout-redesign · process/web</strong><span class="pill running" id="globalLogState">running</span><button class="btn sm" id="globalLogDownload"><i class="ph ph-download-simple" aria-hidden="true"></i>Download logs</button></div>
-          <div id="globalLogConsole"></div>
-        </div>
-      </div>
-    </section>
-
-    <section class="admin-view view" data-view="admin" hidden>
-      <div class="section-heading">
-        <div><h2>Administration</h2><p>Effective configuration for this local process manager.</p></div>
-      </div>
-      <div class="access-warning" id="accessBanner" role="alert" hidden><i class="ph ph-warning-circle" aria-hidden="true"></i><strong>This dashboard is reachable from other devices without a password.</strong></div>
-      <div class="admin-grid">
-        <article class="settings-card">
-          <h3>Process manager</h3>
-          <p>Current control-plane and supervision settings.</p>
-          <div class="setting-row"><div><strong>Control plane</strong><span>Local administration API and dashboard</span></div><div class="value">127.0.0.1:13337</div></div>
-          <div class="setting-row"><div><strong>Login shell</strong><span>Used for every managed run</span></div><div class="value">/bin/zsh</div></div>
-          <div class="setting-row"><div><strong>Stop timeout</strong><span>SIGTERM before force stop</span></div><div class="value">10 seconds</div></div>
-          <div class="setting-row"><div><strong>Missing worktree grace</strong><span>Registration retained while a path is missing</span></div><div class="value">24 hours</div></div>
-        </article>
-        <article class="settings-card">
-          <h3>Logs &amp; access</h3>
-          <p>Retention defaults and dashboard protection.</p>
-          <div class="setting-row"><div><strong>Run output</strong><span>Maximum retained for each run</span></div><div class="value">50 MiB</div></div>
-          <div class="setting-row"><div><strong>Runs per definition</strong><span>Newest process or command runs retained</span></div><div class="value">20 runs</div></div>
-          <div class="setting-row"><div><strong>Administration password</strong><span>No password is set for loopback access</span></div><div class="value">Not set</div></div>
-          <div class="setting-row"><div><strong>Exposure notice</strong><span>See the notice shown when this dashboard is available beyond this device</span></div><button class="btn" id="accessPreview">Show notice</button></div>
-        </article>
-      </div>
-    </section>
-
-    <div class="scrim" id="scrim" aria-hidden="true"></div>
-    <aside class="drawer" id="drawer" aria-label="Worktree detail" role="dialog" aria-modal="true" aria-hidden="true" inert>
-      <div class="drawer-head">
-        <div class="dh-top">
-          <div>
-            <h3 id="drTitle"></h3>
-            <div class="repo" id="drRepo"></div>
-          </div>
-          <button class="drawer-close" id="drawerClose" aria-label="Close"><i class="ph ph-x" aria-hidden="true"></i></button>
-        </div>
-        <div class="drawer-path">
-          <span id="drPath"></span>
-          <button class="copy-btn" id="drPathCopy"><i class="ph ph-copy" aria-hidden="true"></i>Copy</button>
-          <button class="copy-btn danger" id="deregisterWorktree"><i class="ph ph-trash" aria-hidden="true"></i>Deregister</button>
-        </div>
-      </div>
-      <div class="dr-tabs" role="tablist">
-        <button class="dr-tab active" id="tabEndpoints" data-tab="endpoints" role="tab" aria-controls="paneEndpoints" aria-selected="true" tabindex="0">Endpoints</button>
-        <button class="dr-tab" id="tabProcesses" data-tab="processes" role="tab" aria-controls="paneProcesses" aria-selected="false" tabindex="-1">Processes</button>
-        <button class="dr-tab" id="tabCommands" data-tab="commands" role="tab" aria-controls="paneCommands" aria-selected="false" tabindex="-1">Commands</button>
-        <button class="dr-tab" id="tabLogs" data-tab="logs" role="tab" aria-controls="paneLogs" aria-selected="false" tabindex="-1">Logs</button>
-      </div>
-      <div class="dr-body">
-        <div class="dr-pane" id="paneEndpoints" data-pane="endpoints" role="tabpanel" aria-labelledby="tabEndpoints"></div>
-        <div class="dr-pane" id="paneProcesses" data-pane="processes" role="tabpanel" aria-labelledby="tabProcesses" hidden></div>
-        <div class="dr-pane" id="paneCommands" data-pane="commands" role="tabpanel" aria-labelledby="tabCommands" hidden></div>
-        <div class="dr-pane" id="paneLogs" data-pane="logs" role="tabpanel" aria-labelledby="tabLogs" hidden></div>
-      </div>
+  <div class="frame">
+    <aside class="rail" aria-label="Primary navigation">
+      <a class="brand" href="./logo-showcase.html" aria-label="Open the Port Start brand reference">
+        <span class="brand-symbol" aria-hidden="true"></span>
+      </a>
+      <button class="active" title="Processes" aria-label="Processes">
+        <i class="ph ph-terminal" aria-hidden="true"></i>
+      </button>
+      <div class="spacer"></div>
+      <button title="Documentation" aria-label="Documentation">
+        <i class="ph ph-book-open" aria-hidden="true"></i>
+      </button>
     </aside>
 
-    <div class="modal-backdrop" id="registerModal" role="dialog" aria-modal="true" aria-labelledby="registerTitle" aria-hidden="true">
-      <form class="modal" id="registerForm">
-        <div class="modal-head">
-          <div><h2 id="registerTitle">Register a worktree</h2><p>Load process, command, and declared-port definitions from its manifest.</p></div>
-          <button class="modal-close" id="registerClose" type="button" aria-label="Close"><i class="ph ph-x" aria-hidden="true"></i></button>
+    <main class="main" id="application">
+      <header class="top">
+        <div class="top-row">
+          <div>
+            <h1>Processes</h1>
+            <div class="muted">Find every process, port, run, and log by label or tag.</div>
+          </div>
+          <div class="top-actions">
+            <button class="register-button" id="openRegister">
+              <i class="ph ph-plus" aria-hidden="true"></i>
+              <span>Register process</span>
+            </button>
+            <button class="theme-toggle" id="themeToggle" aria-label="Use dark mode">
+              <i class="ph ph-moon" id="themeIcon" aria-hidden="true"></i>
+            </button>
+          </div>
         </div>
-        <div class="field"><label for="worktreePath">Worktree path</label><input id="worktreePath" name="worktreePath" placeholder="/path/to/worktree" required></div>
-        <div class="field"><label for="manifestPath">Manifest</label><input id="manifestPath" name="manifestPath" value=".port-start.yaml" required></div>
-        <div class="modal-note">Creation hooks can register the same worktree safely with <span class="mono">port-start worktree register --json</span>.</div>
-        <div class="modal-actions"><button class="btn" id="registerCancel" type="button">Cancel</button><button class="btn primary" type="submit">Register worktree</button></div>
-      </form>
-    </div>
 
-    <div class="modal-backdrop" id="deregisterModal" role="dialog" aria-modal="true" aria-labelledby="deregisterTitle" aria-describedby="deregisterMessage deregisterImpact" aria-hidden="true">
-      <div class="modal">
-        <div class="modal-head">
-          <div><h2 id="deregisterTitle">Deregister this worktree?</h2><p id="deregisterMessage"></p></div>
+        <div class="toolbar">
+          <label class="search-field">
+            <i class="ph ph-magnifying-glass" aria-hidden="true"></i>
+            <span class="sr-only">Filter processes</span>
+            <input type="search" id="processSearch" placeholder="Filter by label, tag, or port">
+          </label>
+          <div class="seg-filter" role="group" aria-label="Filter by state">
+            <button class="on" data-status="all">All</button>
+            <button data-status="running">Running</button>
+            <button data-status="attention">Needs attention</button>
+          </div>
+          <div class="kind-toggle" aria-label="Filter by process kind">
+            <label><input type="checkbox" id="showServices" checked> Services</label>
+            <label><input type="checkbox" id="showTasks" checked> Tasks</label>
+          </div>
+          <div class="group-control">
+            <span>Group by tag</span>
+            <button class="switch" id="groupSwitch" role="switch" aria-checked="false">
+              <span class="sr-only">Group processes by tag</span>
+            </button>
+          </div>
         </div>
-        <div class="modal-note" id="deregisterImpact"></div>
-        <div class="modal-actions"><button class="btn" id="deregisterCancel" type="button">Keep registered</button><button class="btn danger" id="deregisterConfirm" type="button"><i class="ph ph-trash" aria-hidden="true"></i>Deregister worktree</button></div>
+        <div class="tag-row" id="tagRow" aria-label="Filter by tags"></div>
+      </header>
+
+      <section class="body" id="processBody" aria-live="polite"></section>
+    </main>
+
+    <div class="scrim" id="scrim"></div>
+    <section class="dialog" id="registerDialog" role="dialog" aria-modal="true" aria-labelledby="registerTitle">
+      <div class="dialog-head">
+        <div>
+          <h2 id="registerTitle">Register a process</h2>
+          <p>Register one process directly or apply a process manifest.</p>
+        </div>
+        <button class="dialog-close" data-close-dialog aria-label="Close registration help">
+          <i class="ph ph-x" aria-hidden="true"></i>
+        </button>
       </div>
-    </div>
+      <div class="dialog-body">
+        <pre id="registerCommand">port-start process register \
+  --label "Storefront web" \
+  --kind service \
+  --tag project:storefront \
+  --tag frontend \
+  --port http=http://127.0.0.1:4310/ \
+  -- npm run dev -- --port 4310</pre>
+      </div>
+      <div class="dialog-actions">
+        <button class="btn" data-close-dialog>Close</button>
+        <button class="btn primary" id="copyRegister">
+          <i class="ph ph-copy" aria-hidden="true"></i>
+          Copy command
+        </button>
+      </div>
+    </section>
 
-    <div class="sr-only" id="actionStatus" role="status" aria-live="polite" aria-atomic="true"></div>
-    <div class="toast" id="toast" role="status" aria-live="polite"><i class="ph ph-check-circle" aria-hidden="true"></i><span id="toastText"></span></div>
+    <section class="dialog" id="deregisterDialog" role="dialog" aria-modal="true" aria-labelledby="deregisterTitle">
+      <div class="dialog-head">
+        <div>
+          <h2 id="deregisterTitle">Deregister process</h2>
+          <p id="deregisterCopy">This removes the process from the current inventory.</p>
+        </div>
+        <button class="dialog-close" data-close-dialog aria-label="Close deregistration">
+          <i class="ph ph-x" aria-hidden="true"></i>
+        </button>
+      </div>
+      <div class="dialog-body">
+        <p class="muted">Retained run logs stay available until their retention limit expires.</p>
+      </div>
+      <div class="dialog-actions">
+        <button class="btn" data-close-dialog>Keep process</button>
+        <button class="btn danger" id="confirmDeregister">
+          <i class="ph ph-trash" aria-hidden="true"></i>
+          Deregister
+        </button>
+      </div>
+    </section>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
   </div>
 
 <script>
 (() => {
-  const root = document.documentElement;
-  const themeIcon = document.getElementById('themeIcon');
-  const savedTheme = localStorage.getItem("port-start-prototype-theme");
-  root.dataset.theme = savedTheme ?? root.dataset.theme ?? "light";
-  function paintThemeIcon() {
-    themeIcon.className = root.dataset.theme === "dark"
-      ? "ph ph-sun"
-      : "ph ph-moon-stars";
-  }
-  paintThemeIcon();
-  document.getElementById('themeToggle').addEventListener('click', () => {
-    const next = root.dataset.theme === 'dark' ? 'light' : 'dark';
-    root.dataset.theme = next;
-    localStorage.setItem('port-start-prototype-theme', next);
-    paintThemeIcon();
-  });
-
-  const icon = name => `<i class="ph ph-${name}" aria-hidden="true"></i>`;
-
-  const WORKTREES = [
-    { id: 'wt1', branch: 'feature/checkout-redesign', repo: 'storefront', path: '~/code/storefront/.worktrees/checkout-redesign', status: 'active',
-      processes: [
-        { name: 'web', source: 'manifest', state: 'running', currentRunId: 'run-web-105', runHistory: [{ id: 'run-web-103', state: 'interrupted', logState: 'stopped', reason: 'user_stop', when: '18m ago' }], ports: [ { name: 'http', host: '127.0.0.1', port: 4310, protocol: 'http', path: '/' }, { name: 'inspector', host: '127.0.0.1', port: 9310, protocol: 'tcp' } ] },
-        { name: 'api', source: 'manifest', state: 'running', ports: [ { name: 'http', host: '127.0.0.1', port: 4321, protocol: 'http', path: '/health' } ], activePorts: [{ name: 'http', host: '127.0.0.1', port: 4311, protocol: 'http', path: '/health' }] },
-      ],
-      commands: [ { name: 'test', runs: [{ id: 'run-test-104', state: 'exited', code: 0, when: '2m ago' }] }, { name: 'migrate', runs: [{ id: 'run-migrate-32', state: 'exited', code: 0, when: '1h ago' }] } ] },
-    { id: 'wt2', branch: 'fix/auth-race-condition', repo: 'storefront', path: '~/code/storefront/.worktrees/auth-race-condition', status: 'active',
-      processes: [
-        { name: 'web', source: 'manifest', state: 'stopped', ports: [ { name: 'http', host: '127.0.0.1', port: 4312, protocol: 'http', path: '/' } ] },
-        { name: 'api', source: 'manifest', state: 'stopped', currentRunState: 'exited', currentRunCode: 1, currentLogState: 'process-exited-nonzero', ports: [ { name: 'http', host: '127.0.0.1', port: 4313, protocol: 'http', path: '/health' } ] },
-        { name: 'worker', source: 'manifest', state: 'failed', launchWillFail: true, error: "Launch failed: executable 'worker-dev' was not found.", ports: [] },
-      ],
-      commands: [ { name: 'test', runs: [{ id: 'run-test-98', state: 'exited', code: 1, when: '14m ago' }] } ] },
-    { id: 'wt3', branch: 'agent/emerald-fox-worker-queue', repo: 'platform', path: '~/code/platform/.worktrees/emerald-fox-worker-queue', status: 'active',
-      processes: [
-        { name: 'worker', source: 'imperative', state: 'starting', ports: [] },
-        { name: 'api', source: 'manifest', state: 'running', ports: [ { name: 'http', host: '127.0.0.1', port: 8090, protocol: 'http', path: '/' } ] },
-      ],
-      commands: [ { name: 'seed', runs: [] } ] },
-    { id: 'wt4', branch: 'chore/upgrade-deps', repo: 'storefront', path: '~/code/storefront/.worktrees/upgrade-deps', status: 'missing', missingSince: '6h ago',
-      processes: [ { name: 'web', source: 'manifest', state: 'stale', currentRunState: 'interrupted', currentLogState: 'stopped', currentRunReason: 'worktree_missing', ports: [ { name: 'http', host: '127.0.0.1', port: 4318, protocol: 'http', path: '/' } ] } ],
-      commands: [ { name: 'test', runs: [{ id: 'run-test-missing-14', state: 'canceled', when: '6h ago' }] } ] },
-    { id: 'wt5', branch: 'spike/vector-search', repo: 'platform', path: '~/code/platform/.worktrees/vector-search', status: 'active',
-      processes: [ { name: 'api', source: 'imperative', state: 'stopped', ports: [ { name: 'http', host: '127.0.0.1', port: 8099, protocol: 'http', path: '/' } ] } ],
-      commands: [ { name: 'test', runs: [{ id: 'run-test-71', state: 'canceled', when: '2d ago' }] } ] },
-    { id: 'wt6', branch: 'agent/violet-otter-notifications', repo: 'platform', path: '~/code/platform/.worktrees/violet-otter-notifications', status: 'active',
-      processes: [ { name: 'worker', source: 'imperative', state: 'running', ports: [] }, { name: 'api', source: 'manifest', state: 'running', ports: [ { name: 'http', host: '127.0.0.1', port: 8101, protocol: 'http', path: '/' } ] } ],
-      commands: [ { name: 'test', runs: [{ id: 'run-test-83', state: 'exited', code: 0, when: '40m ago' }] } ] },
-  ];
-  const RETAINED_RUNS = [];
-  WORKTREES.forEach(worktree => {
-    worktree.processes.forEach(process => {
-      process.currentRunId ||= `run-${worktree.id}-${process.name}-latest`;
-      process.currentRunState ||= process.state === 'stopped'
-        ? 'exited'
-        : process.state;
-      process.currentLogState ||= logStateForRunState(process.currentRunState);
-    });
-  });
-
-  const LOG_SAMPLES = {
-    running: [ { t: '18:41:02.114', s: 'stdout', m: 'compiled client bundle in 812ms' }, { t: '18:41:02.118', s: 'stdout', m: 'watching for file changes...' }, { t: '18:41:15.902', s: 'stdout', m: 'GET /api/cart 200 12ms' } ],
-    failed: [ { t: '18:12:40.001', s: 'stdout', m: 'launching worker-dev' }, { t: '18:12:40.093', s: 'stderr', m: "Launch failed: executable 'worker-dev' was not found" } ],
-    stopped: [ { t: '17:02:11.220', s: 'stdout', m: 'received SIGTERM, shutting down' }, { t: '17:02:11.402', s: 'stdout', m: 'closed 0 active connections' } ],
-    starting: [ { t: '18:44:50.010', s: 'stdout', m: 'launching worker process...' } ],
-    'process-exited': [ { t: '17:08:11.220', s: 'stdout', m: 'process completed' }, { t: '17:08:11.402', s: 'stdout', m: 'process exited with code 0' } ],
-    'process-exited-nonzero': [ { t: '18:12:40.001', s: 'stdout', m: 'starting api validation' }, { t: '18:12:40.101', s: 'stderr', m: 'process exited with code 1' } ],
-    'command-running': [ { t: '18:46:10.010', s: 'stdout', m: 'running command...' } ],
-    'command-test-success': [ { t: '18:46:11.010', s: 'stdout', m: '42 tests passed' }, { t: '18:46:11.120', s: 'stdout', m: 'test suite passed in 1.2s' } ],
-    'command-migrate-success': [ { t: '17:41:06.201', s: 'stdout', m: 'applied migration 20260729_add_run_index' }, { t: '17:41:06.390', s: 'stdout', m: 'database is up to date' } ],
-    'command-failed': [ { t: '18:32:04.991', s: 'stderr', m: '2 tests failed' }, { t: '18:32:05.102', s: 'stderr', m: 'test suite exited with code 1' } ],
-    'command-canceled': [ { t: '16:21:44.008', s: 'stderr', m: 'command canceled by user' } ],
-    'command-launch-failed': [ { t: '16:19:22.008', s: 'stderr', m: 'command launch failed before execution' } ],
-    'command-success': [ { t: '18:46:11.120', s: 'stdout', m: 'command completed successfully' } ],
-  };
-
-  function esc(s) { return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
-  function portUrl(p) { return `${p.protocol === 'tcp' ? 'tcp://' : (p.protocol + '://')}${p.host}:${p.port}${p.protocol === 'tcp' ? '' : (p.path || '/')}`; }
-  function processIsActive(process) {
-    return ['starting', 'running', 'stopping'].includes(process.state);
-  }
-  function portsMatch(first, second) {
-    return JSON.stringify(first) === JSON.stringify(second);
-  }
-  function visiblePorts(process) {
-    return processIsActive(process)
-      ? (process.activePorts || process.ports)
-      : process.ports;
-  }
-  function pendingPorts(process) {
-    if (!processIsActive(process) || !process.activePorts) return [];
-    return portsMatch(process.activePorts, process.ports) ? [] : process.ports;
-  }
-  function snapshotConfiguredPorts(process) {
-    process.activePorts = process.ports.map(port => ({ ...port }));
-  }
-  function clearActivePorts(process) {
-    delete process.activePorts;
-  }
-  function normalizeWorktreePath(path) {
-    const normalized = path.trim().replace(/\/+/g, '/');
-    return normalized.length > 1 ? normalized.replace(/\/+$/, '') : normalized;
-  }
-  function refreshExistingRegistration(worktree, { path, manifest }) {
-    const wasMissing = worktree.status === 'missing';
-    Object.assign(worktree, { path, manifest, status: 'active' });
-    if (!wasMissing) return;
-    delete worktree.missingSince;
-    worktree.processes.forEach(process => {
-      if (process.state === 'stale') process.state = 'stopped';
-      clearActivePorts(process);
-    });
-  }
-  function logStateForRunState(state) {
-    if (state === 'exited') return 'process-exited';
-    if (['canceled', 'interrupted'].includes(state)) return 'stopped';
-    return state;
-  }
-  function commandLogState(commandName, run) {
-    if (run.logState) return run.logState;
-    if (run.state === 'running') return 'command-running';
-    if (run.state === 'canceled') return 'command-canceled';
-    if (run.state === 'failed') return 'command-launch-failed';
-    if (run.state === 'exited' && run.code !== 0) return 'command-failed';
-    if (run.state === 'exited') {
-      const specific = `command-${commandName}-success`;
-      return LOG_SAMPLES[specific] ? specific : 'command-success';
+  const PROCESSES = [
+    {
+      id: "proc_storefront_web",
+      label: "Storefront web",
+      tags: ["project:storefront", "frontend", "preview"],
+      kind: "service",
+      state: "running",
+      ports: [
+        { name: "http", host: "127.0.0.1", port: 4310, protocol: "http", path: "/" },
+        { name: "inspector", host: "127.0.0.1", port: 9310, protocol: "tcp" }
+      ]
+    },
+    {
+      id: "proc_storefront_api",
+      label: "Storefront API",
+      tags: ["project:storefront", "backend", "api"],
+      kind: "service",
+      state: "running",
+      ports: [
+        { name: "http", host: "127.0.0.1", port: 4311, protocol: "http", path: "/health" }
+      ]
+    },
+    {
+      id: "proc_storefront_tests",
+      label: "Storefront test suite",
+      tags: ["project:storefront", "test"],
+      kind: "task",
+      lastRun: { state: "exited", code: 0, when: "2m ago" },
+      ports: []
+    },
+    {
+      id: "proc_storefront_migrate",
+      label: "Storefront database migration",
+      tags: ["project:storefront", "backend", "migration"],
+      kind: "task",
+      lastRun: { state: "exited", code: 0, when: "1h ago" },
+      ports: []
+    },
+    {
+      id: "proc_auth_service",
+      label: "Auth service",
+      tags: ["project:platform", "backend", "auth"],
+      kind: "service",
+      state: "failed",
+      error: "The process exited with code 1 before it accepted connections.",
+      ports: [
+        { name: "http", host: "127.0.0.1", port: 4313, protocol: "http", path: "/health" }
+      ]
+    },
+    {
+      id: "proc_notification_worker",
+      label: "Notification worker",
+      tags: ["project:platform", "worker"],
+      kind: "service",
+      state: "starting",
+      ports: []
+    },
+    {
+      id: "proc_platform_api",
+      label: "Platform API",
+      tags: ["project:platform", "backend", "api"],
+      kind: "service",
+      state: "running",
+      ports: [
+        { name: "http", host: "127.0.0.1", port: 8090, protocol: "http", path: "/" }
+      ]
+    },
+    {
+      id: "proc_seed_data",
+      label: "Seed sample data",
+      tags: ["project:platform", "seed"],
+      kind: "task",
+      lastRun: null,
+      ports: []
+    },
+    {
+      id: "proc_docs_preview",
+      label: "Docs site preview",
+      tags: ["project:docs", "frontend", "preview"],
+      kind: "service",
+      state: "stopped",
+      ports: [
+        { name: "http", host: "127.0.0.1", port: 4318, protocol: "http", path: "/" }
+      ]
+    },
+    {
+      id: "proc_ml_training",
+      label: "ML training job",
+      tags: ["project:ml", "training", "gpu"],
+      kind: "task",
+      lastRun: { state: "running", when: "18m" },
+      ports: []
+    },
+    {
+      id: "proc_vector_search",
+      label: "Vector search API",
+      tags: ["project:platform", "project:ml", "api"],
+      kind: "service",
+      state: "stopped",
+      ports: [
+        { name: "http", host: "127.0.0.1", port: 8099, protocol: "http", path: "/" }
+      ]
+    },
+    {
+      id: "proc_local_proxy",
+      label: "Local fixture generator",
+      tags: [],
+      kind: "task",
+      lastRun: { state: "canceled", when: "2d ago" },
+      ports: []
     }
-    return 'command-success';
+  ]
+
+  const LOGS = {
+    running: [
+      { time: "18:41:02.114", stream: "stdout", text: "Compiled client bundle in 812ms" },
+      { time: "18:41:15.902", stream: "stdout", text: "GET /api/cart 200 12ms" }
+    ],
+    failed: [
+      { time: "18:12:40.001", stream: "stdout", text: "Starting service on the declared HTTP port" },
+      { time: "18:12:40.093", stream: "stderr", text: "Error: address 127.0.0.1:4313 is already in use" },
+      { time: "18:12:40.101", stream: "stdout", text: "Process exited with code 1" }
+    ],
+    stopped: [
+      { time: "17:02:11.220", stream: "stdout", text: "Received SIGTERM and stopped" }
+    ],
+    starting: [
+      { time: "18:44:50.010", stream: "stdout", text: "Starting process" }
+    ],
+    canceled: [
+      { time: "yesterday", stream: "stdout", text: "Run canceled by user" }
+    ],
+    succeeded: [
+      { time: "18:39:00.010", stream: "stdout", text: "PASS src/cart.test.ts with 24 tests" },
+      { time: "18:39:00.402", stream: "stdout", text: "Task exited with code 0" }
+    ],
+    never: []
   }
-  function processRunEntries(process) {
-    const current = process.currentRunId
-      ? [{
-          id: process.currentRunId,
-          state: process.currentRunState,
-          logState: process.currentLogState || logStateForRunState(process.currentRunState),
-          code: process.currentRunCode,
-          reason: process.currentRunReason,
-          when: process.currentRunState === 'running' ? 'now' : 'latest run',
-        }]
-      : [];
-    return [...current, ...(process.runHistory || [])];
+
+  const state = {
+    screen: "populated",
+    query: "",
+    status: "all",
+    showServices: true,
+    showTasks: true,
+    groupByTag: false,
+    tags: new Set(),
+    openLogs: new Set(),
+    logQueries: new Map(),
+    collapsedGroups: new Set(),
+    pendingDeregister: null,
+    activeDialog: null,
+    lastFocus: null
   }
-  function beginProcessRun(process) {
-    process.runHistory ||= [];
-    if (
-      process.currentRunId &&
-      !process.runHistory.some(run => run.id === process.currentRunId)
-    ) {
-      process.runHistory.unshift({
-        id: process.currentRunId,
-        state: process.currentRunState,
-        logState: process.currentLogState || logStateForRunState(process.currentRunState),
-        code: process.currentRunCode,
-        reason: process.currentRunReason,
-        when: 'just now',
-      });
+
+  const body = document.getElementById("processBody")
+  const tagRow = document.getElementById("tagRow")
+  const toast = document.getElementById("toast")
+  let toastTimer
+
+  function escapeHtml(value) {
+    return String(value).replace(
+      /[&<>"']/g,
+      character => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;"
+      })[character]
+    )
+  }
+
+  function processState(process) {
+    if (process.kind === "service") return process.state
+    if (!process.lastRun) return "never"
+    if (process.lastRun.state === "exited") {
+      return process.lastRun.code === 0 ? "succeeded" : "failed"
     }
-    process.currentRunId = `run-${++invocationSequence}`;
-    process.currentRunState = 'starting';
-    process.currentLogState = 'starting';
-    delete process.currentRunCode;
-    delete process.currentRunReason;
-  }
-  function wtStatusDot(w) {
-    if (w.status === 'missing') return 'stale';
-    const running = w.processes.filter(p => p.state === 'running').length;
-    const active = w.processes.filter(p =>
-      p.state === 'running' || p.state === 'starting' || p.state === 'stopping'
-    ).length;
-    if (w.processes.length > 0 && running === w.processes.length) return 'running';
-    if (active === 0) return 'stopped';
-    return 'mixed';
+    return process.lastRun.state
   }
 
-  let uiState = 'populated';
-  let activeWt = null;
-  let activeTab = 'endpoints';
-  let activeView = 'worktrees';
-  let overlayOpener = null;
-  let toastTimer;
-  let activeGlobalRun = null;
-  let invocationSequence = 200;
-
-  const views = [...document.querySelectorAll('.view')];
-  const jumpWrap = document.getElementById('jumpWrap');
-  const toast = document.getElementById('toast');
-  const toastText = document.getElementById('toastText');
-  const actionStatus = document.getElementById('actionStatus');
-  const registerModal = document.getElementById('registerModal');
-  const deregisterModal = document.getElementById('deregisterModal');
-  const worktreeCount = document.getElementById('worktreeCount');
-  let deregisterTarget = null;
-
-  function showToast(message, iconName = 'check-circle') {
-    toast.querySelector('i').className = `ph ph-${iconName}`;
-    toastText.textContent = message;
-    toast.classList.add('show');
-    clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => toast.classList.remove('show'), 1800);
+  function portUrl(port) {
+    const prefix = `${port.protocol}://`
+    const path = port.protocol === "tcp" ? "" : (port.path || "/")
+    return `${prefix}${port.host}:${port.port}${path}`
   }
-  function announceActionOutcome(message) {
-    actionStatus.textContent = message;
+
+  function uniqueTags() {
+    const tags = new Set(PROCESSES.flatMap(process => process.tags))
+    if (PROCESSES.some(process => process.tags.length === 0)) tags.add("untagged")
+    return [...tags].sort()
   }
-  async function copyText(value) {
+
+  function processHasTag(process, tag) {
+    return tag === "untagged" ? process.tags.length === 0 : process.tags.includes(tag)
+  }
+
+  function matchesFilters(process) {
+    const currentState = processState(process)
+    if (state.status === "running" && !["running", "starting"].includes(currentState)) return false
+    if (state.status === "attention" && !["failed", "canceled"].includes(currentState)) return false
+    if (process.kind === "service" && !state.showServices) return false
+    if (process.kind === "task" && !state.showTasks) return false
+    if (state.tags.size && ![...state.tags].every(tag => processHasTag(process, tag))) return false
+
+    const query = state.query.trim().toLowerCase()
+    if (!query) return true
+    const searchValue = [
+      process.label,
+      ...process.tags,
+      ...(process.ports || []).flatMap(port => [port.name, port.host, port.port])
+    ].join(" ").toLowerCase()
+    return searchValue.includes(query)
+  }
+
+  function showToast(message) {
+    clearTimeout(toastTimer)
+    toast.textContent = message
+    toast.classList.add("show")
+    toastTimer = setTimeout(() => toast.classList.remove("show"), 1800)
+  }
+
+  async function copyText(value, message) {
     try {
-      if (!navigator.clipboard?.writeText) throw new Error('Clipboard unavailable');
-      await navigator.clipboard.writeText(value);
-      showToast('Copied to clipboard', 'copy');
-      return true;
+      await navigator.clipboard.writeText(value)
+      showToast(message)
     } catch {
-      showToast('Couldn’t copy to clipboard', 'warning-circle');
-      return false;
+      showToast("Copy is unavailable in this browser.")
     }
   }
 
-  function setBackgroundInert(value) {
-    document.querySelector('.top').inert = value;
-    document.querySelector('.proto-bar').inert = value;
-    views.forEach(view => { view.inert = value; });
-  }
-
-  function focusableWithin(container) {
-    return [...container.querySelectorAll(
-      'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
-    )].filter(element =>
-      element.tabIndex >= 0 && element.getClientRects().length > 0
-    );
-  }
-
-  function trapFocus(container, event) {
-    if (event.key !== 'Tab') return;
-    const focusable = focusableWithin(container);
-    if (!focusable.length) return;
-    const first = focusable[0];
-    const last = focusable.at(-1);
-    if (event.shiftKey && document.activeElement === first) {
-      event.preventDefault();
-      last.focus();
-    } else if (!event.shiftKey && document.activeElement === last) {
-      event.preventDefault();
-      first.focus();
+  function renderTags() {
+    if (state.screen !== "populated") {
+      tagRow.innerHTML = ""
+      return
     }
+
+    tagRow.innerHTML =
+      '<span class="tag-label">Tags</span>' +
+      uniqueTags().map(tag => {
+        const count = PROCESSES.filter(process => processHasTag(process, tag)).length
+        return `
+          <button class="tag-chip ${state.tags.has(tag) ? "on" : ""}"
+            data-filter-tag="${escapeHtml(tag)}" aria-pressed="${state.tags.has(tag)}">
+            ${escapeHtml(tag)} <span class="count">${count}</span>
+          </button>
+        `
+      }).join("") +
+      (state.tags.size ? '<button class="clear-filters" id="clearTags">Clear tags</button>' : "")
   }
 
-  function setView(name) {
-    activeView = name;
-    views.forEach(view => { view.hidden = view.dataset.view !== name; });
-    document.querySelectorAll('[data-view-target]').forEach(button => {
-      const selected = button.dataset.viewTarget === name;
-      button.classList.toggle('active', selected);
-      button.setAttribute('aria-current', selected ? 'page' : 'false');
-    });
-    jumpWrap.hidden = name !== 'worktrees';
-    if (name === 'logs') renderGlobalRuns();
-    closeDrawer({ restoreFocus: false });
-  }
-
-  document.querySelectorAll('[data-view-target]').forEach(button => {
-    button.addEventListener('click', () => setView(button.dataset.viewTarget));
-  });
-
-  function renderGrid() {
-    const grid = document.getElementById('wtGrid');
-    const body = document.getElementById('body');
-    const loadingStatus = document.getElementById('worktreeLoadingStatus');
-    INDEX = buildIndex();
-    worktreeCount.textContent = uiState === 'empty' ? '0' : uiState === 'loading' ? '…' : String(WORKTREES.length);
-    const currentEmpty = document.getElementById('emptyState');
-    if (uiState !== 'empty' && currentEmpty) currentEmpty.remove();
-    grid.setAttribute('aria-busy', uiState === 'loading' ? 'true' : 'false');
-    loadingStatus.textContent = uiState === 'loading' ? 'Loading worktrees' : '';
-    if (uiState === 'loading') {
-      grid.style.display = '';
-      grid.innerHTML = Array.from({length: 6}).map(() => `
-        <div class="wt-tile">
-          <div class="sk" style="height:16px;width:70%;"></div>
-          <div class="sk" style="height:10px;width:40%;"></div>
-          <div class="sk" style="height:14px;width:90%;"></div>
-          <div class="sk" style="height:14px;width:75%;"></div>
-          <div class="sk" style="height:24px;width:100%;margin-top:6px;"></div>
-        </div>`).join('');
-      return;
-    }
-    if (uiState === 'empty') {
-      grid.style.display = 'none';
-      grid.innerHTML = '';
-      let emptyEl = document.getElementById('emptyState');
-      if (!emptyEl) {
-        emptyEl = document.createElement('div'); emptyEl.id = 'emptyState';
-        body.appendChild(emptyEl);
-      }
-      emptyEl.innerHTML = `
-        <div class="empty">
-          <div class="glyph">${icon('git-branch')}</div>
-          <h3>Nothing registered yet</h3>
-          <p>Have your worktree's setup script register itself, and it'll appear here with every process, command, and port it declares — ready to search, start, and inspect.</p>
-          <div class="snippet"><span>port-start worktree register --json</span><button data-copy="port-start worktree register --json" title="Copy">${icon('copy')}</button></div>
-        </div>`;
-      return;
-    }
-    grid.style.display = '';
-    grid.innerHTML = WORKTREES.map(w => {
-      const dot = wtStatusDot(w);
-      const allPorts = w.processes.flatMap(process =>
-        visiblePorts(process).map(port => ({ ...port, proc: process.name })),
-      );
+  function processActions(process) {
+    if (process.kind === "task") {
+      const running = processState(process) === "running"
       return `
-      <article class="wt-tile" data-worktree="${w.id}">
-        <div class="th">
-          <span class="status-dot ${dot}" title="${dot}"></span>
-          <div style="min-width:0;">
-            <div class="branch">${esc(w.branch)}</div>
-            <div class="repo">${esc(w.repo)}</div>
+        <button class="btn" data-task-action="cancel" data-process-id="${process.id}" ${running ? "" : "disabled"}>Cancel</button>
+        <button class="btn primary" data-task-action="run" data-process-id="${process.id}" ${running ? "disabled" : ""}>
+          ${running ? "Running" : "Run"}
+        </button>
+        <button class="btn icon-only" data-deregister="${process.id}" aria-label="Deregister ${escapeHtml(process.label)}">
+          <i class="ph ph-trash" aria-hidden="true"></i>
+        </button>
+      `
+    }
+
+    const canStart = ["stopped", "failed"].includes(process.state)
+    const canStop = ["running", "starting"].includes(process.state)
+    const canRestart = process.state !== "stopping"
+    return `
+      <button class="btn icon-only" data-service-action="restart" data-process-id="${process.id}"
+        ${canRestart ? "" : "disabled"} aria-label="Restart ${escapeHtml(process.label)}">
+        <i class="ph ph-arrow-clockwise" aria-hidden="true"></i>
+      </button>
+      <button class="btn" data-service-action="stop" data-process-id="${process.id}" ${canStop ? "" : "disabled"}>Stop</button>
+      <button class="btn primary" data-service-action="start" data-process-id="${process.id}" ${canStart ? "" : "disabled"}>
+        ${process.state === "starting" ? "Starting" : "Start"}
+      </button>
+      <button class="btn icon-only" data-deregister="${process.id}" aria-label="Deregister ${escapeHtml(process.label)}">
+        <i class="ph ph-trash" aria-hidden="true"></i>
+      </button>
+    `
+  }
+
+  function portMarkup(process) {
+    if (!process.ports.length) return '<span class="muted">No declared ports</span>'
+    return process.ports.map(port => {
+      const url = portUrl(port)
+      const control =
+        port.protocol === "tcp"
+          ? `<button data-copy-port="${escapeHtml(url)}" aria-label="Copy ${escapeHtml(port.name)} endpoint">
+               <i class="ph ph-copy" aria-hidden="true"></i>
+             </button>`
+          : `<button data-open-port="${escapeHtml(url)}" aria-label="Open ${escapeHtml(port.name)} endpoint">
+               <i class="ph ph-arrow-square-out" aria-hidden="true"></i>
+             </button>`
+      return `
+        <span class="port-chip">
+          <span class="mono">${escapeHtml(port.host)}:${port.port}</span>
+          ${control}
+        </span>
+      `
+    }).join("")
+  }
+
+  function logMarkup(process, instanceKey) {
+    const currentState = processState(process)
+    const lines = LOGS[currentState] || LOGS.stopped
+    const query = state.logQueries.get(process.id) || ""
+    const matches = lines.filter(line => `${line.time} ${line.stream} ${line.text}`.toLowerCase().includes(query.toLowerCase()))
+    const live = ["running", "starting"].includes(currentState)
+
+    return `
+      <div class="log-panel" ${state.openLogs.has(process.id) ? "" : "hidden"}>
+        <div class="log-toolbar">
+          <i class="ph ph-magnifying-glass" aria-hidden="true"></i>
+          <label class="sr-only" for="log-search-${escapeHtml(instanceKey)}">Search logs for ${escapeHtml(process.label)}</label>
+          <input id="log-search-${escapeHtml(instanceKey)}" data-log-search="${process.id}" value="${escapeHtml(query)}"
+            placeholder="Search this run">
+          <span>${live ? "Following" : "Latest run"}</span>
+          <button class="btn icon-only" data-download-logs="${process.id}" aria-label="Download logs for ${escapeHtml(process.label)}">
+            <i class="ph ph-download-simple" aria-hidden="true"></i>
+          </button>
+        </div>
+        <div class="log-body">
+          ${matches.length
+            ? matches.map(line => `
+                <div class="log-line ${line.stream}">
+                  <span class="log-time">${escapeHtml(line.time)}</span>
+                  <span class="log-message">${escapeHtml(line.text)}</span>
+                </div>
+              `).join("")
+            : `<span class="muted">${lines.length ? "No log lines match this search." : "Run this process to create logs."}</span>`
+          }
+          ${live && !query ? '<div class="log-line"><span class="log-time">now</span><span class="log-cursor"></span></div>' : ""}
+        </div>
+      </div>
+    `
+  }
+
+  function processMarkup(process, instanceKey) {
+    const isOpen = state.openLogs.has(process.id)
+    const tags = process.tags.length
+      ? process.tags.map(tag => `
+          <button class="mini-tag" data-quick-tag="${escapeHtml(tag)}">${escapeHtml(tag)}</button>
+        `).join("")
+      : '<button class="mini-tag" data-quick-tag="untagged">untagged</button>'
+
+    return `
+      <article class="process-entry ${isOpen ? "open" : ""}" data-process-id="${process.id}">
+        <div class="process-row">
+          <button class="expand" data-toggle-logs="${process.id}" aria-expanded="${isOpen}"
+            aria-label="${isOpen ? "Hide" : "Show"} logs for ${escapeHtml(process.label)}"
+            ${process.kind === "task" && !process.lastRun ? "disabled" : ""}>
+            <i class="ph ph-caret-right" aria-hidden="true"></i>
+          </button>
+          <div class="identity">
+            <div class="identity-top">
+              <span class="kind-icon">
+                <i class="ph ${process.kind === "service" ? "ph-terminal" : "ph-code"}" aria-hidden="true"></i>
+              </span>
+              <span class="process-label">${escapeHtml(process.label)}</span>
+            </div>
+            <div class="process-tags">${tags}</div>
+          </div>
+          <span class="pill ${processState(process)}">${processState(process)}</span>
+          <div class="ports">${portMarkup(process)}</div>
+          <span class="kind-label">${process.kind}</span>
+          <div class="actions">${processActions(process)}</div>
+        </div>
+        ${process.error
+          ? `<div class="process-error"><i class="ph ph-warning" aria-hidden="true"></i>${escapeHtml(process.error)}</div>`
+          : ""
+        }
+        ${logMarkup(process, instanceKey)}
+      </article>
+    `
+  }
+
+  function populatedMarkup() {
+    const matches = PROCESSES.filter(matchesFilters)
+    const summary = `
+      <div class="summary">
+        <strong>${matches.length}</strong> of ${PROCESSES.length} registered processes
+        ${state.tags.size ? `<span>with every selected tag</span>` : ""}
+      </div>
+    `
+    if (!matches.length) {
+      return `${summary}<div class="process-list"><div class="filter-empty">No processes match these filters.</div></div>`
+    }
+    if (!state.groupByTag) {
+      return `${summary}<div class="process-list">${matches.map(process =>
+        processMarkup(process, `flat-${process.id}`)
+      ).join("")}</div>`
+    }
+
+    const groups = uniqueTags().map(tag => {
+      const processes = matches.filter(process => processHasTag(process, tag))
+      if (!processes.length) return ""
+      const collapsed = state.collapsedGroups.has(tag)
+      return `
+        <section class="tag-group ${collapsed ? "collapsed" : ""}" data-tag-group="${escapeHtml(tag)}">
+          <button class="group-head" data-toggle-group="${escapeHtml(tag)}" aria-expanded="${!collapsed}">
+            <i class="ph ph-caret-right" aria-hidden="true"></i>
+            <span class="group-name"><i class="ph ph-tag" aria-hidden="true"></i>${escapeHtml(tag)}</span>
+            <span class="group-count">${processes.length} ${processes.length === 1 ? "process" : "processes"}</span>
+          </button>
+          <div class="group-rows">${processes.map(process =>
+            processMarkup(process, `group-${tag}-${process.id}`)
+          ).join("")}</div>
+        </section>
+      `
+    }).join("")
+    return summary + groups
+  }
+
+  function render() {
+    renderTags()
+    body.setAttribute("aria-busy", state.screen === "loading" ? "true" : "false")
+
+    if (state.screen === "loading") {
+      body.innerHTML = `
+        <div class="skeleton">
+          ${Array.from({ length: 5 }, () => '<div class="skeleton-row"></div>').join("")}
+        </div>
+      `
+      return
+    }
+
+    if (state.screen === "empty") {
+      body.innerHTML = `
+        <div class="empty-state">
+          <div class="empty-inner">
+            <div class="empty-icon"><i class="ph ph-terminal" aria-hidden="true"></i></div>
+            <h2>Register your first process</h2>
+            <p>Add a label and tags. Port Start will keep each run and its logs easy to find.</p>
+            <div class="snippet">
+              <span>port-start register</span>
+              <button data-copy-command="port-start register" aria-label="Copy registration command">
+                <i class="ph ph-copy" aria-hidden="true"></i>
+              </button>
+            </div>
           </div>
         </div>
-        <div class="endpoint-list">
-          ${allPorts.length ? allPorts.slice(0, 3).map(p => `
-            <div class="ep">
-              <span class="nm">${esc(p.proc)}/${esc(p.name)}</span>
-              <span class="addr">${p.host}:${p.port}${p.protocol!=='tcp' ? (p.path||'/') : ''}</span>
-              ${p.protocol !== 'tcp' ? `<button data-open-port="${esc(portUrl(p))}" title="Open" aria-label="Open ${esc(p.proc)} ${esc(p.name)}">${icon('arrow-square-out')}</button>` : `<button data-copy="${esc(portUrl(p))}" title="Copy" aria-label="Copy ${esc(p.proc)} ${esc(p.name)}">${icon('copy')}</button>`}
-            </div>`).join('') : `<div class="none-declared">No declared ports</div>`}
+      `
+      return
+    }
+
+    if (state.screen === "error") {
+      body.innerHTML = `
+        <div class="empty-state">
+          <div class="error-card">
+            <i class="ph ph-warning" aria-hidden="true"></i>
+            <h2>The process inventory is unavailable</h2>
+            <p class="muted">Check the local service, then retry this request.</p>
+            <div><button class="btn primary" id="retryLoad">Retry</button></div>
+          </div>
         </div>
-        <div class="tile-foot">
-          ${w.status === 'missing' ? `<span class="pill stale">Folder missing</span>` : `<span class="pill ${dot}">${w.processes.filter(p=>p.state==='running').length}/${w.processes.length} running</span>`}
-          <button class="view-btn" data-open="${w.id}" aria-label="Open ${esc(w.branch)} details">Open ${icon('caret-right')}</button>
-        </div>
-      </article>`;
-    }).join('');
-  }
-
-  // ---- jump search ----
-  function buildIndex() {
-    const items = [];
-    WORKTREES.forEach(w => {
-      items.push({ type: 'worktree', wt: w, label: w.branch, sub: w.repo });
-      w.processes.forEach(p => {
-        items.push({ type: 'process', wt: w, proc: p, label: `${w.branch} / ${p.name}`, sub: `process · ${p.state}` });
-        [...visiblePorts(p), ...pendingPorts(p)].forEach(port => {
-          items.push({ type: 'port', wt: w, proc: p, port, label: `${w.branch} / ${p.name} / ${port.name}`, sub: portUrl(port) });
-        });
-      });
-      w.commands.forEach(c => items.push({ type: 'command', wt: w, cmd: c, label: `${w.branch} / ${c.name}`, sub: 'command' }));
-    });
-    return items;
-  }
-  let INDEX = buildIndex();
-
-  const jumpInput = document.getElementById('jump');
-  const jumpResults = document.getElementById('jumpResults');
-  let hiIdx = -1;
-  let currentMatches = [];
-
-  function closeJumpResults() {
-    jumpResults.hidden = true;
-    jumpInput.setAttribute('aria-expanded', 'false');
-    jumpInput.removeAttribute('aria-activedescendant');
-  }
-
-  function runSearch(q) {
-    if (uiState !== 'populated') { closeJumpResults(); return; }
-    if (!q.trim()) { closeJumpResults(); currentMatches = []; return; }
-    const ql = q.toLowerCase();
-    currentMatches = INDEX.filter(it => it.label.toLowerCase().includes(ql) || it.sub.toLowerCase().includes(ql)).slice(0, 8);
-    hiIdx = currentMatches.length ? 0 : -1;
-    paintResults();
-  }
-  function iconFor(item) {
-    return item.type === 'port'
-      ? icon(item.port.protocol === 'tcp' ? 'copy' : 'arrow-square-out')
-      : item.type === 'process'
-        ? icon('terminal-window')
-        : item.type === 'command'
-          ? icon('code')
-          : icon('git-branch');
-  }
-  function paintResults() {
-    if (!currentMatches.length) {
-      jumpResults.innerHTML = `<div class="jr-empty">No matches. Try a worktree branch, process name, or port.</div>`;
-      jumpResults.hidden = false;
-      jumpInput.setAttribute('aria-expanded', 'true');
-      jumpInput.removeAttribute('aria-activedescendant');
-      return;
-    }
-    jumpResults.innerHTML = `<div class="jr-group">Results</div>` + currentMatches.map((it, i) => `
-      <button class="jr-item ${i === hiIdx ? 'hi' : ''}" id="jump-option-${i}" role="option" aria-selected="${i === hiIdx}" tabindex="-1" data-match="${i}">
-        <span class="jr-ic">${iconFor(it)}</span>
-        <span class="jr-main">
-          <span class="jr-title">${esc(it.label)}</span>
-          <span class="jr-sub">${esc(it.sub)}</span>
-        </span>
-        ${it.type === 'port' ? `<span class="jr-addr">${it.port.protocol === 'tcp' ? 'Copy' : 'Open'} →</span>` : ''}
-      </button>`).join('');
-    jumpResults.hidden = false;
-    jumpInput.setAttribute('aria-expanded', 'true');
-    jumpInput.setAttribute('aria-activedescendant', `jump-option-${hiIdx}`);
-  }
-  jumpInput.addEventListener('input', e => runSearch(e.target.value));
-  jumpInput.addEventListener('focus', () => { if (jumpInput.value.trim()) runSearch(jumpInput.value); });
-  jumpInput.addEventListener('keydown', e => {
-    if (jumpResults.hidden) return;
-    if (e.key === 'ArrowDown') { e.preventDefault(); hiIdx = Math.min(hiIdx + 1, currentMatches.length - 1); paintResults(); }
-    else if (e.key === 'ArrowUp') { e.preventDefault(); hiIdx = Math.max(hiIdx - 1, 0); paintResults(); }
-    else if (e.key === 'Enter') { e.preventDefault(); if (currentMatches[hiIdx]) selectMatch(currentMatches[hiIdx]); }
-    else if (e.key === 'Escape') { closeJumpResults(); }
-  });
-  jumpResults.addEventListener('click', e => {
-    const btn = e.target.closest('[data-match]');
-    if (btn) selectMatch(currentMatches[+btn.dataset.match]);
-  });
-  document.addEventListener('click', e => { if (!e.target.closest('.jump-wrap')) closeJumpResults(); });
-  document.addEventListener('keydown', event => {
-    const target = event.target;
-    const isEditing = target.matches('input, textarea, select, [contenteditable="true"]');
-    if (event.key === '/' && activeView === 'worktrees' && !isEditing) {
-      event.preventDefault();
-      jumpInput.focus();
-    }
-  });
-
-  function selectMatch(it) {
-    closeJumpResults(); jumpInput.value = '';
-    if (it.type === 'port') {
-      const address = portUrl(it.port);
-      if (it.port.protocol === 'tcp') {
-        void copyText(address);
-      } else {
-        showToast(`Opening ${address}`, 'arrow-square-out');
-        window.open(address, '_blank', 'noopener');
-      }
-      return;
-    }
-    openDrawer(
-      it.wt.id,
-      it.type === 'command'
-        ? 'commands'
-        : it.type === 'process'
-          ? 'processes'
-          : 'endpoints',
-    );
-  }
-
-  // ---- drawer ----
-  const drawer = document.getElementById('drawer');
-  const scrim = document.getElementById('scrim');
-  const drawerTabs = [...document.querySelectorAll('.dr-tab')];
-
-  function activateDrawerTab(tabName, { focus = false } = {}) {
-    const selected = drawerTabs.find(tab => tab.dataset.tab === tabName);
-    if (!selected) return;
-    activeTab = tabName;
-    drawerTabs.forEach(tab => {
-      const active = tab === selected;
-      tab.classList.toggle('active', active);
-      tab.setAttribute('aria-selected', active);
-      tab.tabIndex = active ? 0 : -1;
-    });
-    document.querySelectorAll('.dr-pane').forEach(pane => {
-      pane.hidden = pane.dataset.pane !== activeTab;
-    });
-    if (focus) selected.focus();
-  }
-
-  function openDrawer(id, tab) {
-    activeWt = WORKTREES.find(w => w.id === id);
-    if (!activeWt) return;
-    overlayOpener = document.activeElement;
-    activeTab = tab || 'endpoints';
-    document.getElementById('drTitle').textContent = activeWt.branch;
-    document.getElementById('drRepo').textContent = activeWt.repo;
-    document.getElementById('drPath').textContent = activeWt.path;
-    document.getElementById('drPathCopy').dataset.copy = activeWt.path;
-    activateDrawerTab(activeTab);
-    renderDrawerPanes();
-    setBackgroundInert(true);
-    drawer.inert = false;
-    drawer.classList.add('open');
-    drawer.setAttribute('aria-hidden', 'false');
-    scrim.classList.add('open');
-    requestAnimationFrame(() => document.getElementById('drawerClose').focus());
-  }
-  function closeDrawer({ restoreFocus = true } = {}) {
-    if (!drawer.classList.contains('open')) return;
-    drawer.classList.remove('open');
-    drawer.setAttribute('aria-hidden', 'true');
-    drawer.inert = true;
-    scrim.classList.remove('open');
-    if (!registerModal.classList.contains('open')) setBackgroundInert(false);
-    if (restoreFocus && overlayOpener?.isConnected) overlayOpener.focus();
-  }
-  document.getElementById('drawerClose').addEventListener('click', () => closeDrawer());
-  scrim.addEventListener('click', () => closeDrawer());
-  drawer.addEventListener('keydown', event => trapFocus(drawer, event));
-  document.addEventListener('keydown', event => {
-    if (event.key === 'Escape' && drawer.classList.contains('open')) closeDrawer();
-  });
-
-  drawerTabs.forEach(tab => {
-    tab.addEventListener('click', () => activateDrawerTab(tab.dataset.tab));
-    tab.addEventListener('keydown', event => {
-      if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
-      event.preventDefault();
-      const current = drawerTabs.indexOf(tab);
-      const next = event.key === 'Home'
-        ? 0
-        : event.key === 'End'
-          ? drawerTabs.length - 1
-          : event.key === 'ArrowRight'
-            ? (current + 1) % drawerTabs.length
-            : (current - 1 + drawerTabs.length) % drawerTabs.length;
-      activateDrawerTab(drawerTabs[next].dataset.tab, { focus: true });
-    });
-  });
-
-  function captureDrawerActionFocus() {
-    const element = document.activeElement;
-    if (!element || !drawer.contains(element)) return null;
-
-    const processItem = element.closest('[data-proc]');
-    if (processItem) {
-      return {
-        kind: 'process',
-        name: processItem.dataset.proc,
-        action: element.dataset.procAction || null,
-      };
+      `
+      return
     }
 
-    const commandItem = element.closest('[data-cmd]');
-    if (commandItem) {
-      const commandRun = element.closest('[data-command-run]');
-      return {
-        kind: 'command',
-        name: commandItem.dataset.cmd,
-        action: element.dataset.cmdAction || null,
-        runId: commandRun?.dataset.commandRun || element.dataset.runId || null,
-      };
-    }
-
-    return null;
+    body.innerHTML = populatedMarkup()
   }
 
-  function restoreDrawerActionFocus(focusedAction) {
-    if (!focusedAction || !drawer.classList.contains('open')) return;
-
-    if (focusedAction.kind === 'process') {
-      const processItem = [...document.querySelectorAll('[data-pane="processes"] [data-proc]')]
-        .find(item => item.dataset.proc === focusedAction.name);
-      const matchingAction = processItem && [...processItem.querySelectorAll('[data-proc-action]')]
-        .find(button =>
-          button.dataset.procAction === focusedAction.action && !button.disabled
-        );
-      (matchingAction || processItem)?.focus();
-      return;
-    }
-
-    const commandItem = [...document.querySelectorAll('[data-pane="commands"] [data-cmd]')]
-      .find(item => item.dataset.cmd === focusedAction.name);
-    if (!commandItem) return;
-
-    if (focusedAction.runId) {
-      const commandRun = [...commandItem.querySelectorAll('[data-command-run]')]
-        .find(run => run.dataset.commandRun === focusedAction.runId);
-      const matchingRunAction = commandRun && [...commandRun.querySelectorAll('[data-cmd-action]')]
-        .find(button =>
-          button.dataset.cmdAction === focusedAction.action && !button.disabled
-        );
-      (matchingRunAction || commandRun)?.focus();
-      return;
-    }
-
-    const matchingAction = [...commandItem.querySelectorAll('[data-cmd-action]')]
-      .find(button =>
-        button.dataset.cmdAction === focusedAction.action && !button.disabled
-      );
-    (matchingAction || commandItem).focus();
+  function setTheme(theme) {
+    document.documentElement.dataset.theme = theme
+    localStorage.setItem("port-start-prototype-theme", theme)
+    const button = document.getElementById("themeToggle")
+    const icon = document.getElementById("themeIcon")
+    const dark = theme === "dark"
+    button.setAttribute("aria-label", dark ? "Use light mode" : "Use dark mode")
+    icon.className = `ph ${dark ? "ph-sun" : "ph-moon"}`
   }
 
-  function renderDrawerPanes() {
-    const w = activeWt;
-    const focusedAction = captureDrawerActionFocus();
-    document.querySelectorAll('.dr-pane').forEach(p => p.hidden = p.dataset.pane !== activeTab);
-
-    const epPane = document.querySelector('[data-pane="endpoints"]');
-    const allPorts = w.processes.flatMap(process => [
-      ...visiblePorts(process).map(port => ({ ...port, proc: process.name })),
-      ...pendingPorts(process).map(port => ({ ...port, proc: process.name, pending: true })),
-    ]);
-    epPane.innerHTML = (w.status === 'missing' ? missingBanner(w) : '') + (allPorts.length ? allPorts.map(p => `
-      <div class="ep-row ${p.pending ? 'pending' : ''}">
-        ${p.pending ? `<span class="pending-tag">Next start</span>` : ''}
-        <span class="addr">${esc(p.proc)}/${esc(p.name)} · ${p.host}:${p.port}${p.protocol!=='tcp'?(p.path||'/'):''}</span>
-        ${!p.pending && p.protocol !== 'tcp' ? `<button data-open-port="${esc(portUrl(p))}" title="Open" aria-label="Open ${esc(p.proc)} ${esc(p.name)}">${icon('arrow-square-out')}</button>` : ''}
-        ${!p.pending ? `<button data-copy="${esc(portUrl(p))}" title="Copy" aria-label="Copy ${esc(p.proc)} ${esc(p.name)} address">${icon('copy')}</button>` : ''}
-      </div>`).join('') : `<p class="muted" style="font-size:12.5px;">No processes in this worktree declare a port.</p>`);
-
-    const procPane = document.querySelector('[data-pane="processes"]');
-    procPane.innerHTML = (w.status === 'missing' ? missingBanner(w) : '') + bulkProcessControls(w) + bulkProcessResult(w) + w.processes.map(p => procItem(w, p)).join('');
-
-    const cmdPane = document.querySelector('[data-pane="commands"]');
-    cmdPane.innerHTML = (w.status === 'missing' ? missingBanner(w) : '') + (w.commands.length ? w.commands.map(c => cmdItem(w, c)).join('') : `<p class="muted" style="font-size:12.5px;">No one-shot commands registered for this worktree.</p>`);
-
-    const logsPane = document.querySelector('[data-pane="logs"]');
-    const targets = [
-      ...w.processes.flatMap(process => processRunEntries(process).map(run => ({
-        key: `process:${process.name}:${run.id}`,
-        label: `process/${process.name} · ${run.id.replace('run-', '#')}`,
-        state: run.state,
-        logState: run.logState || logStateForRunState(run.state),
-      }))),
-      ...w.commands.flatMap(command => command.runs.map(run => ({
-        key: `command:${command.name}:${run.id}`,
-        label: `command/${command.name} · ${run.id.replace('run-', '#')}`,
-        state: run.state,
-        logState: commandLogState(command.name, run),
-      }))),
-    ];
-    const previousSelection = logsPane.dataset.worktree === w.id
-      ? logsPane.dataset.sel
-      : '';
-    const selectedTarget = targets.find(target => target.key === previousSelection) || targets[0];
-    const focusedLogTarget = document.activeElement?.dataset?.logTarget;
-    logsPane.dataset.worktree = w.id;
-    logsPane.dataset.sel = selectedTarget?.key || '';
-    logsPane.innerHTML = targets.length ? `
-      <div class="run-picker">${targets.map(t => `<button class="${t.key===selectedTarget.key?'on':''}" aria-pressed="${t.key===selectedTarget.key?'true':'false'}" data-log-target="${esc(t.key)}" data-log-state="${t.state}" data-log-sample="${t.logState}">${esc(t.label)}</button>`).join('')}</div>
-      <div class="log-console" id="logConsole">${logConsoleHtml(selectedTarget.logState)}</div>
-    ` : `<p class="muted" style="font-size:12.5px;">Nothing has been run yet in this worktree.</p>`;
-    logsPane.querySelectorAll('[data-log-target]').forEach(btn => btn.addEventListener('click', () => {
-      logsPane.querySelectorAll('[data-log-target]').forEach(b => {
-        const selected = b === btn;
-        b.classList.toggle('on', selected);
-        b.setAttribute('aria-pressed', String(selected));
-      });
-      logsPane.dataset.sel = btn.dataset.logTarget;
-      document.getElementById('logConsole').innerHTML = logConsoleHtml(btn.dataset.logSample);
-    }));
-    if (focusedLogTarget) {
-      [...logsPane.querySelectorAll('[data-log-target]')]
-        .find(button => button.dataset.logTarget === focusedLogTarget)
-        ?.focus();
-    }
-    restoreDrawerActionFocus(focusedAction);
-  }
-
-  function missingBanner(w) {
-    return `<div class="banner warn">${icon('warning-circle')}<div><strong>This worktree's folder can't be found</strong> — missing since ${esc(w.missingSince)}. Its active runs were stopped, and the registration will be kept for 24 hours in case the folder returns.</div></div>`;
-  }
-  function bulkProcessControls(w) {
-    const disabled = w.status === 'missing';
-    return `<div class="bulk-actions">
-      <div class="bulk-copy"><strong>All processes</strong><span>Each process reports its own result.</span></div>
-      <button class="btn" data-bulk-proc-action="stop-all" ${disabled ? 'disabled' : ''}>Stop all</button>
-      <button class="btn primary" data-bulk-proc-action="start-all" ${disabled ? 'disabled' : ''}>Start all</button>
-    </div>`;
-  }
-  function bulkProcessResult(w) {
-    if (!w.bulkResult) return '';
-    return `<div class="bulk-result" data-bulk-result role="status" aria-live="polite">
-      <strong>${esc(w.bulkResult.summary)}</strong>
-      <ul>${w.bulkResult.results.map(result => `<li>${esc(result.name)} — ${esc(result.outcome)}</li>`).join('')}</ul>
-    </div>`;
-  }
-  function logConsoleHtml(pstate) {
-    const lines = LOG_SAMPLES[pstate] || LOG_SAMPLES.stopped;
-    const live =
-      pstate === 'running' ||
-      pstate === 'starting' ||
-      pstate === 'command-running';
-    return `
-      <div class="log-toolbar">
-        ${icon('magnifying-glass')}
-        <input data-log-search placeholder="Search this run's logs" aria-label="Search this run's logs">
-        <span class="log-status">${live ? 'Following live output' : 'Saved output'}</span>
-      </div>
-      <div class="log-body">
-        ${lines.map(l => `<div class="log-line ${l.s}" data-log-entry><span class="t">${l.t}</span><span class="m">${esc(l.m)}</span></div>`).join('')}
-        <div class="jr-empty" data-log-empty hidden>No log lines match this search.</div>
-        ${live ? `<div class="log-line"><span class="t">now</span><span class="m"><span class="log-cursor"></span></span></div>` : ''}
-      </div>`;
-  }
-  document.addEventListener('input', event => {
-    if (!event.target.matches('[data-log-search]')) return;
-    const console = event.target.closest('.log-console');
-    const query = event.target.value.trim().toLowerCase();
-    const lines = [...console.querySelectorAll('[data-log-entry]')];
-    let visible = 0;
-    lines.forEach(line => {
-      line.hidden = query.length > 0 && !line.textContent.toLowerCase().includes(query);
-      if (!line.hidden) visible += 1;
-    });
-    console.querySelector('[data-log-empty]').hidden = visible > 0;
-  });
-
-  function procItem(w, p) {
-    const disabledMissing = w.status === 'missing';
-    const canStart = (p.state === 'stopped' || p.state === 'failed') && !disabledMissing;
-    const canStop = (p.state === 'running' || p.state === 'starting') && !disabledMissing;
-    const canRestart = !disabledMissing;
-    return `
-    <div class="proc-item" data-proc="${esc(p.name)}" tabindex="-1" aria-label="Process ${esc(p.name)}">
-      <div class="pi-top">
-        <span class="pill ${p.state}">${p.state}</span>
-        <span class="pi-name">${esc(p.name)}</span>
-        <div class="pi-actions">
-          <button class="btn" data-proc-action="restart" ${canRestart?'':'disabled'} title="Restart" aria-label="Restart process ${esc(p.name)}">${icon('arrows-clockwise')}</button>
-          <button class="btn" data-proc-action="stop" ${canStop?'':'disabled'}>Stop</button>
-          <button class="btn primary" data-proc-action="start" ${canStart?'':'disabled'}>${p.state==='starting'?'Starting…':'Start'}</button>
-        </div>
-      </div>
-      ${p.error ? `<div class="pi-err">${icon('warning-circle')}${esc(p.error)}</div>` : ''}
-      ${p.currentRunCode !== undefined ? `<div class="pi-err">${icon('terminal-window')}Latest run exited with code ${p.currentRunCode}. Open its logs to inspect the result.</div>` : ''}
-      <div class="pi-ports">
-        ${visiblePorts(p).map(port => `<div class="ep-row"><span class="addr">${esc(port.name)} · ${port.host}:${port.port}${port.protocol!=='tcp'?(port.path||'/'):''}</span>${port.protocol!=='tcp'?`<button data-open-port="${esc(portUrl(port))}" title="Open" aria-label="Open ${esc(p.name)} ${esc(port.name)}">${icon('arrow-square-out')}</button>`:''}<button data-copy="${esc(portUrl(port))}" title="Copy" aria-label="Copy ${esc(p.name)} ${esc(port.name)} address">${icon('copy')}</button></div>`).join('')}
-        ${pendingPorts(p).map(port => `<div class="ep-row pending"><span class="pending-tag">Next start</span><span class="addr">${esc(port.name)} · ${port.host}:${port.port}</span></div>`).join('')}
-      </div>
-    </div>`;
-  }
-
-  function commandRunPresentation(run) {
-    if (run.state === 'exited' && run.code === 0) return { css: 'succeeded', label: 'succeeded' };
-    if (run.state === 'exited') return { css: 'failed', label: `exit ${run.code}` };
-    return { css: run.state, label: run.state };
-  }
-
-  function cmdItem(w, c) {
-    return `
-    <div class="cmd-item" data-cmd="${esc(c.name)}" tabindex="-1" aria-label="Command ${esc(c.name)}">
-      <div class="ci-top">
-        <span class="ci-name">${icon('code')}${esc(c.name)}</span>
-        <div class="ci-actions">
-          <button class="btn primary" data-cmd-action="run" ${w.status === 'missing' ? 'disabled' : ''}>Run</button>
-        </div>
-      </div>
-      <div class="cmd-runs">
-        ${c.runs.length ? c.runs.slice(0, 4).map(run => {
-          const presentation = commandRunPresentation(run);
-          return `<div class="cmd-run" data-command-run="${esc(run.id)}" tabindex="-1" aria-label="Command ${esc(c.name)} run ${esc(run.id)}">
-            <span class="pill ${presentation.css}">${esc(presentation.label)}</span>
-            <span class="run-id">${esc(run.id)} · ${esc(run.when)}</span>
-            ${run.state === 'running' ? `<button class="btn" data-cmd-action="cancel" data-run-id="${esc(run.id)}">Cancel</button>` : ''}
-          </div>`;
-        }).join('') : `<span class="muted" style="font-size:11.5px;">Never run</span>`}
-      </div>
-    </div>`;
-  }
-
-  document.addEventListener('click', e => {
-    const openTile = e.target.closest('[data-open]');
-    if (openTile) { openDrawer(openTile.dataset.open, 'endpoints'); return; }
-
-    const copy = e.target.closest('[data-copy]');
-    if (copy) {
-      void copyText(copy.dataset.copy);
-      return;
-    }
-
-    const openPort = e.target.closest('[data-open-port]');
-    if (openPort) {
-      e.preventDefault();
-      showToast(`Opening ${openPort.dataset.openPort}`, 'arrow-square-out');
-      window.open(openPort.dataset.openPort, '_blank', 'noopener');
-      return;
-    }
-
-    const procAction = e.target.closest('[data-proc-action]');
-    if (procAction && !procAction.disabled) {
-      const p = activeWt.processes.find(x => x.name === procAction.closest('.proc-item').dataset.proc);
-      runProcessAction(p, procAction.dataset.procAction);
-      return;
-    }
-    const bulkProcAction = e.target.closest('[data-bulk-proc-action]');
-    if (bulkProcAction && !bulkProcAction.disabled) {
-      runBulkProcessAction(activeWt, bulkProcAction.dataset.bulkProcAction);
-      return;
-    }
-    const cmdAction = e.target.closest('[data-cmd-action]');
-    if (cmdAction && !cmdAction.disabled) {
-      const c = activeWt.commands.find(x => x.name === cmdAction.closest('.cmd-item').dataset.cmd);
-      runCommandAction(c, cmdAction.dataset.cmdAction, cmdAction.dataset.runId);
-      return;
-    }
-  });
-
-  function supersedeProcessTransition(p) {
-    p.transitionVersion = (p.transitionVersion || 0) + 1;
-    return p.transitionVersion;
-  }
-  function processTransitionIsCurrent(p, transitionVersion) {
-    return p.transitionVersion === transitionVersion;
-  }
-  function renderDrawerFor(worktree) {
-    if (activeWt === worktree) renderDrawerPanes();
-  }
-  function refreshGlobalRunsIfVisible() {
-    if (activeView === 'logs') renderGlobalRuns();
-  }
-  function completeProcessLaunch(p) {
-    if (p.launchWillFail) {
-      p.state = 'failed';
-      p.currentRunState = 'failed';
-      p.currentLogState = 'failed';
-      p.error = "Launch failed: executable 'worker-dev' was not found.";
-      return false;
-    }
-    p.state = 'running';
-    p.currentRunState = 'running';
-    p.currentLogState = 'running';
-    delete p.error;
-    return true;
-  }
-  function runProcessAction(p, action) {
-    const worktree = activeWt;
-    const transitionVersion = supersedeProcessTransition(p);
-    if (action === 'start') {
-      beginProcessRun(p);
-      snapshotConfiguredPorts(p);
-      p.state = 'starting';
-      showToast(`Starting process/${p.name}`, 'play');
-      renderDrawerFor(worktree);
-      renderGrid();
-      refreshGlobalRunsIfVisible();
+  function serviceAction(process, action) {
+    if (action === "start") {
+      process.state = "starting"
+      render()
       setTimeout(() => {
-        if (!processTransitionIsCurrent(p, transitionVersion)) return;
-        const launched = completeProcessLaunch(p);
-        renderDrawerFor(worktree);
-        renderGrid();
-        refreshGlobalRunsIfVisible();
-        announceActionOutcome(
-          launched
-            ? `Process ${p.name} is running.`
-            : `Process ${p.name} failed to start.`,
-        );
-      }, 1100);
-    } else if (action === 'stop') {
-      p.state = 'stopping';
-      p.currentRunState = 'stopping';
-      p.currentLogState = 'stopped';
-      showToast(`Stopping process/${p.name}`, 'stop-circle');
-      renderDrawerFor(worktree);
-      renderGrid();
-      refreshGlobalRunsIfVisible();
+        process.state = "running"
+        delete process.error
+        render()
+      }, 700)
+      return
+    }
+    if (action === "stop") {
+      process.state = "stopping"
+      render()
       setTimeout(() => {
-        if (!processTransitionIsCurrent(p, transitionVersion)) return;
-        p.state = 'stopped';
-        p.currentRunState = 'interrupted';
-        p.currentLogState = 'stopped';
-        p.currentRunReason = 'user_stop';
-        clearActivePorts(p);
-        renderDrawerFor(worktree);
-        renderGrid();
-        refreshGlobalRunsIfVisible();
-        announceActionOutcome(`Process ${p.name} stopped.`);
-      }, 900);
-    } else if (action === 'restart') {
-      if (p.state === 'stopped' || p.state === 'failed') {
-        beginProcessRun(p);
-        snapshotConfiguredPorts(p);
-        p.state = 'starting';
-        showToast(`Restarting process/${p.name}`, 'arrows-clockwise');
-        renderDrawerFor(worktree);
-        renderGrid();
-        refreshGlobalRunsIfVisible();
-        setTimeout(() => {
-          if (!processTransitionIsCurrent(p, transitionVersion)) return;
-          const launched = completeProcessLaunch(p);
-          renderDrawerFor(worktree);
-          renderGrid();
-          refreshGlobalRunsIfVisible();
-          announceActionOutcome(
-            launched
-              ? `Process ${p.name} restarted and is running.`
-              : `Process ${p.name} failed to restart.`,
-          );
-        }, 1100);
-        return transitionVersion;
-      }
-      p.state = 'stopping';
-      p.currentRunState = 'stopping';
-      p.currentLogState = 'stopped';
-      showToast(`Restarting process/${p.name}`, 'arrows-clockwise');
-      renderDrawerFor(worktree);
-      renderGrid();
-      refreshGlobalRunsIfVisible();
-      setTimeout(() => {
-        if (!processTransitionIsCurrent(p, transitionVersion)) return;
-        p.currentRunState = 'interrupted';
-        p.currentLogState = 'stopped';
-        p.currentRunReason = 'restart';
-        beginProcessRun(p);
-        snapshotConfiguredPorts(p);
-        p.state = 'starting';
-        renderDrawerFor(worktree);
-        renderGrid();
-        refreshGlobalRunsIfVisible();
-        setTimeout(() => {
-          if (!processTransitionIsCurrent(p, transitionVersion)) return;
-          const launched = completeProcessLaunch(p);
-          renderDrawerFor(worktree);
-          renderGrid();
-          refreshGlobalRunsIfVisible();
-          announceActionOutcome(
-            launched
-              ? `Process ${p.name} restarted and is running.`
-              : `Process ${p.name} failed to restart.`,
-          );
-        }, 900);
-      }, 700);
+        process.state = "stopped"
+        render()
+      }, 700)
+      return
     }
-    return transitionVersion;
-  }
-  function planBulkProcessAction(process, isStart) {
-    if (isStart) {
-      if (process.state === 'stopped' || process.state === 'failed') {
-        return { dispatch: 'start', outcome: 'pending' };
-      }
-      if (process.state === 'starting' || process.state === 'running') {
-        return { dispatch: null, outcome: `already active (${process.state})` };
-      }
-      return { dispatch: null, outcome: `not started (${process.state})` };
-    }
-    if (process.state === 'starting' || process.state === 'running') {
-      return { dispatch: 'stop', outcome: 'pending' };
-    }
-    if (process.state === 'stopping') {
-      return { dispatch: null, outcome: 'already stopping' };
-    }
-    return { dispatch: null, outcome: `already inactive (${process.state})` };
-  }
-  function runBulkProcessAction(worktree, action) {
-    const isStart = action === 'start-all';
-    const batchVersion = (worktree.bulkBatchVersion || 0) + 1;
-    worktree.bulkBatchVersion = batchVersion;
-    const records = worktree.processes.map(process => {
-      const plan = planBulkProcessAction(process, isStart);
-      const transitionVersion = plan.dispatch
-        ? runProcessAction(process, plan.dispatch)
-        : null;
-      return {
-        process,
-        transitionVersion,
-        outcome: plan.outcome,
-      };
-    });
-    worktree.bulkResult = {
-      summary: `${isStart ? 'Starting' : 'Stopping'} ${worktree.processes.length} processes…`,
-      results: records.map(record => ({
-        name: record.process.name,
-        outcome: record.outcome,
-      })),
-    };
-    renderDrawerFor(worktree);
+    process.state = "stopping"
+    render()
     setTimeout(() => {
-      if (worktree.bulkBatchVersion !== batchVersion) return;
-      const results = records.map(record => {
-        const { process } = record;
-        if (record.transitionVersion === null) {
-          return { name: process.name, outcome: record.outcome };
-        }
-        if (process.transitionVersion !== record.transitionVersion) {
-          return { name: process.name, outcome: 'superseded by newer action' };
-        }
-        if (isStart) {
-          if (process.state === 'running') return { name: process.name, outcome: 'started' };
-          if (process.state === 'failed') return { name: process.name, outcome: 'launch failed' };
-          return { name: process.name, outcome: `not started (${process.state})` };
-        }
-        if (process.state === 'stopped') return { name: process.name, outcome: 'stopped' };
-        return { name: process.name, outcome: `not stopped (${process.state})` };
-      });
-      if (isStart) {
-        const started = results.filter(result => result.outcome === 'started').length;
-        const failed = results.filter(result => result.outcome === 'launch failed').length;
-        worktree.bulkResult = {
-          summary: `${started} started, ${failed} failed · ${results.length} results`,
-          results,
-        };
-      } else {
-        worktree.bulkResult = {
-          summary: `Stop all complete · ${results.length} results`,
-          results,
-        };
-      }
-      renderDrawerFor(worktree);
-      renderGrid();
-      refreshGlobalRunsIfVisible();
-      showToast(`${isStart ? 'Start all' : 'Stop all'} complete`, isStart ? 'play' : 'stop-circle');
-    }, isStart ? 1250 : 1050);
-  }
-  function runCommandAction(c, action, runId) {
-    const worktree = activeWt;
-    if (action === 'run') {
-      const run = {
-        id: `run-${++invocationSequence}`,
-        state: 'running',
-        when: 'just now',
-      };
-      c.runs.unshift(run);
-      showToast(`Running command/${c.name}`, 'play');
-      renderDrawerFor(worktree);
-      refreshGlobalRunsIfVisible();
+      process.state = "starting"
+      render()
       setTimeout(() => {
-        const current = c.runs.find(candidate => candidate.id === run.id);
-        if (!current || current.state !== 'running') return;
-        Object.assign(current, { state: 'exited', code: 0, when: 'just now' });
-        renderDrawerFor(worktree);
-        refreshGlobalRunsIfVisible();
-        announceActionOutcome(`Command ${c.name} completed with exit code 0.`);
-      }, 1400);
-    } else if (action === 'cancel') {
-      const run = c.runs.find(candidate => candidate.id === runId);
-      if (!run || run.state !== 'running') return;
-      Object.assign(run, { state: 'canceled', when: 'just now' });
-      showToast(`Canceled command/${c.name}`, 'stop-circle');
-      renderDrawerFor(worktree);
-      refreshGlobalRunsIfVisible();
-      announceActionOutcome(`Command ${c.name} run ${run.id} canceled.`);
+        process.state = "running"
+        delete process.error
+        render()
+      }, 700)
+    }, 500)
+  }
+
+  function taskAction(process, action) {
+    if (action === "cancel") {
+      process.lastRun = { state: "canceled", when: "just now" }
+      render()
+      return
+    }
+    process.lastRun = { state: "running", when: "just now" }
+    render()
+    setTimeout(() => {
+      process.lastRun = { state: "exited", code: 0, when: "just now" }
+      render()
+    }, 1000)
+  }
+
+  function openDialog(dialog, trigger) {
+    state.activeDialog = dialog
+    state.lastFocus = trigger
+    document.getElementById("scrim").classList.add("open")
+    dialog.classList.add("open")
+    document.getElementById("application").inert = true
+    document.querySelector(".proto-bar").inert = true
+    document.querySelector(".rail").inert = true
+    dialog.querySelector("button").focus()
+  }
+
+  function closeDialog() {
+    if (!state.activeDialog) return
+    state.activeDialog.classList.remove("open")
+    document.getElementById("scrim").classList.remove("open")
+    document.getElementById("application").inert = false
+    document.querySelector(".proto-bar").inert = false
+    document.querySelector(".rail").inert = false
+    const focusTarget = state.lastFocus
+    state.activeDialog = null
+    state.lastFocus = null
+    state.pendingDeregister = null
+    if (focusTarget && document.contains(focusTarget)) focusTarget.focus()
+  }
+
+  function trapDialogFocus(event) {
+    if (!state.activeDialog || event.key !== "Tab") return
+    const focusable = [...state.activeDialog.querySelectorAll("button:not([disabled])")]
+    if (!focusable.length) return
+    const first = focusable[0]
+    const last = focusable[focusable.length - 1]
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault()
+      last.focus()
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault()
+      first.focus()
     }
   }
 
-  // ---- global runs and logs ----
-  function buildWorktreeRuns(w) {
-    return [
-      ...w.processes.flatMap(process => processRunEntries(process).map(run => ({
-        id: `${w.id}:process:${process.name}:${run.id}`,
-        wt: w,
-        kind: 'process',
-        name: `${process.name} · ${run.id.replace('run-', '#')}`,
-        state: run.state,
-        logState: run.logState || run.state,
-        when: run.when,
-      }))),
-      ...w.commands.flatMap(command => command.runs.map(run => ({
-        id: `${w.id}:command:${command.name}:${run.id}`,
-        wt: w,
-        kind: 'command',
-        name: `${command.name} · ${run.id.replace('run-', '#')}`,
-        state: run.state,
-        logState: commandLogState(command.name, run),
-        when: run.when,
-      }))),
-    ];
-  }
+  document.getElementById("themeToggle").addEventListener("click", () => {
+    setTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark")
+  })
+  setTheme(document.documentElement.dataset.theme)
 
-  function buildGlobalRuns() {
-    return [
-      ...WORKTREES.flatMap(buildWorktreeRuns),
-      ...RETAINED_RUNS,
-    ];
-  }
+  document.getElementById("processSearch").addEventListener("input", event => {
+    state.query = event.target.value
+    render()
+  })
+  document.getElementById("showServices").addEventListener("change", event => {
+    state.showServices = event.target.checked
+    render()
+  })
+  document.getElementById("showTasks").addEventListener("change", event => {
+    state.showTasks = event.target.checked
+    render()
+  })
+  document.getElementById("groupSwitch").addEventListener("click", event => {
+    state.groupByTag = !state.groupByTag
+    event.currentTarget.classList.toggle("on", state.groupByTag)
+    event.currentTarget.setAttribute("aria-checked", String(state.groupByTag))
+    render()
+  })
+  document.querySelectorAll("[data-status]").forEach(button => {
+    button.addEventListener("click", () => {
+      document.querySelectorAll("[data-status]").forEach(item => item.classList.remove("on"))
+      button.classList.add("on")
+      state.status = button.dataset.status
+      render()
+    })
+  })
+  document.querySelectorAll("[data-state]").forEach(button => {
+    button.addEventListener("click", () => {
+      document.querySelectorAll("[data-state]").forEach(item => item.classList.remove("on"))
+      button.classList.add("on")
+      state.screen = button.dataset.state
+      render()
+    })
+  })
 
-  function globalPillClass(state) {
-    if (['exited', 'canceled', 'interrupted'].includes(state)) return 'stopped';
-    return state;
-  }
+  document.getElementById("openRegister").addEventListener("click", event => {
+    openDialog(document.getElementById("registerDialog"), event.currentTarget)
+  })
+  document.getElementById("copyRegister").addEventListener("click", () => {
+    copyText(document.getElementById("registerCommand").textContent, "Registration command copied.")
+  })
+  document.querySelectorAll("[data-close-dialog]").forEach(button => {
+    button.addEventListener("click", closeDialog)
+  })
+  document.getElementById("scrim").addEventListener("click", closeDialog)
+  document.getElementById("confirmDeregister").addEventListener("click", () => {
+    const index = PROCESSES.findIndex(process => process.id === state.pendingDeregister)
+    if (index < 0) return
+    const label = PROCESSES[index].label
+    PROCESSES.splice(index, 1)
+    closeDialog()
+    render()
+    showToast(`${label} was deregistered.`)
+  })
 
-  function runLogLines(run) {
-    return LOG_SAMPLES[run.logState || logStateForRunState(run.state)]
-      || LOG_SAMPLES.stopped;
-  }
-
-  function runSearchText(run) {
-    return runLogLines(run)
-      .map(line => `${line.t} ${line.s} ${line.m}`)
-      .join(' ');
-  }
-
-  function selectGlobalRun(run) {
-    activeGlobalRun = run;
-    document.querySelectorAll('.run-row').forEach(row => {
-      const selected = row.dataset.run === run.id;
-      row.classList.toggle('active', selected);
-      row.setAttribute('aria-pressed', String(selected));
-    });
-    document.getElementById('globalLogTitle').textContent = `${run.wt.branch} · ${run.kind}/${run.name}`;
-    const state = document.getElementById('globalLogState');
-    state.hidden = false;
-    state.className = `pill ${globalPillClass(run.state)}`;
-    state.textContent = run.state;
-    document.getElementById('globalLogConsole').innerHTML =
-      `<div class="log-console">${logConsoleHtml(run.logState || run.state)}</div>`;
-    document.getElementById('globalLogDownload').disabled = false;
-  }
-
-  function clearGlobalRunSelection() {
-    activeGlobalRun = null;
-    document.querySelectorAll('.run-row').forEach(row => {
-      row.classList.remove('active');
-      row.setAttribute('aria-pressed', 'false');
-    });
-    document.getElementById('globalLogTitle').textContent = 'No matching run';
-    const state = document.getElementById('globalLogState');
-    state.hidden = true;
-    state.textContent = '';
-    document.getElementById('globalLogDownload').disabled = true;
-    document.getElementById('globalLogConsole').innerHTML =
-      `<div class="jr-empty">Change the filter to inspect run output.</div>`;
-  }
-
-  function renderGlobalRuns(query = document.getElementById('globalRunSearch').value) {
-    const normalized = query.trim().toLowerCase();
-    const runs = buildGlobalRuns().filter(run =>
-      `${run.wt.branch} ${run.wt.repo} ${run.kind} ${run.name} ${runSearchText(run)}`
-        .toLowerCase()
-        .includes(normalized),
-    );
-    const list = document.getElementById('globalRunList');
-    const focusedRunId = document.activeElement?.dataset?.run;
-    list.innerHTML = runs.length
-      ? runs.map(run => `
-          <button class="run-row" aria-pressed="false" data-run="${esc(run.id)}">
-            <span class="run-row-top"><span class="pill ${globalPillClass(run.state)}">${esc(run.state)}</span><strong>${esc(run.kind)}/${esc(run.name)}</strong></span>
-            <small>${esc(run.wt.branch)} · ${esc(run.wt.repo)} · ${esc(run.when)}</small>
-          </button>`).join('')
-      : `<div class="jr-empty">No runs match this filter.</div>`;
-    list.querySelectorAll('[data-run]').forEach(button => {
-      button.addEventListener('click', () => {
-        const run = runs.find(candidate => candidate.id === button.dataset.run);
-        if (run) selectGlobalRun(run);
-      });
-    });
-    const selection = runs.find(run => run.id === activeGlobalRun?.id) || runs[0];
-    if (selection) selectGlobalRun(selection);
-    else clearGlobalRunSelection();
-    if (focusedRunId) {
-      [...list.querySelectorAll('[data-run]')]
-        .find(button => button.dataset.run === focusedRunId)
-        ?.focus();
+  document.addEventListener("keydown", event => {
+    if (event.key === "Escape" && state.activeDialog) {
+      closeDialog()
+      return
     }
-  }
+    trapDialogFocus(event)
+  })
 
-  document.getElementById('globalRunSearch').addEventListener('input', event => renderGlobalRuns(event.target.value));
-  document.getElementById('globalLogDownload').addEventListener('click', () => {
-    if (!activeGlobalRun) return;
-    const body = runLogLines(activeGlobalRun)
-      .map((line, index) => JSON.stringify({
-        seq: index + 1,
-        time: `2026-07-29T${line.t}Z`,
-        stream: line.s,
-        text: line.m,
-        partial: false,
-      }))
-      .join('\n') + '\n';
-    const blob = new Blob([body], { type: 'application/x-ndjson' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `${activeGlobalRun.id.replace(/[^a-z0-9._-]+/gi, '-')}.ndjson`;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    URL.revokeObjectURL(url);
-    showToast('Downloaded run logs', 'download-simple');
-  });
+  document.addEventListener("input", event => {
+    const search = event.target.closest("[data-log-search]")
+    if (!search) return
+    const id = search.dataset.logSearch
+    const selectionStart = search.selectionStart
+    state.logQueries.set(id, search.value)
+    render()
+    const next = document.querySelector(`[data-log-search="${id}"]`)
+    next.focus()
+    next.setSelectionRange(selectionStart, selectionStart)
+  })
 
-  // ---- registration and administration ----
-  function openRegisterModal() {
-    closeDrawer({ restoreFocus: false });
-    overlayOpener = document.activeElement;
-    registerModal.classList.add('open');
-    registerModal.setAttribute('aria-hidden', 'false');
-    setBackgroundInert(true);
-    requestAnimationFrame(() => document.getElementById('worktreePath').focus());
-  }
-
-  function closeRegisterModal({ restoreFocus = true } = {}) {
-    if (!registerModal.classList.contains('open')) return;
-    registerModal.classList.remove('open');
-    registerModal.setAttribute('aria-hidden', 'true');
-    setBackgroundInert(false);
-    if (restoreFocus && overlayOpener?.isConnected) overlayOpener.focus();
-  }
-
-  document.getElementById('registerOpen').addEventListener('click', openRegisterModal);
-  document.getElementById('registerClose').addEventListener('click', () => closeRegisterModal());
-  document.getElementById('registerCancel').addEventListener('click', () => closeRegisterModal());
-  registerModal.addEventListener('click', event => {
-    if (event.target === registerModal) closeRegisterModal();
-  });
-  registerModal.addEventListener('keydown', event => trapFocus(registerModal, event));
-  document.addEventListener('keydown', event => {
-    if (event.key === 'Escape' && registerModal.classList.contains('open')) closeRegisterModal();
-  });
-  document.getElementById('registerForm').addEventListener('submit', event => {
-    event.preventDefault();
-    const path = normalizeWorktreePath(document.getElementById('worktreePath').value);
-    const manifest = document.getElementById('manifestPath').value.trim();
-    const branch = path.split('/').filter(Boolean).at(-1) || 'new-worktree';
-    const existingRegistration = WORKTREES.find(worktree =>
-      normalizeWorktreePath(worktree.path) === path,
-    );
-    if (existingRegistration) {
-      refreshExistingRegistration(existingRegistration, { path, manifest });
-    } else {
-      WORKTREES.unshift({
-        id: `wt${Date.now()}`,
-        branch,
-        repo: 'new registration',
-        path,
-        manifest,
-        status: 'active',
-        processes: [{ name: 'web', source: 'manifest', state: 'stopped', ports: [] }],
-        commands: [],
-      });
+  document.addEventListener("click", event => {
+    const tag = event.target.closest("[data-filter-tag]")
+    if (tag) {
+      const value = tag.dataset.filterTag
+      state.tags.has(value) ? state.tags.delete(value) : state.tags.add(value)
+      render()
+      return
     }
-    INDEX = buildIndex();
-    uiState = 'populated';
-    document.querySelectorAll('.proto-bar [data-state]').forEach(button => {
-      button.classList.toggle('on', button.dataset.state === 'populated');
-    });
-    closeRegisterModal();
-    renderGrid();
-    event.target.reset();
-    document.getElementById('manifestPath').value = '.port-start.yaml';
-    showToast(`${existingRegistration ? 'Refreshed' : 'Registered'} ${branch}`, 'git-branch');
-  });
-
-  function openDeregisterModal() {
-    if (!activeWt) return;
-    deregisterTarget = activeWt;
-    const activeRuns =
-      activeWt.processes.filter(processIsActive).length +
-      activeWt.commands.reduce(
-        (count, command) =>
-          count + command.runs.filter(run => run.state === 'running').length,
-        0,
-      );
-    document.getElementById('deregisterMessage').textContent =
-      `Deregister ${activeWt.branch} from Port Start?`;
-    document.getElementById('deregisterImpact').textContent =
-      `${activeRuns} active ${activeRuns === 1 ? 'run' : 'runs'} will be stopped. The worktree's run logs stay available until their retention limit.`;
-    drawer.inert = true;
-    deregisterModal.classList.add('open');
-    deregisterModal.setAttribute('aria-hidden', 'false');
-    requestAnimationFrame(() => document.getElementById('deregisterCancel').focus());
-  }
-
-  function closeDeregisterModal({ restoreFocus = true } = {}) {
-    if (!deregisterModal.classList.contains('open')) return;
-    deregisterModal.classList.remove('open');
-    deregisterModal.setAttribute('aria-hidden', 'true');
-    if (drawer.classList.contains('open')) drawer.inert = false;
-    if (restoreFocus) document.getElementById('deregisterWorktree').focus();
-    deregisterTarget = null;
-  }
-
-  function deregisterWorktree(worktree) {
-    const branch = worktree.branch;
-    worktree.bulkBatchVersion = (worktree.bulkBatchVersion || 0) + 1;
-    worktree.processes.forEach(process => {
-      supersedeProcessTransition(process);
-      if (processIsActive(process)) {
-        process.state = 'stopped';
-        if (process.currentRunId) {
-          process.currentRunState = 'interrupted';
-          process.currentLogState = 'stopped';
-          process.currentRunReason = 'worktree_deregistered';
-        }
-      }
-      clearActivePorts(process);
-    });
-    worktree.commands.forEach(command => {
-      command.runs.forEach(run => {
-        if (run.state === 'running') run.state = 'canceled';
-      });
-    });
-    const retainedWorktree = {
-      id: worktree.id,
-      branch: worktree.branch,
-      repo: worktree.repo,
-      status: 'deregistered',
-    };
-    RETAINED_RUNS.unshift(...buildWorktreeRuns(worktree).map(run => ({
-      ...run,
-      wt: retainedWorktree,
-      when: run.when === 'now' ? 'deregistered just now' : run.when,
-    })));
-    const index = WORKTREES.findIndex(candidate => candidate.id === worktree.id);
-    if (index >= 0) WORKTREES.splice(index, 1);
-    INDEX = buildIndex();
-    closeDrawer({ restoreFocus: false });
-    activeWt = null;
-    renderGrid();
-    showToast(`Deregistered ${branch}; its active runs were stopped`, 'trash');
-  }
-
-  document.getElementById('deregisterWorktree').addEventListener('click', openDeregisterModal);
-  document.getElementById('deregisterCancel').addEventListener('click', () => closeDeregisterModal());
-  document.getElementById('deregisterConfirm').addEventListener('click', () => {
-    if (!deregisterTarget) return;
-    const target = deregisterTarget;
-    deregisterTarget = null;
-    closeDeregisterModal({ restoreFocus: false });
-    deregisterWorktree(target);
-  });
-  deregisterModal.addEventListener('click', event => {
-    if (event.target === deregisterModal) closeDeregisterModal();
-  });
-  deregisterModal.addEventListener('keydown', event => {
-    if (event.key === 'Escape') {
-      event.preventDefault();
-      event.stopPropagation();
-      closeDeregisterModal();
-      return;
+    const quickTag = event.target.closest("[data-quick-tag]")
+    if (quickTag) {
+      state.tags.add(quickTag.dataset.quickTag)
+      render()
+      return
     }
-    trapFocus(deregisterModal, event);
-  });
+    if (event.target.closest("#clearTags")) {
+      state.tags.clear()
+      render()
+      return
+    }
+    const group = event.target.closest("[data-toggle-group]")
+    if (group) {
+      const value = group.dataset.toggleGroup
+      state.collapsedGroups.has(value)
+        ? state.collapsedGroups.delete(value)
+        : state.collapsedGroups.add(value)
+      render()
+      return
+    }
+    const logToggle = event.target.closest("[data-toggle-logs]")
+    if (logToggle && !logToggle.disabled) {
+      const id = logToggle.dataset.toggleLogs
+      state.openLogs.has(id) ? state.openLogs.delete(id) : state.openLogs.add(id)
+      render()
+      return
+    }
+    const copyPort = event.target.closest("[data-copy-port]")
+    if (copyPort) {
+      copyText(copyPort.dataset.copyPort, "Endpoint copied.")
+      return
+    }
+    const openPort = event.target.closest("[data-open-port]")
+    if (openPort) {
+      showToast(`Open ${openPort.dataset.openPort}`)
+      return
+    }
+    const serviceButton = event.target.closest("[data-service-action]")
+    if (serviceButton && !serviceButton.disabled) {
+      const process = PROCESSES.find(item => item.id === serviceButton.dataset.processId)
+      serviceAction(process, serviceButton.dataset.serviceAction)
+      return
+    }
+    const taskButton = event.target.closest("[data-task-action]")
+    if (taskButton && !taskButton.disabled) {
+      const process = PROCESSES.find(item => item.id === taskButton.dataset.processId)
+      taskAction(process, taskButton.dataset.taskAction)
+      return
+    }
+    const deregister = event.target.closest("[data-deregister]")
+    if (deregister) {
+      const process = PROCESSES.find(item => item.id === deregister.dataset.deregister)
+      state.pendingDeregister = process.id
+      document.getElementById("deregisterCopy").textContent =
+        `Deregister ${process.label} from the current inventory.`
+      openDialog(document.getElementById("deregisterDialog"), deregister)
+      return
+    }
+    const copyCommand = event.target.closest("[data-copy-command]")
+    if (copyCommand) {
+      copyText(copyCommand.dataset.copyCommand, "Registration command copied.")
+      return
+    }
+    const download = event.target.closest("[data-download-logs]")
+    if (download) {
+      const process = PROCESSES.find(item => item.id === download.dataset.downloadLogs)
+      showToast(`Prepared the latest logs for ${process.label}.`)
+      return
+    }
+    if (event.target.closest("#retryLoad")) {
+      state.screen = "loading"
+      render()
+      setTimeout(() => {
+        state.screen = "populated"
+        document.querySelectorAll("[data-state]").forEach(item => {
+          item.classList.toggle("on", item.dataset.state === "populated")
+        })
+        render()
+      }, 700)
+    }
+  })
 
-  document.getElementById('accessPreview').addEventListener('click', () => {
-    document.getElementById('accessBanner').hidden = false;
-    showToast('Exposure notice shown', 'warning-circle');
-  });
-
-  document.querySelectorAll('.proto-bar [data-state]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('.proto-bar [data-state]').forEach(b => b.classList.remove('on'));
-      btn.classList.add('on');
-      uiState = btn.dataset.state;
-      setView('worktrees');
-      closeRegisterModal({ restoreFocus: false });
-      renderGrid();
-    });
-  });
-
-  renderGrid();
-  renderGlobalRuns();
-})();
+  render()
+})()
 </script>
 </body>
 </html>

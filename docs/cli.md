@@ -179,6 +179,16 @@ port-start process register \
 Imperative definitions support `process update`. Manifest-owned definitions
 return `manifest_owned` and show their source path.
 
+Use the stable process selector to deregister an imperative process:
+
+```sh
+port-start process deregister proc_01...
+port-start process deregister proc_01... --purge-logs
+```
+
+Deregistration stops active runs. Retained logs remain unless `--purge-logs` is
+present.
+
 ## Labels and tags
 
 ```sh

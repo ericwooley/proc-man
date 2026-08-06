@@ -32,7 +32,7 @@ The writer:
 1. Always drain child pipes.
 2. Write retained records.
 3. Send records to bounded subscriber buffers.
-4. reports gaps to slow subscribers.
+4. Report gaps to slow subscribers.
 
 The default retains the newest 50 MiB for one run. Deleted segments update the
 retained sequence range.
@@ -48,7 +48,7 @@ Search supports:
 - Repeated tag filters.
 - Process kind and run state.
 - Time range.
-- cursor pagination.
+- Cursor pagination.
 
 Repeated tags use AND semantics. Search includes retained runs from removed
 processes when requested.
@@ -77,7 +77,7 @@ Defaults:
 
 - 50 MiB for one run.
 - 20 runs for one process.
-- no age limit.
+- No age limit.
 
 A process can override each limit or select unlimited retention. Retention runs
 during rotation, terminal transitions, definition updates, periodic age scans,

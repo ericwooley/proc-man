@@ -6,6 +6,12 @@ import vm from "node:vm";
 const prototypeDirectory = new URL("../prototype/", import.meta.url);
 const htmlFiles = ["index.html", "logo-showcase.html"];
 
+function visibleCopy(html) {
+  return html
+    .replace(/<script(?:\s[^>]*)?>[\s\S]*?<\/script>/gi, "")
+    .replace(/<style(?:\s[^>]*)?>[\s\S]*?<\/style>/gi, "");
+}
+
 function relativeLuminance(hex) {
   const channels = hex
     .replace("#", "")
@@ -27,125 +33,27 @@ function contrastRatio(first, second) {
   return (lighter + 0.05) / (darker + 0.05);
 }
 
-function mixHexColors(foreground, background, foregroundWeight) {
-  const foregroundChannels = foreground
-    .replace("#", "")
-    .match(/.{2}/g)
-    .map(channel => Number.parseInt(channel, 16));
-  const backgroundChannels = background
-    .replace("#", "")
-    .match(/.{2}/g)
-    .map(channel => Number.parseInt(channel, 16));
-  return `#${foregroundChannels
-    .map((channel, index) =>
-      Math.round(
-        channel * foregroundWeight +
-          backgroundChannels[index] * (1 - foregroundWeight),
-      )
-        .toString(16)
-        .padStart(2, "0"),
-    )
-    .join("")}`;
-}
-
 function cssToken(block, name) {
   return block.match(
     new RegExp(`--${name}:\\s*(#[0-9a-f]{6})\\s*;`, "i"),
   )?.[1];
 }
 
-function statePillStyleErrors(html) {
-  const expectedBackgroundByClass = new Map([
-    ["running", ["good", "var(--badge-good-bg)"]],
-    ["succeeded", ["good", "var(--badge-good-bg)"]],
-    ["mixed", ["warning", "var(--badge-warning-bg)"]],
-    ["starting", ["warning", "var(--badge-warning-bg)"]],
-    ["stopping", ["warning", "var(--badge-warning-bg)"]],
-    ["stale", ["danger", "var(--badge-danger-bg)"]],
-    ["failed", ["danger", "var(--badge-danger-bg)"]],
-    ["stopped", ["neutral", "var(--surface-soft)"]],
-    ["canceled", ["neutral", "var(--surface-soft)"]],
-  ]);
-  const styleSource = [...html.matchAll(/<style(?:\s[^>]*)?>([\s\S]*?)<\/style>/gi)]
-    .map(match => match[1])
-    .join("\n")
-    .replace(/\/\*[\s\S]*?\*\//g, "");
-  const seenClasses = new Set();
-  const errors = new Set();
-
-  for (const state of ["good", "warning", "danger"]) {
-    const tokens = [
-      ...styleSource.matchAll(
-        new RegExp(`--badge-${state}-bg\\s*:\\s*([^;}]+)`, "gi"),
-      ),
-    ].map(match => match[1].trim());
-    if (
-      tokens.length !== 2 ||
-      tokens.some(token => !/^#[0-9a-f]{6}$/i.test(token))
-    ) {
-      errors.add(
-        `${state} state background should have exactly two opaque theme tokens`,
-      );
-    }
-  }
-
-  for (const rule of styleSource.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
-    const selectors = rule[1]
-      .split(",")
-      .map(selector => selector.trim())
-      .filter(Boolean);
-    const backgroundDeclarations = [
-      ...rule[2].matchAll(
-        /(?:^|;)\s*background(?:-color)?\s*:\s*([^;}]+)/gi,
-      ),
-    ].map(match => match[1].trim());
-    if (backgroundDeclarations.length === 0) continue;
-
-    for (const selector of selectors) {
-      if (!selector.includes(".pill") || selector.includes(".pill::before")) {
-        continue;
-      }
-      const stateClasses = [...expectedBackgroundByClass.keys()].filter(
-        state => new RegExp(`\\.pill\\.${state}\\b`).test(selector),
-      );
-      if (stateClasses.length === 0) {
-        errors.add("state pill selectors should not add untracked backgrounds");
-        continue;
-      }
-      for (const stateClass of stateClasses) {
-        seenClasses.add(stateClass);
-        const [label, expectedBackground] =
-          expectedBackgroundByClass.get(stateClass);
-        if (
-          backgroundDeclarations.some(
-            declaration => declaration !== expectedBackground,
-          )
-        ) {
-          errors.add(
-            `${label} state pills should use an opaque background token`,
-          );
-        }
-      }
-    }
-  }
-
-  for (const [stateClass, [label]] of expectedBackgroundByClass) {
-    if (!seenClasses.has(stateClass)) {
-      errors.add(`${label} state pills should use an opaque background token`);
-    }
-  }
-  return [...errors];
-}
-
-test("served prototype directory contains only runtime surfaces and assets", async () => {
+test("served prototype contains only runtime surfaces and assets", async () => {
   const entries = (await readdir(prototypeDirectory)).sort();
   assert.deepEqual(entries, ["assets", ...htmlFiles].sort());
 });
 
-test("prototype HTML has unique IDs and syntactically valid inline scripts", async () => {
+test("prototype HTML has unique IDs and valid inline scripts", async () => {
   for (const filename of htmlFiles) {
     const html = await readFile(new URL(filename, prototypeDirectory), "utf8");
-    const ids = [...html.matchAll(/\bid="([^"]+)"/g)].map(match => match[1]);
+    const staticHtml = html.replace(
+      /<script(?:\s[^>]*)?>[\s\S]*?<\/script>/gi,
+      "",
+    );
+    const ids = [...staticHtml.matchAll(/\sid="([^"]+)"/g)].map(
+      match => match[1],
+    );
     assert.equal(new Set(ids).size, ids.length, `${filename} has duplicate IDs`);
 
     const scripts = [
@@ -189,159 +97,120 @@ test("every local asset referenced by HTML and the icon stylesheet exists", asyn
   }
 });
 
-test("dashboard presents the process-manager product model without legacy networking behavior", async () => {
+test("dashboard exposes one process inventory with labels, tags, ports, and logs", async () => {
   const html = await readFile(new URL("index.html", prototypeDirectory), "utf8");
-  const visibleCopy = html
-    .replace(/<script(?:\s[^>]*)?>[\s\S]*?<\/script>/gi, "")
-    .replace(/<style>[\s\S]*?<\/style>/gi, "");
+  const copy = visibleCopy(html);
 
-  assert.match(visibleCopy, /Register worktree/);
-  assert.match(visibleCopy, /Processes/);
-  assert.match(visibleCopy, /Commands/);
-  assert.match(visibleCopy, /Endpoints/);
-  assert.match(visibleCopy, /Runs &amp; logs/);
-  assert.match(visibleCopy, /Deregister/);
-  assert.match(visibleCopy, /port-start worktree register --json/);
+  for (const term of [
+    "Processes",
+    "Filter by label, tag, or port",
+    "Group by tag",
+    "Register process",
+    "Deregister",
+  ]) {
+    assert.match(copy, new RegExp(term));
+  }
   for (const action of ["Start", "Stop", "Restart", "Run", "Cancel"]) {
     assert.match(html, new RegExp(action));
   }
+  assert.match(html, /Search this run/);
 
-  for (const retiredConcept of [
-    /\bwake(?:-on-port)?\b/i,
-    /\bhandoff\b/i,
-    /\bproxy\b/i,
-    /\bforwarding\b/i,
-    /\bmanaged ports?\b/i,
-    /\bport allocation\b/i,
-    /\bport ownership\b/i,
-  ]) {
-    assert.doesNotMatch(visibleCopy, retiredConcept);
-  }
+  assert.doesNotMatch(copy, /\bworktrees?\b/i);
+  assert.doesNotMatch(copy, /\bcommands section\b/i);
+  assert.doesNotMatch(html, /\bWORKTREES\b|data-worktree|worktreePath/);
 });
 
-test("declared ports are explicit child-process metadata, including multiple and pending values", async () => {
+test("process fixtures use stable unique IDs, labels, tags, kinds, and declared ports", async () => {
   const html = await readFile(new URL("index.html", prototypeDirectory), "utf8");
+  const fixtureBlock = html.match(
+    /const PROCESSES = \[([\s\S]*?)\n  \]\n\n  const LOGS/,
+  )?.[1];
 
-  assert.match(
-    html,
-    /name: 'web'[\s\S]*?name: 'http'[\s\S]*?port: 4310[\s\S]*?name: 'inspector'[\s\S]*?port: 9310/,
+  assert.ok(fixtureBlock);
+  const ids = [...fixtureBlock.matchAll(/\bid: "(proc_[^"]+)"/g)].map(
+    match => match[1],
   );
-  assert.match(
-    html,
-    /name: 'api'[\s\S]*?ports:[\s\S]*?port: 4321[\s\S]*?activePorts:[\s\S]*?port: 4311/,
-  );
-  assert.match(html, /No declared ports/);
-  assert.match(html, /Next start/);
-  assert.doesNotMatch(html, /\bport:\s*['"]?auto\b/i);
-  assert.doesNotMatch(html, /\ballocatePort\b|\bclaimPort\b|\bportOwner\b/);
-  assert.match(html, /function visiblePorts\(process\)/);
-  assert.match(html, /function pendingPorts\(process\)/);
-  assert.match(html, /process\.activePorts = process\.ports\.map/);
-  assert.match(html, /delete process\.activePorts/);
+  assert.equal(ids.length, 12);
+  assert.equal(new Set(ids).size, ids.length);
+  assert.equal([...fixtureBlock.matchAll(/\blabel: "/g)].length, ids.length);
+  assert.equal([...fixtureBlock.matchAll(/\btags: \[/g)].length, ids.length);
+  assert.equal([...fixtureBlock.matchAll(/\bkind: "(?:service|task)"/g)].length, ids.length);
+  assert.match(fixtureBlock, /port: 4310[\s\S]*?port: 9310/);
+  assert.match(fixtureBlock, /tags: \[\]/);
+  assert.doesNotMatch(fixtureBlock, /\bport:\s*["']?auto\b/i);
 });
 
-test("core worktree, process, command, log, and registration interactions are wired", async () => {
+test("filtering and tag grouping preserve process identity", async () => {
   const html = await readFile(new URL("index.html", prototypeDirectory), "utf8");
 
-  for (const view of ["worktrees", "logs", "admin"]) {
-    assert.match(html, new RegExp(`data-view="${view}"`));
-    assert.match(html, new RegExp(`data-view-target="${view}"`));
-  }
-  for (const tab of ["endpoints", "processes", "commands", "logs"]) {
-    assert.match(html, new RegExp(`data-tab="${tab}"`));
-    assert.match(html, new RegExp(`data-pane="${tab}"`));
-  }
+  assert.match(html, /state\.tags\.size[\s\S]*?every\(tag => processHasTag/);
+  assert.match(html, /function matchesFilters\(process\)/);
+  assert.match(html, /function uniqueTags\(\)/);
+  assert.match(html, /function processHasTag\(process, tag\)/);
+  assert.match(html, /data-tag-group=/);
+  assert.match(html, /data-process-id="\$\{process\.id\}"/);
+  assert.match(html, /processes\.map\(process =>[\s\S]*?processMarkup\(process/);
+  assert.match(html, /state\.groupByTag/);
+  assert.match(html, /untagged/);
+});
 
-  assert.match(html, /function runProcessAction\(p, action\)/);
-  assert.match(html, /function runBulkProcessAction\(worktree, action\)/);
-  assert.match(html, /function runCommandAction\(c, action, runId\)/);
-  assert.match(html, /function renderGlobalRuns\(/);
-  assert.match(html, /function openRegisterModal\(\)/);
-  assert.match(html, /function closeRegisterModal\(/);
-  assert.match(html, /function setBackgroundInert\(value\)/);
-  assert.match(html, /function trapFocus\(container, event\)/);
-  assert.match(html, /function normalizeWorktreePath\(path\)/);
-  assert.match(
-    html,
-    /name: 'api'[\s\S]*?state: 'stopped'[\s\S]*?currentRunState: 'exited'[\s\S]*?currentRunCode: 1/,
-  );
-  assert.match(
-    html,
-    /name: 'worker'[\s\S]*?state: 'failed'[\s\S]*?Launch failed/,
-  );
-  assert.match(
-    html,
-    /run-test-98'[\s\S]*?state: 'exited'[\s\S]*?code: 1/,
-  );
-  assert.match(html, /existingRegistration/);
-  assert.match(html, /WORKTREES\.splice\(index, 1\)/);
-  assert.match(html, /INDEX = buildIndex\(\)/);
-  assert.match(html, /Its active runs were stopped/);
+test("process actions, logs, registration, and deregistration are wired", async () => {
+  const html = await readFile(new URL("index.html", prototypeDirectory), "utf8");
+
+  assert.match(html, /function serviceAction\(process, action\)/);
+  assert.match(html, /function taskAction\(process, action\)/);
+  assert.match(html, /function logMarkup\(process, instanceKey\)/);
+  assert.match(html, /state\.logQueries/);
+  assert.match(html, /PROCESSES\.splice\(index, 1\)/);
+  assert.match(html, /id="registerDialog"/);
+  assert.match(html, /id="deregisterDialog"/);
+  assert.match(html, /port-start process register/);
+  assert.match(html, /Retained run logs stay available/);
   assert.match(html, /data-state="populated"/);
   assert.match(html, /data-state="loading"/);
   assert.match(html, /data-state="empty"/);
-  assert.match(html, /data-command-run=/);
-  assert.match(
-    html,
-    /<aside class="drawer"[^>]+aria-hidden="true"[^>]+inert/,
-  );
-  assert.match(html, /drawer\.inert = false/);
-  assert.match(html, /drawer\.inert = true/);
-  assert.match(html, /id="deregisterModal"/);
-  assert.match(html, /id="deregisterConfirm"/);
-  assert.match(html, /worktree's run logs stay available/i);
-  assert.match(html, /ArrowRight/);
-  assert.match(html, /ArrowLeft/);
-  assert.match(html, /data-bulk-proc-action="start-all"/);
-  assert.match(html, /data-bulk-proc-action="stop-all"/);
-  assert.match(html, /role="combobox"/);
-  assert.match(html, /role="listbox"/);
-  assert.match(html, /aria-activedescendant/);
-  assert.match(html, /aria-busy/);
-  assert.match(html, /role="status"/);
-  assert.doesNotMatch(html, /<button[^>]*>Following<\/button>/);
-  assert.doesNotMatch(html, /<button[^>]*>Latest run<\/button>/);
-  assert.doesNotMatch(html, /class="wt-tile"[^>]+role="button"/);
-  assert.match(html, /<button class="view-btn" data-open=/);
+  assert.match(html, /data-state="error"/);
 });
 
-test("registration starts with a blank worktree path and a manifest default", async () => {
-  const html = await readFile(new URL("index.html", prototypeDirectory), "utf8");
-  const pathInput = html.match(/<input id="worktreePath"[^>]*>/)?.[0];
-  const manifestInput = html.match(/<input id="manifestPath"[^>]*>/)?.[0];
-
-  assert.ok(pathInput);
-  assert.doesNotMatch(pathInput, /\bvalue=/);
-  assert.match(pathInput, /\brequired\b/);
-  assert.ok(manifestInput);
-  assert.match(manifestInput, /value="\.port-start\.yaml"/);
-  assert.match(html, /Register worktree/);
-  assert.match(html, /Deregistered \$\{branch\}; its active runs were stopped/);
-});
-
-test("prototype uses the local icon family and external product mark instead of inline artwork", async () => {
+test("prototype uses local icons and excludes legacy network behavior", async () => {
   const [dashboard, brand, logoEntries] = await Promise.all([
     readFile(new URL("index.html", prototypeDirectory), "utf8"),
     readFile(new URL("logo-showcase.html", prototypeDirectory), "utf8"),
     readdir(new URL("assets/logos/", prototypeDirectory)),
   ]);
+  const copy = visibleCopy(dashboard);
 
   assert.match(dashboard, /assets\/phosphor\/style\.css/);
   assert.match(dashboard, /assets\/logos\/port-matrix\.svg/);
   assert.match(brand, /Port Matrix is the product mark/);
   assert.doesNotMatch(dashboard, /<svg\b/i);
   assert.doesNotMatch(brand, /<svg\b/i);
-  for (const icon of brand.matchAll(/<i\b[^>]*>/g)) {
-    assert.match(
-      icon[0],
-      /aria-hidden="true"/,
-      "brand-showcase icon glyphs should be decorative",
-    );
-  }
-  assert.doesNotMatch(dashboard, /id="passwordPreview"/);
-  assert.doesNotMatch(dashboard, /required non-loopback warning/i);
-  assert.doesNotMatch(dashboard, /Password setup would open here/i);
   assert.deepEqual(logoEntries.sort(), ["port-matrix.svg"]);
+
+  for (const retiredConcept of [
+    /\bwake(?:-on-port)?\b/i,
+    /\bhandoff\b/i,
+    /\bforwarding\b/i,
+    /\bmanaged ports?\b/i,
+    /\bport allocation\b/i,
+    /\bport ownership\b/i,
+  ]) {
+    assert.doesNotMatch(copy, retiredConcept);
+  }
+});
+
+test("core controls expose keyboard and screen-reader state", async () => {
+  const html = await readFile(new URL("index.html", prototypeDirectory), "utf8");
+
+  assert.match(html, /role="switch" aria-checked="false"/);
+  assert.match(html, /aria-expanded="\$\{isOpen\}"/);
+  assert.match(html, /aria-expanded="\$\{!collapsed\}"/);
+  assert.match(html, /aria-live="polite"/);
+  assert.match(html, /aria-busy/);
+  assert.match(html, /role="dialog" aria-modal="true"/);
+  assert.match(html, /function trapDialogFocus\(event\)/);
+  assert.match(html, /document\.getElementById\("application"\)\.inert = true/);
+  assert.match(html, /event\.key === "Escape"/);
 });
 
 test("light and dark body-copy tokens meet WCAG AA contrast", async () => {
@@ -361,139 +230,91 @@ test("light and dark body-copy tokens meet WCAG AA contrast", async () => {
     const muted = cssToken(block, "muted");
     const focus = cssToken(block, "focus");
     const focusInverse = cssToken(block, "focus-inverse");
-    const rail = cssToken(block, "rail");
-    const shell = cssToken(block, "shell");
     const surface = cssToken(block, "surface");
     const surfaceSoft = cssToken(block, "surface-soft");
-    const surfaceQuiet = cssToken(block, "surface-quiet");
-    const good = cssToken(block, "good");
-    const warning = cssToken(block, "warning");
-    const danger = cssToken(block, "danger");
-    const badgeGoodInk = cssToken(block, "badge-good-ink");
-    const badgeGoodBackground = cssToken(block, "badge-good-bg");
-    const badgeWarningInk = cssToken(block, "badge-warning-ink");
-    const badgeWarningBackground = cssToken(block, "badge-warning-bg");
-    const badgeDangerInk = cssToken(block, "badge-danger-ink");
-    const badgeDangerBackground = cssToken(block, "badge-danger-bg");
-    assert.ok(
-      ink &&
-        muted &&
-        focus &&
-        focusInverse &&
-        rail &&
-        shell &&
-        surface &&
-        surfaceSoft &&
-        surfaceQuiet &&
-        good &&
-        warning &&
-        danger &&
-        badgeGoodInk &&
-        badgeGoodBackground &&
-        badgeWarningInk &&
-        badgeWarningBackground &&
-        badgeDangerInk &&
-        badgeDangerBackground,
-      `${theme} tokens should be present`,
-    );
-    assert.ok(
-      contrastRatio(ink, surface) >= 4.5,
-      `${theme} primary copy should meet 4.5:1`,
-    );
-    assert.ok(
-      contrastRatio(muted, surface) >= 4.5,
-      `${theme} secondary copy should meet 4.5:1`,
-    );
-    assert.ok(
-      contrastRatio(focus, surface) >= 3 &&
-        contrastRatio(focus, shell) >= 3,
-      `${theme} focus indicator should meet 3:1 against adjacent surfaces`,
-    );
-    assert.ok(
-      contrastRatio(focusInverse, rail) >= 3,
-      `${theme} inverse focus indicator should meet 3:1 on dark surfaces`,
-    );
-    for (const [surfaceLabel, backdrop] of [
-      ["surface", surface],
-      ["surface-quiet", surfaceQuiet],
-      ["surface-soft", surfaceSoft],
+    const shell = cssToken(block, "shell");
+    const rail = cssToken(block, "rail");
+    const goodInk = cssToken(block, "badge-good-ink");
+    const goodBackground = cssToken(block, "badge-good-bg");
+    const warningInk = cssToken(block, "badge-warning-ink");
+    const warningBackground = cssToken(block, "badge-warning-bg");
+    const dangerInk = cssToken(block, "badge-danger-ink");
+    const dangerBackground = cssToken(block, "badge-danger-bg");
+
+    for (const token of [
+      ink,
+      muted,
+      focus,
+      focusInverse,
+      surface,
+      surfaceSoft,
+      shell,
+      rail,
+      goodInk,
+      goodBackground,
+      warningInk,
+      warningBackground,
+      dangerInk,
+      dangerBackground,
     ]) {
-      for (const [stateLabel, stateInk, stateBackground] of [
-        ["running or succeeded", badgeGoodInk, badgeGoodBackground],
-        ["mixed or transitional", badgeWarningInk, badgeWarningBackground],
-        ["stale or failed", badgeDangerInk, badgeDangerBackground],
-      ]) {
-        const effectiveBackground = mixHexColors(
-          stateBackground,
-          backdrop,
-          1,
-        );
-        assert.ok(
-          contrastRatio(stateInk, effectiveBackground) >= 4.5,
-          `${theme} ${stateLabel} text should meet 4.5:1 on ${surfaceLabel}`,
-        );
-      }
+      assert.ok(token, `${theme} token is present`);
     }
+    assert.ok(contrastRatio(ink, surface) >= 4.5, `${theme} primary copy`);
+    assert.ok(contrastRatio(muted, surface) >= 4.5, `${theme} secondary copy`);
+    assert.ok(contrastRatio(muted, surfaceSoft) >= 4.5, `${theme} neutral state`);
+    assert.ok(contrastRatio(focus, surface) >= 3, `${theme} surface focus`);
+    assert.ok(contrastRatio(focus, shell) >= 3, `${theme} shell focus`);
+    assert.ok(contrastRatio(focusInverse, rail) >= 3, `${theme} rail focus`);
     assert.ok(
-      contrastRatio(muted, surfaceSoft) >= 4.5,
-      `${theme} stopped or canceled text should meet 4.5:1`,
+      contrastRatio(goodInk, goodBackground) >= 4.5,
+      `${theme} positive state`,
+    );
+    assert.ok(
+      contrastRatio(warningInk, warningBackground) >= 4.5,
+      `${theme} transition state`,
+    );
+    assert.ok(
+      contrastRatio(dangerInk, dangerBackground) >= 4.5,
+      `${theme} failure state`,
     );
   }
-  assert.deepEqual(statePillStyleErrors(html), []);
 });
 
-test("state-pill contrast guard rejects translucent tokens and later overrides", async () => {
-  const html = await readFile(new URL("index.html", prototypeDirectory), "utf8");
-  const lightBlock = html.match(/:root\s*\{([\s\S]*?)\}/)?.[1];
-  assert.ok(lightBlock);
+test("CLI contract starts from the process inventory and supports tag filters", async () => {
+  const cli = await readFile(new URL("../docs/cli.md", import.meta.url), "utf8");
 
-  const translucentTokenBlock = lightBlock.replace(
-    "--badge-good-bg: #daeae4",
-    "--badge-good-bg: #daeae480",
-  );
-  const laterTranslucentOverride = html.replace(
-    "</style>",
-    `.pill.succeeded {
-      background: color-mix(in srgb, var(--good) 18%, transparent);
-    }
-    </style>`,
-  );
-  const commentPrefixedOverride = html.replace(
-    "</style>",
-    `.pill.succeeded {
-      /* theme override */
-      background-color: var(--badge-good-ink);
-    }
-    </style>`,
-  );
-  const laterTokenOverride = html.replace(
-    "</style>",
-    `:root {
-      --badge-good-bg: #267052;
-    }
-    </style>`,
-  );
+  assert.match(cli, /port-start process list/);
+  assert.match(cli, /--tag project:storefront --tag frontend/);
+  assert.match(cli, /Repeated `--tag` flags use AND semantics/);
+  assert.match(cli, /port-start process register/);
+  assert.match(cli, /port-start process deregister proc_01/);
+  assert.match(cli, /port-start process start/);
+  assert.match(cli, /port-start process run/);
+  assert.match(cli, /port-start process logs/);
+  assert.match(cli, /port-start register --json/);
+  assert.doesNotMatch(cli, /├── worktree|├── command/);
+});
 
-  assert.deepEqual(
-    {
-      translucentToken: cssToken(translucentTokenBlock, "badge-good-bg"),
-      laterOverrideErrors: statePillStyleErrors(laterTranslucentOverride),
-      commentOverrideErrors: statePillStyleErrors(commentPrefixedOverride),
-      tokenOverrideErrors: statePillStyleErrors(laterTokenOverride),
-    },
-    {
-      translucentToken: undefined,
-      laterOverrideErrors: [
-        "good state pills should use an opaque background token",
-      ],
-      commentOverrideErrors: [
-        "good state pills should use an opaque background token",
-      ],
-      tokenOverrideErrors: [
-        "good state background should have exactly two opaque theme tokens",
-      ],
-    },
+test("API and domain contracts retain process labels, tags, runs, and logs", async () => {
+  const [api, domain, logging] = await Promise.all([
+    readFile(new URL("../docs/api.md", import.meta.url), "utf8"),
+    readFile(new URL("../docs/domain-model.md", import.meta.url), "utf8"),
+    readFile(new URL("../docs/logging.md", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(api, /GET \/api\/v1\/processes/);
+  assert.match(api, /POST \/api\/v1\/processes/);
+  assert.match(api, /GET \/api\/v1\/runs/);
+  assert.match(api, /POST \/api\/v1\/run-search/);
+  assert.match(api, /`label`, normalized `tags`, and `kind`/);
+  assert.doesNotMatch(api, /GET \/api\/v1\/worktrees/);
+  assert.match(
+    domain,
+    /When the dashboard groups by tag, one[\s\S]*?process can appear in several groups/,
   );
+  assert.match(domain, /returns `cwd_unavailable`/);
+  assert.match(api, /`cwd_unavailable`/);
+  assert.match(logging, /retained runs from removed[\s\S]*?processes/);
 });
 
 test("browser prerequisites and override are documented", async () => {
@@ -507,117 +328,6 @@ test("browser prerequisites and override are documented", async () => {
   assert.match(readme, /jq 1\.6 or newer/i);
   assert.match(readme, /global `WebSocket`/i);
   assert.match(readme, /CHROME_BIN/);
-  assert.match(readme, /registration and deregistration/);
+  assert.match(readme, /process inventory/);
   assert.equal(packageData.engines?.node, ">=22");
-});
-
-test("CLI contract gives agents a worktree-scoped discovery path", async () => {
-  const cli = await readFile(
-    new URL("../docs/cli.md", import.meta.url),
-    "utf8",
-  );
-
-  assert.match(cli, /port-start process list --worktree/);
-  assert.match(cli, /port-start command list --worktree/);
-  assert.match(cli, /port-start run list --worktree/);
-  assert.match(cli, /port-start run search/);
-  assert.match(cli, /include-deregistered/);
-  assert.match(cli, /next_cursor/);
-  assert.match(cli, /active_invocation_count/);
-  assert.match(cli, /next_start/);
-  assert.match(cli, /\.data\.worktree\.selector/);
-  assert.match(cli, /sort_by\(\.selector\).*?\.\[0\]\.selector/s);
-  assert.match(cli, /\.data\.processes\[\]\.endpoints\[\]/);
-  assert.match(cli, /port-start process start --worktree "\$worktree_selector"/);
-  assert.doesNotMatch(cli, /\$\(basename "\$PWD"\)\/web/);
-  for (const followUp of [
-    "port-start process status",
-    "port-start open",
-    "port-start command run",
-    "port-start process logs",
-  ]) {
-    assert.match(cli, new RegExp(followUp.replaceAll(" ", "\\s+")));
-  }
-});
-
-test("API contract supports retained run discovery and cross-run log search", async () => {
-  const api = await readFile(
-    new URL("../docs/api.md", import.meta.url),
-    "utf8",
-  );
-
-  assert.match(api, /GET \/api\/v1\/runs/);
-  assert.match(api, /POST \/api\/v1\/run-search/);
-  assert.match(api, /include_deregistered/);
-  assert.match(api, /worktree_snapshot/);
-  assert.match(api, /worktree_registered/);
-  assert.match(api, /definition_present/);
-  assert.match(api, /\brun_id\b/);
-  for (const field of ["seq", "time", "stream", "text", "partial"]) {
-    assert.match(api, new RegExp(`\\b${field}\\b`));
-  }
-  assert.match(api, /next_cursor/);
-});
-
-test("missing-worktree command and download contracts are consistent", async () => {
-  const [domain, api, cli, logging, prototype] = await Promise.all([
-    readFile(new URL("../docs/domain-model.md", import.meta.url), "utf8"),
-    readFile(new URL("../docs/api.md", import.meta.url), "utf8"),
-    readFile(new URL("../docs/cli.md", import.meta.url), "utf8"),
-    readFile(new URL("../docs/logging.md", import.meta.url), "utf8"),
-    readFile(new URL("index.html", prototypeDirectory), "utf8"),
-  ]);
-
-  assert.match(domain, /Command actions[\s\S]*?worktree_stale/);
-  assert.match(api, /command run[\s\S]*?worktree_stale/i);
-  assert.match(cli, /command run[\s\S]*?worktree_stale/i);
-  assert.match(
-    prototype,
-    /status: 'missing'[\s\S]*?state: 'stale'/,
-  );
-  assert.doesNotMatch(prototype, /status: 'stale'/);
-  assert.doesNotMatch(logging, /Multi-run download/i);
-  assert.match(logging, /one selected run/i);
-});
-
-test("cross-worktree machine inventories retain worktree attribution", async () => {
-  const [cli, api] = await Promise.all([
-    readFile(new URL("../docs/cli.md", import.meta.url), "utf8"),
-    readFile(new URL("../docs/api.md", import.meta.url), "utf8"),
-  ]);
-
-  assert.match(
-    cli,
-    /each process[\s\S]*?`worktree`[\s\S]*?stable ID[\s\S]*?canonical path/i,
-  );
-  assert.match(
-    cli,
-    /each command[\s\S]*?`worktree`[\s\S]*?stable ID[\s\S]*?canonical path/i,
-  );
-  assert.match(
-    api,
-    /process and command list responses[\s\S]*?`worktree`[\s\S]*?stable ID[\s\S]*?canonical path/i,
-  );
-});
-
-test("design QA evidence is durable inside the repository", async () => {
-  const designQa = await readFile(
-    new URL("../design-qa.md", import.meta.url),
-    "utf8",
-  );
-
-  assert.doesNotMatch(designQa, /\/tmp\//);
-  assert.match(designQa, /`npm test`: 32 tests passed/);
-  for (const asset of [
-    "jump-to-endpoint.png",
-    "implementation-desktop.png",
-    "implementation-processes.png",
-    "comparison.png",
-    "implementation-commands.png",
-  ]) {
-    const bytes = await readFile(
-      new URL(`../docs/assets/design-qa/${asset}`, import.meta.url),
-    );
-    assert.ok(bytes.byteLength > 10_000, asset);
-  }
 });

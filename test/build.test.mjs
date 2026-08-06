@@ -23,15 +23,17 @@ async function fetchBuilt(pathname, init) {
   return worker.fetch(new Request(`https://prototype.test${pathname}`, init));
 }
 
-test("build serves the worktree process manager as the canonical page", async () => {
+test("build serves the process inventory as the canonical page", async () => {
   const response = await fetchBuilt("/");
   const html = await response.text();
 
   assert.equal(response.status, 200);
   assert.match(response.headers.get("content-type"), /^text\/html/);
   assert.match(html, /assets\/logos\/port-matrix\.svg/);
-  assert.match(html, /Jump to a worktree, process, command, or port/);
-  assert.match(html, /Register worktree/);
+  assert.match(html, /Filter by label, tag, or port/);
+  assert.match(html, /Group by tag/);
+  assert.match(html, /Register process/);
+  assert.doesNotMatch(html, /\bworktrees?\b/i);
 });
 
 test("build serves the brand reference and its relative SVG asset", async () => {
