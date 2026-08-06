@@ -404,13 +404,22 @@ try {
       rail: getComputedStyle(document.querySelector(".rail")).display,
       frameWidth: Math.round(document.querySelector(".frame").getBoundingClientRect().width),
       viewportWidth: innerWidth,
-      overflow: document.documentElement.scrollWidth > innerWidth
+      overflow: document.documentElement.scrollWidth > innerWidth,
+      topActionsVisible:
+        document.querySelector(".top-actions").getBoundingClientRect().right <= innerWidth,
+      tagScroll:
+        document.getElementById("tagRow").scrollWidth >
+        document.getElementById("tagRow").clientWidth,
+      tagOverflow: getComputedStyle(document.getElementById("tagRow")).overflowX
     })`),
     {
       rail: "none",
       frameWidth: 390,
       viewportWidth: 390,
       overflow: false,
+      topActionsVisible: true,
+      tagScroll: true,
+      tagOverflow: "auto",
     },
   );
 
