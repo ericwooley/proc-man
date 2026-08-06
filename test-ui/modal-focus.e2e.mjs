@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, readFile, readdir, rm } from "node:fs/promises";
 import { createServer as createNetServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -43,6 +43,9 @@ async function findDebugPage(port) {
 }
 
 const userDataDirectory = await mkdtemp(join(tmpdir(), "port-start-chrome-"));
+const downloadDirectory = await mkdtemp(
+  join(tmpdir(), "port-start-downloads-"),
+);
 const debuggingPort = await getAvailablePort();
 const chrome = spawn(
   chromeBinary,
@@ -66,6 +69,10 @@ try {
   await cdp.call("Page.enable");
   await cdp.call("Runtime.enable");
   await cdp.call("Accessibility.enable");
+  await cdp.call("Page.setDownloadBehavior", {
+    behavior: "allow",
+    downloadPath: downloadDirectory,
+  });
   await cdp.call("Emulation.setDeviceMetricsOverride", {
     width: 1440,
     height: 1000,
@@ -154,9 +161,13 @@ try {
     await evaluate(`document.querySelector(".process-label").textContent`),
     "Storefront web",
   );
-  await evaluate(
-    `document.querySelector('[data-open-process="proc_storefront_web"]').click()`,
-  );
+  await evaluate(`(() => {
+    const link = document.querySelector(
+      '[data-open-process="proc_storefront_web"]'
+    );
+    link.focus();
+    link.click();
+  })()`);
   await waitFor(
     `!document.getElementById("processDetail").hidden`,
     "The process detail page did not open.",
@@ -170,7 +181,8 @@ try {
       directory: document.querySelector("[data-detail-directory]").textContent,
       ports: document.querySelectorAll("[data-detail-port]").length,
       runs: document.querySelectorAll("[data-detail-run]").length,
-      logLines: document.querySelectorAll(".detail-log-line").length
+      logLines: document.querySelectorAll(".detail-log-line").length,
+      focus: document.activeElement.className
     })`),
     {
       hash: "#process/proc_storefront_web",
@@ -181,6 +193,7 @@ try {
       ports: 2,
       runs: 3,
       logLines: 52,
+      focus: "detail-title",
     },
   );
   await evaluate(
@@ -192,12 +205,24 @@ try {
     ),
     /NODE_ENV=development/,
   );
+  assert.equal(
+    await evaluate(`document.activeElement.matches(
+      "[data-detail-environment-toggle]"
+    )`),
+    true,
+    "The environment toggle should keep focus after its rerender.",
+  );
   await evaluate(`document.getElementById("detailFocusLogs").click()`);
   assert.equal(
     await evaluate(
       `document.querySelector(".detail-scroll").classList.contains("logs-focused")`,
     ),
     true,
+  );
+  assert.equal(
+    await evaluate(`document.activeElement.id`),
+    "detailFocusLogs",
+    "Focus logs should keep focus after its rerender.",
   );
   await evaluate(`document.getElementById("detailFocusLogs").click()`);
   await evaluate(`document.getElementById("detailStdout").click()`);
@@ -216,8 +241,38 @@ try {
     )`,
     "The retained run logs did not appear on the detail page.",
   );
+  assert.equal(
+    await evaluate(`document.activeElement.dataset.detailRun`),
+    "run_storefront_web_previous",
+    "Run selection should keep focus on the selected run.",
+  );
   await evaluate(
     `document.querySelector('[data-detail-run="run_storefront_web_current"]').click()`,
+  );
+  await evaluate(`document.getElementById("detailFollow").click()`);
+  await evaluate(`(() => {
+    const body = document.querySelector(".detail-log-body");
+    body.scrollTop = 0;
+    document.getElementById("detailFollow").click();
+  })()`);
+  await waitFor(
+    `document.getElementById("detailFollow").getAttribute("aria-pressed") === "true"`,
+    "The detail log viewer did not enter follow mode.",
+  );
+  assert.deepEqual(
+    await evaluate(`(() => {
+      const body = document.querySelector(".detail-log-body");
+      return {
+        atNewestRecord:
+          body.scrollTop === body.scrollHeight - body.clientHeight,
+        focus: document.activeElement.id
+      };
+    })()`),
+    {
+      atNewestRecord: true,
+      focus: "detailFollow",
+    },
+    "Follow mode should show the newest record and keep focus.",
   );
   await evaluate(`(() => {
     const input = document.getElementById("detailLogSearch");
@@ -230,11 +285,38 @@ try {
     "The detail log search should show three matching records.",
   );
   await evaluate(`document.getElementById("detailDownload").click()`);
+  const expectedDownload = "storefront-web-run_storefront_web_current.log";
+  const downloadDeadline = Date.now() + 3_000;
+  while (
+    Date.now() < downloadDeadline &&
+    !(await readdir(downloadDirectory)).includes(expectedDownload)
+  ) {
+    await new Promise(resolve => setTimeout(resolve, 25));
+  }
+  assert.ok(
+    (await readdir(downloadDirectory)).includes(expectedDownload),
+    "Downloading logs should create the selected run file.",
+  );
+  const downloadedLogs = await readFile(
+    join(downloadDirectory, expectedDownload),
+    "utf8",
+  );
+  assert.match(downloadedLogs, /Storefront web starting development server/);
+  assert.match(downloadedLogs, /upstream timeout, retrying/);
+  assert.equal(
+    downloadedLogs.trimEnd().split("\n").length,
+    52,
+    "The downloaded file should contain every selected run record.",
+  );
   assert.equal(
     await evaluate(`document.getElementById("toast").textContent`),
-    "Prepared Current run logs for Storefront web.",
+    "Downloaded Current run logs for Storefront web.",
   );
-  await evaluate(`document.getElementById("detailBack").click()`);
+  await evaluate(`(() => {
+    const back = document.getElementById("detailBack");
+    back.focus();
+    back.click();
+  })()`);
   await waitFor(
     `document.getElementById("processDetail").hidden`,
     "The detail back action did not restore the process inventory.",
@@ -251,6 +333,11 @@ try {
       rows: 1,
     },
     "Returning from details should preserve the inventory filters.",
+  );
+  assert.equal(
+    await evaluate(`document.activeElement.getAttribute("aria-label")`),
+    "Open details for Storefront web",
+    "Returning from details should restore focus to the source process.",
   );
   await evaluate(
     `document.querySelector('button[title="Processes"]').click()`,
@@ -651,6 +738,12 @@ try {
     setTimeout(resolve, 1_000);
   });
   await rm(userDataDirectory, {
+    recursive: true,
+    force: true,
+    maxRetries: 5,
+    retryDelay: 100,
+  });
+  await rm(downloadDirectory, {
     recursive: true,
     force: true,
     maxRetries: 5,

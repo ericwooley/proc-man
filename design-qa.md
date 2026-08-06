@@ -34,6 +34,8 @@ The implementation matches the target card structure, log console, action order,
 The desktop comparison preserves both full-size captures, so labels and log controls remain readable.
 The mobile comparison checks the same populated state without horizontal page overflow.
 
+The reference shows the first records while its Follow control is active.
+The implementation shows the newest records so that the Follow control reports its actual state.
 The target clips some port actions and run tabs at the mobile width.
 The implementation keeps these controls inside the viewport as an intentional responsive improvement.
 The implementation uses slightly more vertical space for the mobile environment card.

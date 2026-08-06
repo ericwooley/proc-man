@@ -1685,6 +1685,8 @@
     detailLogFocused: false,
     detailEnvironmentExpanded: false,
     detailOpenedFromInventory: false,
+    detailReturnFocusProcessId: null,
+    detailRestoreFocusOnInventory: false,
     collapsedGroups: new Set(),
     pendingDeregister: null,
     activeDialog: null,
@@ -1974,6 +1976,103 @@
         : "")
   }
 
+  function detailFocusKey(element = document.activeElement) {
+    if (!element || !processDetail.contains(element)) return null
+    if (element.id) return { type: "id", value: element.id }
+    if (element.dataset.detailRun) {
+      return { type: "detailRun", value: element.dataset.detailRun }
+    }
+    if (element.matches("[data-detail-environment-toggle]")) {
+      return { type: "environmentToggle" }
+    }
+    if (element.dataset.serviceAction) {
+      return {
+        type: "serviceAction",
+        value: element.dataset.serviceAction,
+        processId: element.dataset.processId
+      }
+    }
+    if (element.dataset.taskAction) {
+      return {
+        type: "taskAction",
+        value: element.dataset.taskAction,
+        processId: element.dataset.processId
+      }
+    }
+    return null
+  }
+
+  function detailFocusTarget(key) {
+    if (!key) return null
+    if (key.type === "id") return processDetail.querySelector(`#${key.value}`)
+    if (key.type === "detailRun") {
+      return [...processDetail.querySelectorAll("[data-detail-run]")]
+        .find(element => element.dataset.detailRun === key.value)
+    }
+    if (key.type === "environmentToggle") {
+      return processDetail.querySelector("[data-detail-environment-toggle]")
+    }
+    if (key.type === "serviceAction") {
+      return [...processDetail.querySelectorAll("[data-service-action]")]
+        .find(element =>
+          element.dataset.serviceAction === key.value &&
+          element.dataset.processId === key.processId
+        )
+    }
+    if (key.type === "taskAction") {
+      return [...processDetail.querySelectorAll("[data-task-action]")]
+        .find(element =>
+          element.dataset.taskAction === key.value &&
+          element.dataset.processId === key.processId
+        )
+    }
+    return null
+  }
+
+  function scrollDetailToLatest() {
+    const process = PROCESSES.find(item => item.id === state.detailProcessId)
+    const run = process && selectedRun(process)
+    if (
+      !state.detailFollow ||
+      !run ||
+      !["running", "starting"].includes(run.state)
+    ) {
+      return
+    }
+    const logBody = processDetail.querySelector(".detail-log-body")
+    if (logBody) logBody.scrollTop = logBody.scrollHeight
+  }
+
+  function logDownloadFileName(process, run) {
+    const label = process.label
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "")
+    return `${label}-${run.id}.log`
+  }
+
+  function logDownloadContent(run) {
+    return run.lines
+      .map(line => `${line.time} ${line.stream} ${line.text}`)
+      .join("\n") + "\n"
+  }
+
+  function downloadRunLogs(process, run) {
+    const blob = new Blob([logDownloadContent(run)], {
+      type: "text/plain;charset=utf-8"
+    })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement("a")
+    link.href = url
+    link.download = logDownloadFileName(process, run)
+    link.hidden = true
+    document.body.append(link)
+    link.click()
+    link.remove()
+    setTimeout(() => URL.revokeObjectURL(url), 1000)
+    showToast(`Downloaded ${run.when} logs for ${process.label}.`)
+  }
+
   function detailRunMarkup(run, selected) {
     const status = runState(run)
     const exit = run.state === "exited" ? ` · exit ${run.code}` : ""
@@ -2017,7 +2116,7 @@
           </span>
           <div class="detail-identity">
             <div class="detail-title-row">
-              <h1 class="detail-title">${escapeHtml(process.label)}</h1>
+              <h1 class="detail-title" tabindex="-1">${escapeHtml(process.label)}</h1>
             </div>
             <div class="detail-subtitle">
               <code data-detail-process-id>${escapeHtml(process.id)}</code>
@@ -2148,7 +2247,9 @@
     `
   }
 
-  function renderDetail() {
+  function renderDetail({ focusHeading = false, focusKey } = {}) {
+    const nextFocusKey =
+      focusKey === undefined ? detailFocusKey() : focusKey
     const process = PROCESSES.find(item => item.id === state.detailProcessId)
     if (!process) {
       processDetail.innerHTML = `
@@ -2165,6 +2266,11 @@
     processDetail.innerHTML = detailMarkup(process)
     document.title = `${process.label} - Port Start`
     syncThemeControls()
+    const focusTarget = focusHeading
+      ? processDetail.querySelector(".detail-title")
+      : detailFocusTarget(nextFocusKey)
+    if (focusTarget) focusTarget.focus({ preventScroll: true })
+    scrollDetailToLatest()
   }
 
   function paintDetailLogView() {
@@ -2178,6 +2284,7 @@
     logCount.textContent = run
       ? `${lines.length} of ${run.lines.length} records · ${run.when}`
       : "No runs"
+    scrollDetailToLatest()
   }
 
   function showInventoryRoute() {
@@ -2186,6 +2293,15 @@
     body.hidden = false
     processDetail.hidden = true
     document.title = "Port Start - Process manager"
+    if (state.detailRestoreFocusOnInventory) {
+      const processId = state.detailReturnFocusProcessId
+      const source = [...document.querySelectorAll("[data-open-process]")]
+        .find(element => element.dataset.openProcess === processId)
+      const focusTarget = source || document.getElementById("processSearch")
+      state.detailRestoreFocusOnInventory = false
+      state.detailReturnFocusProcessId = null
+      focusTarget.focus({ preventScroll: true })
+    }
   }
 
   function showDetailRoute(processId) {
@@ -2193,12 +2309,16 @@
     inventoryHeader.hidden = true
     body.hidden = true
     processDetail.hidden = false
-    renderDetail()
+    renderDetail({ focusHeading: true, focusKey: null })
   }
 
   function syncRoute() {
     const match = location.hash.match(/^#process\/([^/]+)$/)
     if (!match) {
+      if (state.detailOpenedFromInventory) {
+        state.detailOpenedFromInventory = false
+        state.detailRestoreFocusOnInventory = true
+      }
       showInventoryRoute()
       return
     }
@@ -2215,6 +2335,7 @@
     state.detailFollow = true
     state.detailLogFocused = false
     state.detailEnvironmentExpanded = false
+    state.detailReturnFocusProcessId = process.id
     const runs = processRuns(process)
     if (runs[0]) state.selectedRuns.set(process.id, runs[0].id)
     location.hash = `process/${encodeURIComponent(process.id)}`
@@ -2224,6 +2345,7 @@
   function closeProcessDetail() {
     if (state.detailOpenedFromInventory && location.hash) {
       state.detailOpenedFromInventory = false
+      state.detailRestoreFocusOnInventory = true
       history.back()
       return
     }
@@ -2711,28 +2833,30 @@
       state.selectedRuns.set(state.detailProcessId, detailRun.dataset.detailRun)
       state.detailLogQuery = ""
       state.detailFollow = true
-      renderDetail()
+      renderDetail({
+        focusKey: { type: "detailRun", value: detailRun.dataset.detailRun }
+      })
       return
     }
     if (event.target.closest("[data-detail-environment-toggle]")) {
       state.detailEnvironmentExpanded = !state.detailEnvironmentExpanded
-      renderDetail()
+      renderDetail({ focusKey: { type: "environmentToggle" } })
       return
     }
     if (event.target.closest("#detailFollow")) {
       state.detailFollow = !state.detailFollow
-      renderDetail()
+      renderDetail({ focusKey: { type: "id", value: "detailFollow" } })
       return
     }
     if (event.target.closest("#detailFocusLogs")) {
       state.detailLogFocused = !state.detailLogFocused
-      renderDetail()
+      renderDetail({ focusKey: { type: "id", value: "detailFocusLogs" } })
       return
     }
     if (event.target.closest("#detailDownload")) {
       const process = PROCESSES.find(item => item.id === state.detailProcessId)
       const run = selectedRun(process)
-      if (run) showToast(`Prepared ${run.when} logs for ${process.label}.`)
+      if (run) downloadRunLogs(process, run)
       return
     }
     const processLink = event.target.closest("[data-open-process]")
@@ -2822,7 +2946,7 @@
     if (download) {
       const process = PROCESSES.find(item => item.id === download.dataset.downloadLogs)
       const run = processRuns(process).find(item => item.id === download.dataset.runId)
-      showToast(`Prepared ${run?.when || "selected run"} logs for ${process.label}.`)
+      if (run) downloadRunLogs(process, run)
       return
     }
     if (event.target.closest("#retryLoad")) {
