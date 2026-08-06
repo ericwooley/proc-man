@@ -154,6 +154,25 @@ try {
     await evaluate(`document.querySelector(".process-label").textContent`),
     "Storefront web",
   );
+  await evaluate(
+    `document.querySelector("[data-show-processes]").click()`,
+  );
+  await waitFor(
+    `document.querySelectorAll(".process-entry").length === 12`,
+    "The Processes rail button did not restore the full process list.",
+  );
+  assert.deepEqual(
+    await evaluate(`({
+      search: document.getElementById("processSearch").value,
+      toast: document.getElementById("toast").textContent,
+      active: document.querySelector("[data-show-processes]").classList.contains("active")
+    })`),
+    {
+      search: "",
+      toast: "Showing all processes.",
+      active: true,
+    },
+  );
 
   await evaluate(`(() => {
     const input = document.getElementById("processSearch");

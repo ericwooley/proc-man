@@ -846,7 +846,8 @@
       <a class="brand" href="./logo-showcase.html" aria-label="Open the Port Start brand reference">
         <span class="brand-symbol" aria-hidden="true"></span>
       </a>
-      <button class="active" title="Processes" aria-label="Processes">
+      <button class="active" id="showProcesses" data-show-processes type="button"
+        title="Processes" aria-label="Show all processes" aria-current="page">
         <i class="ph ph-terminal" aria-hidden="true"></i>
       </button>
       <div class="spacer"></div>
@@ -1586,6 +1587,34 @@
     body.innerHTML = populatedMarkup()
   }
 
+  function showAllProcesses() {
+    state.screen = "populated"
+    state.query = ""
+    state.status = "all"
+    state.showServices = true
+    state.showTasks = true
+    state.groupByTag = false
+    state.tags.clear()
+    state.openLogs.clear()
+    state.collapsedGroups.clear()
+
+    document.getElementById("processSearch").value = ""
+    document.getElementById("showServices").checked = true
+    document.getElementById("showTasks").checked = true
+    document.getElementById("groupSwitch").classList.remove("on")
+    document.getElementById("groupSwitch").setAttribute("aria-checked", "false")
+    document.querySelectorAll("[data-status]").forEach(button => {
+      button.classList.toggle("on", button.dataset.status === "all")
+    })
+    document.querySelectorAll("[data-state]").forEach(button => {
+      button.classList.toggle("on", button.dataset.state === "populated")
+    })
+
+    render()
+    body.scrollTo({ top: 0 })
+    showToast("Showing all processes.")
+  }
+
   function setTheme(theme) {
     document.documentElement.dataset.theme = theme
     localStorage.setItem("port-start-prototype-theme", theme)
@@ -1768,6 +1797,7 @@
     state.query = event.target.value
     render()
   })
+  document.getElementById("showProcesses").addEventListener("click", showAllProcesses)
   document.getElementById("showServices").addEventListener("change", event => {
     state.showServices = event.target.checked
     render()
