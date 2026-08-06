@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/url"
+	"path/filepath"
 	"sort"
 	"strings"
 	"time"
@@ -23,7 +25,16 @@ type Store struct {
 }
 
 func Open(path string) (*Store, error) {
-	db, err := sql.Open("sqlite", path)
+	absolutePath, err := filepath.Abs(path)
+	if err != nil {
+		return nil, fmt.Errorf("resolve state database path: %w", err)
+	}
+	source := url.URL{Scheme: "file", Path: filepath.ToSlash(absolutePath)}
+	query := source.Query()
+	query.Add("_pragma", "busy_timeout=5000")
+	query.Add("_pragma", "foreign_keys=ON")
+	source.RawQuery = query.Encode()
+	db, err := sql.Open("sqlite", source.String())
 	if err != nil {
 		return nil, fmt.Errorf("open state database: %w", err)
 	}

@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"path/filepath"
 	"testing"
@@ -107,5 +108,36 @@ func TestRunsSurviveProcessDeletionAndRecover(t *testing.T) {
 	}
 	if retained.ProcessID != nil || retained.Process.Label != "Task" {
 		t.Fatalf("Retained run = %#v", retained)
+	}
+}
+
+func TestOpenConfiguresBusyTimeoutForEveryConnection(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	state, err := Open(filepath.Join(t.TempDir(), "state.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { state.Close() })
+
+	first, err := state.db.Conn(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer first.Close()
+	second, err := state.db.Conn(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer second.Close()
+
+	for index, connection := range []*sql.Conn{first, second} {
+		var timeout int
+		if err := connection.QueryRowContext(ctx, `PRAGMA busy_timeout`).Scan(&timeout); err != nil {
+			t.Fatal(err)
+		}
+		if timeout != 5000 {
+			t.Fatalf("connection %d busy timeout = %d, want 5000", index, timeout)
+		}
 	}
 }
