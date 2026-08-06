@@ -155,7 +155,7 @@ try {
     "Storefront web",
   );
   await evaluate(
-    `document.querySelector("[data-show-processes]").click()`,
+    `document.querySelector('button[title="Processes"]').click()`,
   );
   await waitFor(
     `document.querySelectorAll(".process-entry").length === 12`,
@@ -165,7 +165,7 @@ try {
     await evaluate(`({
       search: document.getElementById("processSearch").value,
       toast: document.getElementById("toast").textContent,
-      active: document.querySelector("[data-show-processes]").classList.contains("active")
+      active: document.querySelector('button[title="Processes"]').classList.contains("active")
     })`),
     {
       search: "",
