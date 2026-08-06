@@ -3,7 +3,6 @@ tmp/
 *.site.tar.gz
 /bin/
 /coverage/
-/internal/web/dist/
 /web/dist/
 /web/node_modules/
 *.db

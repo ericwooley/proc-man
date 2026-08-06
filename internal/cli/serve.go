@@ -17,6 +17,7 @@ import (
 	"proc-man/internal/spa"
 	"proc-man/internal/store"
 	"proc-man/internal/supervisor"
+	embeddedweb "proc-man/internal/web"
 
 	"github.com/spf13/cobra"
 )
@@ -56,7 +57,7 @@ func (app *application) serveCommand() *cobra.Command {
 				LogRoot: supervisor.DefaultLogRoot(dataDir),
 				Shell:   shell, StopTimeout: stopTimeout,
 			})
-			var web http.Handler
+			var web http.Handler = embeddedweb.Handler()
 			if webDir != "" {
 				web = spa.Directory(webDir)
 			}

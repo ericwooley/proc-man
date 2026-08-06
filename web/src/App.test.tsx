@@ -1,0 +1,130 @@
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { App } from "./App";
+import type { Process, Run } from "./types";
+
+const process: Process = {
+  id: "proc_01",
+  selector: "storefront-web",
+  label: "Storefront web",
+  tags: ["frontend", "project:storefront"],
+  kind: "service",
+  state: "running",
+  source: { kind: "cli" },
+  command: { shell: "npm run dev -- --port 4310" },
+  cwd: "/code/storefront",
+  env: { NODE_ENV: "development" },
+  ports: [
+    {
+      id: "port_01",
+      name: "http",
+      host: "127.0.0.1",
+      port: 4310,
+      protocol: "http",
+      path: "/",
+    },
+  ],
+  created_at: "2026-08-06T17:00:00Z",
+  updated_at: "2026-08-06T17:00:00Z",
+};
+
+const run: Run = {
+  id: "run_01",
+  process_id: process.id,
+  process,
+  state: "running",
+  pid: 4100,
+  started_at: "2026-08-06T17:00:00Z",
+  log_path: "/tmp/run_01.ndjson",
+};
+
+function json(value: unknown, status = 200): Response {
+  return new Response(JSON.stringify(value), {
+    status,
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
+beforeEach(() => {
+  localStorage.clear();
+  vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
+    const url = String(input);
+    if (url === "/api/v1/processes") {
+      return json({ processes: [process] });
+    }
+    if (url === `/api/v1/processes/${process.id}`) {
+      return json({ process, runs: [run] });
+    }
+    if (url === `/api/v1/runs/${run.id}/logs`) {
+      return json({
+        run,
+        records: [
+          {
+            seq: 1,
+            time: "2026-08-06T17:00:01Z",
+            stream: "stdout",
+            text: "ready on port 4310",
+            partial: false,
+          },
+        ],
+      });
+    }
+    return json({ error: { code: "not_found", message: "not found" } }, 404);
+  }));
+});
+
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+});
+
+describe("App navigation", () => {
+  it("separates the brand from the active process navigation", async () => {
+    render(
+      <MemoryRouter initialEntries={["/"]}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    const navigation = screen.getByRole("navigation", { name: "Primary navigation" });
+    const brand = screen.getByRole("link", { name: "proc-man home" });
+    const processLink = within(navigation).getByRole("link", { name: "Processes" });
+
+    expect(navigation).not.toContainElement(brand);
+    expect(processLink).toHaveClass("active");
+    expect(processLink).toHaveAttribute("href", "/");
+    expect(await screen.findByText("Storefront web")).toBeVisible();
+  });
+
+  it("opens process details and returns through the process navigation", async () => {
+    render(
+      <MemoryRouter initialEntries={["/"]}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(await screen.findByRole("button", { name: "Storefront web" }));
+
+    expect(await screen.findByRole("heading", { name: "Storefront web" })).toBeVisible();
+    expect(await screen.findByText("ready on port 4310")).toBeVisible();
+
+    fireEvent.click(screen.getByRole("link", { name: "Processes" }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { name: "Processes" })).toBeVisible();
+    });
+  });
+
+  it("loads a process detail route directly", async () => {
+    render(
+      <MemoryRouter initialEntries={[`/process/${process.id}`]}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByRole("heading", { name: "Storefront web" })).toBeVisible();
+    expect(screen.getByText("npm run dev -- --port 4310")).toBeVisible();
+    expect(await screen.findByText("ready on port 4310")).toBeVisible();
+  });
+});
