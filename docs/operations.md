@@ -1,118 +1,138 @@
-# Operations and installation
+# Operations
 
 ## Supported platforms
 
-V1 supports Linux and macOS.
+proc-man supports Linux and macOS.
 
-- Linux uses a systemd user unit.
+- Linux uses a systemd user service.
 - macOS uses a per-user LaunchAgent.
-- Process supervision uses Unix process groups.
+- Both platforms use Unix process groups.
 
-## Data locations
+## Default paths
 
-### Linux
+Linux data:
 
-- Configuration: `${XDG_CONFIG_HOME:-$HOME/.config}/proc-man/config.yaml`
-- Database: `${XDG_DATA_HOME:-$HOME/.local/share}/proc-man/`
-- Logs: `${XDG_STATE_HOME:-$HOME/.local/state}/proc-man/logs/`
+```text
+${XDG_DATA_HOME:-$HOME/.local/share}/proc-man/
+```
 
-### macOS
+macOS data:
 
-- Configuration and database:
-  `$HOME/Library/Application Support/proc-man/`
-- Logs: `$HOME/Library/Logs/proc-man/`
+```text
+$HOME/Library/Application Support/proc-man/
+```
 
-`PROC_MAN_DATA_DIR` or `serve --data-dir` overrides the database, lock, and
-run-log root. Credential files use user-only permissions.
+The data directory contains:
 
-## Configuration precedence
+- `state.db`
+- `state.db-wal`
+- `state.db-shm`
+- `daemon.lock`
+- `logs/`
 
-1. Command flag.
-2. `PROC_MAN_*` environment variable.
-3. Configuration file.
-4. built-in default.
+Use `proc-man serve --data-dir PATH` to select another data directory.
 
-Important settings include the administration endpoint, data directory, login
-shell, stop limit, task limit, and retention defaults.
+## Foreground service
+
+```sh
+proc-man serve
+```
+
+Useful flags:
+
+```text
+--host
+--port
+--data-dir
+--web-dir
+--login-shell
+--stop-timeout
+```
+
+The host must be a loopback host.
+The default URL is `http://127.0.0.1:13337`.
+
+`--web-dir` serves a local frontend build instead of embedded files.
+Use this option only during frontend development.
 
 ## User-service installation
 
+Place the binary in a stable path before installation.
+The generated service file records the current executable path.
+
 ```sh
 proc-man daemon install --now
+proc-man daemon status
 ```
 
-The installer writes a systemd user unit or LaunchAgent, reloads the service
-manager, and verifies readiness when `--now` is true.
+Linux writes:
 
-Uninstall preserves configuration, SQLite, and logs. `--purge --yes` removes
-application data.
+```text
+$HOME/.config/systemd/user/proc-man.service
+```
 
-## Login shell
+macOS writes:
 
-The default launch shell is the account login shell. Argv commands use a wrapper
-that initializes the profile and then preserves argument boundaries. Shell
-strings use explicit shell parsing.
+```text
+$HOME/Library/LaunchAgents/dev.proc-man.plist
+```
 
-Profile output becomes run output. A blocking or interactive profile causes a
-run error.
-
-## Password operation
-
-Authentication is disabled by default.
+Manage the installed service:
 
 ```sh
-proc-man auth set-password
-proc-man auth clear-password
+proc-man daemon start
+proc-man daemon stop
+proc-man daemon restart
+proc-man daemon uninstall
 ```
 
-The daemon stores an Argon2id hash. A password change revokes all sessions.
-Non-loopback access without authentication shows a persistent warning.
+Uninstall removes only the service definition.
+It keeps SQLite and run logs.
 
 ## Manifest automation
 
-Any directory can contain `.proc-man.yaml`.
+Any source directory can contain `.proc-man.yaml`.
+
+Registration:
 
 ```sh
 cd /path/to/source
 proc-man register --json
 ```
 
-Removal automation uses the source path:
+Deregistration:
 
 ```sh
 proc-man deregister --source "$PWD/.proc-man.yaml" --json
 ```
 
-This pattern works for Git worktrees, ordinary repositories, generated
-directories, and local tools. Proc Man stores process records, not worktree
-records.
+This pattern works for repositories, worktrees, generated directories, and local tools.
+The service stores process records.
 
-## Startup and recovery
+## Startup recovery
 
-Startup:
+An unclean shutdown marks unfinished runs as interrupted.
+Active process states return to stopped.
 
-1. Check data-directory permissions.
-2. Acquire the daemon lock.
-3. Apply SQLite migrations.
-4. Reconcile unfinished runs.
-5. Load processes, tags, runs, and declared ports.
-6. Bind the administration endpoint.
-7. Start retention.
-8. reports ready.
+The service does not start old services during recovery.
 
-An unclean exit marks unfinished runs interrupted. The daemon verifies process
-identity before it signals a stored process group. Recovery never starts a
-service automatically.
+## Missing directories
 
-## Missing working directories
+A process remains registered when its working directory disappears.
 
-Proc Man keeps a process registered when its configured directory disappears.
-Start and Run return `cwd_unavailable`. The process remains visible by label and
-tags so the user can inspect its configuration and retained logs.
+Start and Run return `cwd_unavailable`.
+The application still shows the configuration and old logs.
 
-Automation should deregister obsolete processes explicitly.
+## Shutdown
 
-## Graceful shutdown
+The service stops managed process groups during shutdown.
 
-The daemon rejects new runs, terminates managed process groups, waits for stop
-limits, flushes logs and SQLite, and exits.
+It sends SIGTERM first.
+It sends SIGKILL after the stop limit.
+
+SQLite and log files remain for the next start.
+
+## Local development
+
+proc-man is a local development service.
+The repository contains no deployment configuration.

@@ -1,158 +1,124 @@
-# Domain model and lifecycle
+# Domain model
 
-## Aggregate structure
+## Process
+
+A process is a durable executable definition.
 
 ```text
-Process definition
-├── Label
-├── Tags
-├── Declared ports
-└── Runs
-    └── Log records
+Process
+├── id and selector
+├── label
+├── tags
+├── kind
+├── state
+├── source
+├── command
+├── working directory
+├── environment overrides
+└── declared ports
 ```
 
-Manifest source data records provenance and reconciliation ownership. It is not
-a parent resource in the product model.
+The process ID is the action selector.
+The label is human text and can repeat.
 
-## Process definition
+The process kind is `service` or `task`.
 
-A process definition is the durable configuration for one executable. It has:
+The process state is:
 
-- An opaque stable ID.
-- A required human label.
-- Zero or more normalized tags.
-- Kind `service` or `task`.
-- Manifest or imperative source ownership.
-- Argv or an explicit shell string.
-- A working directory and environment overrides.
-- Zero or more declared ports.
-- stop, task, and log-retention limits.
+- `stopped`
+- `starting`
+- `running`
+- `stopping`
+- `failed`
 
-Labels are presentation data and need not be unique. Selectors use opaque IDs.
-Manifest entries also have a stable key for idempotent reconciliation. The
-dashboard does not show that key as the process identity.
+## Command
 
-## Tags
+A command uses one representation:
 
-Tags are process metadata for discovery and grouping. V1 stores free-form
-normalized tags. The server trims whitespace, converts tags to lowercase, and
-rejects duplicates after normalization.
+- An argv array.
+- An explicit shell string.
 
-Repeated tag filters use AND semantics. When the dashboard groups by tag, one
-process can appear in several groups. Each row uses the same process ID and
-state. Aggregate counts count unique process IDs.
-
-## Process kinds
-
-### Service
-
-A service is a long-running process. It supports Start, Stop, and Restart. It
-has at most one active run.
-
-### Task
-
-A task is a one-shot process. It supports Run and Cancel. Each invocation has
-its own run. Separate invocations can overlap.
-
-Both kinds use the same labels, tags, declared ports, run history, log capture,
-retention, and discovery model.
+The working directory must exist when a run starts.
+The process remains registered when its directory disappears.
+Start and Run return `cwd_unavailable` when the directory is missing.
 
 ## Declared port
 
-A declared port records a name, explicit port number, host, protocol hint, and
-optional HTTP path. It supports discovery, links, launch substitution, and run
-snapshots.
+A declared port has:
 
-The child process owns its sockets. A declaration does not reserve a port and
-does not affect process state.
+- An opaque endpoint ID.
+- A name that is unique within the process.
+- A host.
+- An integer port from 1 through 65535.
+- A protocol of `tcp`, `http`, or `https`.
+- An optional HTTP path.
+
+Declared ports remain visible when the process is stopped.
 
 ## Run
 
-A run is one service start or task invocation. It snapshots the label, tags,
-kind, command, working directory, environment overrides, declared ports, and
-execution limits.
+A run represents one service start or task execution.
 
-A run records its trigger, timestamps, process identity, exit code, terminal
-reason, and log metadata. History remains clear after the process definition
-changes or disappears.
+A run stores:
 
-## Log record
+- An opaque run ID.
+- The current process ID when the definition still exists.
+- A complete process snapshot.
+- State and process ID.
+- Start and end times.
+- Exit code and error text.
+- Log file path.
 
-A log record has a run-local sequence number, receive timestamp, stream,
-text, and partial-line marker.
+Run states are:
 
-## Service states
+- `starting`
+- `running`
+- `stopping`
+- `exited`
+- `failed`
+- `canceled`
+- `interrupted`
 
-```text
-                         start
- stopped ─────────────────────────────────▶ starting
-    ▲                                           │
-    │                         child created     │ launch error
-    │                                           ▼
-    │              process exit             failed
-    │                   ┌───────────────────────┘
-    │                   │
-    │                running
-    │                   │
-    │                  stop
-    │                   ▼
-    └─────────────── stopping
-```
+Terminal run states keep their history.
+Deregistering a process keeps its run snapshots.
 
-The state set is `stopped`, `starting`, `running`, `stopping`, and `failed`.
-A missing working directory does not create another durable state. Start or Run
-returns `cwd_unavailable`.
-
-Start returns the current run while a service is starting or running. Stop is
-idempotent. Concurrent Restart requests join one replacement operation.
-
-## Run states
-
-A run moves through `starting`, `running`, and `stopping`, then reaches
-`exited`, `failed`, `canceled`, or `interrupted`.
-
-A child launch moves the run to `running`. A normal exit records the exit code.
-A launch error creates a failed run. Port declarations do not determine state.
-
-## Configuration changes during a run
-
-Each run keeps its launch snapshot. An update changes the next run only.
-Responses expose `configured` and `active_run.configuration` when they differ.
-
-Clients use active-run ports while the run is active. They use configured ports
-when no run is active. Clients label changed configured ports as next-run
-values.
-
-## Manifest reconciliation
-
-`proc-man register` reads a process manifest and reconciles entries by:
+## Service lifecycle
 
 ```text
-canonical manifest path
-+ process key
+stopped → starting → running → stopping → stopped
+                     │
+                     └───────────────→ failed
 ```
 
-Registration:
+Start creates a run.
+Stop signals the active process group.
+Restart stops the active run and creates a new run.
 
-1. Validate the complete manifest.
-2. Resolve each relative working directory from the manifest directory.
-3. Create or update matching manifest-owned processes.
-4. Stop and deregister removed manifest-owned processes.
-5. Leave imperative processes unchanged.
-6. Return stable process selectors and a change plan.
+## Task lifecycle
 
-`proc-man deregister --source` stops active runs and removes current
-definitions from that manifest source. Retained runs remain until retention
-deletes them, unless the request purges logs.
+Run creates an independent run.
+Cancel signals one active task run.
 
-## Invariants
+The process state returns to stopped after a task ends.
+Run history shows the result of each invocation.
 
-1. A service has at most one non-terminal run.
-2. Every process has one label and one stable ID.
-3. Tags are unique within one process after normalization.
-4. Every declared port number is explicit.
-5. Process state follows the child process group.
-6. Every client action uses the daemon API.
-7. Every run snapshots its execution configuration.
-8. Updating a definition does not change an active run.
-9. Removing a definition stops or cancels its active runs.
+## Tags
+
+The server trims and lowercases tags.
+Each process stores a unique tag set.
+
+Repeated tag filters use AND behavior.
+Tag grouping can show one process in several groups.
+
+## Source
+
+An imperative process has source kind `imperative`.
+
+A manifest process has:
+
+- Source kind `manifest`.
+- A canonical manifest path.
+- A stable manifest key.
+
+The source controls manifest reconciliation.
+The source does not control process navigation.

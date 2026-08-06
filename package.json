@@ -1,5 +1,5 @@
 {
-  "name": "proc-man-ui-prototype",
+  "name": "proc-man",
   "private": true,
   "version": "0.1.0",
   "type": "module",
@@ -7,9 +7,18 @@
     "node": ">=22"
   },
   "scripts": {
-    "build": "node scripts/build.mjs",
-    "serve": "python3 -m http.server 4174 --bind 127.0.0.1 --directory prototype",
-    "test": "node --test",
-    "test:browser": "node test-ui/modal-focus.e2e.mjs"
+    "build": "npm run build:web && npm run build:go",
+    "build:go": "go build -o bin/proc-man ./cmd/proc-man",
+    "build:prototype": "node scripts/build.mjs",
+    "build:web": "npm --prefix web run build",
+    "dev:web": "npm --prefix web run dev",
+    "serve": "./bin/proc-man serve",
+    "test": "npm run test:go && npm run test:web && npm run test:prototype",
+    "test:browser": "node test-ui/react-build.e2e.mjs",
+    "test:go": "go test ./...",
+    "test:prototype": "node --test",
+    "test:prototype:browser": "node test-ui/modal-focus.e2e.mjs",
+    "test:smoke": "sh scripts/smoke-test.sh",
+    "test:web": "npm --prefix web test"
   }
 }

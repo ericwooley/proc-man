@@ -2,133 +2,88 @@
 
 ## Purpose
 
-Proc Man provides one local inventory for development processes. Each process
-has a label, tags, execution configuration, runs, and retained logs. A process
-can be a long-running service or a one-shot task.
+proc-man provides one local inventory for development processes.
 
-Developers and automation can register processes, find them without knowing
-their source directory, execute them, inspect declared ports, and read current
-or historical logs.
+The product helps a developer find a process, run it, inspect its ports, and read its logs.
 
-Git worktrees are one source of process registrations. They do not create a
-separate resource, page, or ownership hierarchy.
+Coding agents and scripts can register the same processes through the CLI or API.
 
-## Users
+## Process registration
 
-The primary user is a developer who runs Proc Man under one operating-system
-account on Linux or macOS. Coding agents and local automation are supported
-clients. V1 is single-user and single-host.
+- Register one process through the CLI, API, or application.
+- Require a label and process kind.
+- Accept zero or more tags.
+- Accept an argv command or explicit shell command.
+- Store a working directory and environment overrides.
+- Store zero or more declared ports.
+- Deregister a process by its stable ID.
 
-## Required capabilities
+## Manifest registration
 
-### Process registration
+- Read the nearest `.proc-man.yaml` file.
+- Apply one manifest idempotently.
+- Reconcile entries by manifest path and stable key.
+- Remove one manifest source through a command.
+- Keep imperative processes outside manifest reconciliation.
 
-- Register one process through the CLI or API.
-- Apply a versioned process manifest idempotently.
-- Deregister one process or all processes from one manifest source.
-- Require a human label and accept zero or more tags.
-- Keep labels non-unique and use opaque IDs for actions.
-- Preserve manifest or imperative source metadata for configuration changes.
-- Keep source metadata out of primary navigation, filtering, and grouping.
+## Inventory
 
-### Inventory
-
-- List all registered processes in one primary view.
-- Search labels, tags, declared ports, and launch metadata.
-- Filter by multiple tags, kind, state, and attention state.
+- Show all processes on one primary page.
+- Search labels, tags, commands, directories, and declared ports.
+- Filter by process kind.
+- Filter by one or more tags.
 - Group matching processes by tag.
-- Show one process in each matching tag group when grouping is active.
-- Keep every repeated row connected to the same stable process ID.
-- Show an `untagged` group for processes without tags.
+- Show an `untagged` group when required.
 
-### Process details
+## Process details
 
-- Open one process detail page from its inventory row or label.
-- Provide a clear return path that preserves the inventory filters.
-- Show the label, stable process ID, kind, state, tags, and lifecycle actions.
-- Show the launch command, working directory, environment summary, and ports.
-- List current and retained runs with their state, time, duration, and exit code.
-- Make the selected run logs the primary detail-page region.
-- Search the selected run and filter stdout or stderr records.
-- Follow an active run and download one retained run.
-- Support a direct process-detail URL for refresh and browser navigation.
+- Open a stable route for one process.
+- Show the label, ID, kind, state, and tags.
+- Show the command, directory, environment, and declared ports.
+- Show current and retained runs.
+- Show full logs for the selected run.
+- Filter logs by stream and text.
+- Download a selected run.
+- Return to the process inventory through the Processes navigation.
 
-### Execution
+## Execution
 
-- Support `service` and `task` process kinds.
 - Start, stop, and restart a service.
-- Allow at most one active service run.
-- Run a task and cancel one active task run.
-- Preserve each task invocation as an independent run.
-- Start processes only through an explicit CLI, API, or dashboard action.
-- Run every child in its own process group.
-- Execute each child in its configured directory and login-shell environment.
+- Keep one active run for each service.
+- Run a task.
+- Cancel an active task run.
+- Keep a snapshot for each run.
+- Capture stdout and stderr.
+- Start each child in its own process group.
+- Start processes only after an explicit action.
 
-### Labels and tags
+## Local service
 
-- Require a label from 1 through 120 Unicode characters.
-- Allow duplicate labels.
-- Accept up to 32 tags per process.
-- Store tags as unique lowercase strings after trimming whitespace.
-- Limit each tag to 63 characters.
-- Allow letters, numbers, period, underscore, hyphen, and colon.
-- Let the dashboard suggest existing tags without constraining new tags.
-- Apply repeated tag filters with AND semantics.
+- Serve the application on `127.0.0.1:13337` by default.
+- Bind loopback hosts only.
+- Persist process and run state in SQLite.
+- Persist run output in NDJSON files.
+- Install as a Linux systemd user service.
+- Install as a macOS LaunchAgent.
 
-### Declared ports
+## Worktree use case
 
-- Allow each process to declare zero or more named TCP ports.
-- Require explicit port numbers.
-- Store host, protocol, and optional URL path metadata.
-- Display copyable addresses and browser links.
-- Expose declared values through explicit launch placeholders.
-- Keep socket ownership and traffic outside Proc Man.
+A worktree hook can run `proc-man register`.
+The manifest can add project, branch, or purpose tags.
 
-### Logs
+A removal hook can run `proc-man deregister`.
+The hook passes the manifest source before removing the directory.
 
-- Capture stdout and stderr for every run.
-- Stream current output.
-- Search retained output by text, tag, process, run state, and time.
-- Download one run as text or structured records.
-- Support configurable size, count, age, and unlimited retention.
+Worktrees remain an automation context.
+The process registry remains the product model.
 
-### Administration
+## V1 limits
 
-- Serve the application at `127.0.0.1:13337` by default.
-- Provide a React/Vite SPA and a versioned JSON API.
-- Provide a scriptable Go CLI with stable JSON output.
-- Support an optional administration password.
-- Install as a systemd user service or macOS LaunchAgent.
-
-## Worktree automation use case
-
-A worktree creation hook runs one idempotent manifest command from the new
-directory. The manifest registers normal processes and can add tags such as
-`project:storefront`, `branch:agent-42`, or `purpose:preview`.
-
-A worktree removal hook deregisters the manifest source before it removes the
-directory. No worktree record remains in Proc Man.
-
-## Success criteria
-
-1. A user can find any process by label or tags.
-2. A user can group the process list by tags.
-3. A user can execute a service or task from the CLI and dashboard.
-4. A user can inspect current and historical logs for one process.
-5. A user can open one process page and inspect its configuration and full logs.
-6. A user can open or copy a declared endpoint.
-7. A script can apply and remove a manifest idempotently.
-8. A daemon restart restores process definitions and run history.
-
-## Non-goals for V1
-
-- Windows support.
-- Multi-user isolation.
-- Remote orchestration across machines.
-- Containers or production workload scheduling.
-- Process dependency graphs.
-- Automatic restart policies.
-- Attaching to external processes.
-- Port allocation, listener ownership, traffic handling, or readiness checks.
-- TLS termination.
-- A dedicated repository or worktree inventory.
+- Linux and macOS only.
+- One operating-system user.
+- One local host.
+- No automatic service restart policy.
+- No process dependency graph.
+- No external process attachment.
+- No remote control plane.
+- No deployment workflow.

@@ -4,31 +4,24 @@
 
 The canonical filename is `.proc-man.yaml`.
 
-`proc-man register` searches from the current directory upward and reads the
-nearest manifest. `--file` selects another file. Relative working directories
-resolve from the manifest directory.
+`proc-man register` searches from the current directory toward the filesystem root.
+`--file` selects a different file.
 
-The manifest is declarative. Registration makes the stored manifest-owned
-processes match the file. Imperative processes remain unchanged.
+Relative working directories resolve from the manifest directory.
 
 ## Version 1
 
 ```yaml
 version: 1
 
-defaults:
-  tags: [project:storefront]
-  stop_timeout: 10s
-  retention:
-    max_bytes_per_run: 50MiB
-    max_runs: 20
-
 processes:
   - key: web
     label: Storefront web
     kind: service
-    tags: [role:web, frontend]
+    tags: [frontend, project:storefront]
     cwd: .
+    env:
+      NODE_ENV: development
     ports:
       - name: http
         host: 127.0.0.1
@@ -36,121 +29,86 @@ processes:
         protocol: http
         path: /
     command:
-      argv: [npm, run, dev, --, --port, "{port.http}"]
+      argv: [npm, run, dev, --, --port, "4310"]
 
   - key: test
-    label: Storefront test suite
+    label: Storefront tests
     kind: task
-    tags: [test]
+    tags: [test, project:storefront]
     cwd: .
     command:
       argv: [npm, test]
-    timeout: 10m
 ```
-
-Unknown fields are errors.
 
 ## Top-level fields
 
 | Field | Required | Meaning |
 | --- | --- | --- |
-| `version` | Yes | Schema version. V1 accepts integer `1`. |
-| `defaults` | No | Shared tags, limits, and retention. |
+| `version` | Yes | Schema version. Version 1 accepts integer `1`. |
 | `processes` | Yes | One or more process definitions. |
 
 ## Process fields
 
 | Field | Required | Default | Meaning |
 | --- | --- | --- | --- |
-| `key` | Yes | None | Stable manifest key. |
-| `label` | Yes | None | Human label from 1 through 120 characters. |
+| `key` | Yes | None | Stable key within the manifest. |
+| `label` | Yes | None | Human process label. |
 | `kind` | Yes | None | `service` or `task`. |
-| `tags` | No | `[]` | Free-form normalized tags. |
-| `cwd` | No | `.` | Directory relative to the manifest. |
-| `command` | Yes | None | Exactly one of `argv` or `shell`. |
+| `tags` | No | `[]` | Normalized process tags. |
+| `cwd` | No | Manifest directory | Working directory. |
+| `command` | Yes | None | One argv array or shell string. |
 | `env` | No | `{}` | Environment overrides. |
 | `ports` | No | `[]` | Declared port metadata. |
-| `stop_timeout` | No | `10s` | TERM to KILL limit. |
-| `timeout` | No | Unlimited | Task run limit. |
-| `retention` | No | Defaults | Log-retention limits. |
 
-Keys must be unique in one manifest. Labels can repeat. Default tags and
-process tags form one normalized set.
+Keys must be unique within one manifest.
+Labels can repeat.
 
-## Tags
+## Commands
 
-A tag:
-
-- Trim whitespace and convert the tag to lowercase.
-- Require 1 through 63 characters.
-- Start with a letter or number.
-- Use letters, numbers, a period, an underscore, a hyphen, or a colon.
-- Keep the tag unique within one process after normalization.
-
-V1 accepts free-form tags. Clients suggest existing tags but do not constrain
-new values.
-
-## Command representation
-
-Argv is preferred:
+Argv form:
 
 ```yaml
 command:
   argv: [npm, run, dev]
 ```
 
-Shell form is explicit:
+Shell form:
 
 ```yaml
 command:
   shell: exec ./scripts/migrate
 ```
 
-Both forms use the configured login shell. Shell form permits shell expansion,
-pipes, redirection, and compound commands.
+Use shell form when the command needs expansion, pipes, or redirection.
 
 ## Declared ports
 
 | Field | Required | Default | Meaning |
 | --- | --- | --- | --- |
-| `name` | Yes | None | Unique key within the process. |
-| `host` | No | `127.0.0.1` | Displayed host. |
+| `name` | Yes | None | Unique name within the process. |
+| `host` | No | `127.0.0.1` | Display host. |
 | `port` | Yes | None | Integer from 1 through 65535. |
 | `protocol` | No | `tcp` | `tcp`, `http`, or `https`. |
-| `path` | No | `/` | HTTP path beginning with `/`. |
+| `path` | No | Empty | Optional HTTP path. |
 
-The child binds its own sockets. Registration can warn about overlapping
-declarations, but it does not reject or reserve them.
+The process command binds its own listener.
+proc-man records and displays the declaration.
 
-Named ports provide placeholders and environment variables:
-
-| Value | Meaning |
-| --- | --- |
-| `{port.http}` | Numeric port value. |
-| `{host.http}` | Declared host value. |
-| `{manifest_dir}` | Canonical manifest directory. |
-| `{definition_id}` | Stable process ID. |
-| `{run_id}` | New run ID. |
-| `PROC_MAN_PORT_HTTP` | Normalized port variable. |
-| `PROC_MAN_URL_HTTP` | HTTP or HTTPS URL. |
+Commands and environment values can use `{port.<name>}`.
+The supervisor also adds `PROC_MAN_PORT_<NAME>` and `PROC_MAN_HOST_<NAME>`.
 
 ## Reconciliation
 
-`proc-man register`:
+Registration follows this sequence:
 
-1. Validate the file.
-2. Calculate the required process set.
-3. Create or update entries by manifest path and key.
-4. Stop and remove deleted manifest entries.
-5. Preserve active-run snapshots.
-6. Leave imperative processes unchanged.
+1. Parse and validate the manifest.
+2. Match current processes by source path and key.
+3. Create missing entries.
+4. Update changed entries.
+5. Stop and remove deleted entries.
+6. Keep imperative processes unchanged.
 
-`proc-man register --dry-run` returns the same change plan without writes.
-`proc-man deregister --source` removes processes from one manifest source.
+`proc-man register --dry-run` returns the planned changes.
 
-The CLI exposes the schema:
-
-```sh
-proc-man schema manifest
-proc-man schema manifest --format json
-```
+`proc-man deregister --source` stops and removes all processes from one source.
+Existing run snapshots and logs remain.

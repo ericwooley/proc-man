@@ -1,24 +1,16 @@
-# CLI contract
+# CLI
 
-## Principles
+## Connection
 
-`proc-man` supports people and automation.
+The CLI calls the local service.
 
-- Every command uses the daemon API.
-- Human output goes to stdout.
-- Diagnostics go to stderr.
-- `--json` returns stable machine data.
-- Useful mutations support `--dry-run`.
-- Automation never waits for input.
-- Ambiguous labels return candidates.
-- Opaque selectors remain unchanged between commands.
+The administration URL resolves in this order:
 
-The administration endpoint resolves in this order:
+1. `--admin-url`
+2. `PROC_MAN_ADMIN_URL`
+3. `http://127.0.0.1:13337`
 
-1. `--admin-url`.
-2. `PROC_MAN_ADMIN_URL`.
-3. Saved CLI configuration.
-4. `http://127.0.0.1:13337`.
+Add `--json` for stable machine output.
 
 ## Command tree
 
@@ -32,8 +24,6 @@ proc-man
 │   ├── stop
 │   ├── restart
 │   └── status
-├── register
-├── deregister
 ├── process
 │   ├── register
 │   ├── update
@@ -48,262 +38,161 @@ proc-man
 │   └── logs
 ├── run
 │   ├── list
-│   ├── search
 │   ├── status
 │   └── logs
-│       └── download
 ├── tag
 │   └── list
+├── register
+├── deregister
 ├── open
-├── auth
-│   ├── set-password
-│   └── clear-password
-├── schema
-│   └── manifest
-├── api
-│   └── openapi
-└── completion
+└── api
+    └── openapi
 ```
 
-## Daemon commands
-
-`proc-man serve` runs the daemon in the foreground. Important flags include
-`--host`, `--port`, `--data-dir`, `--config`, and `--login-shell`.
-
-`proc-man daemon install --now` installs and starts the user service.
-Uninstall keeps application data unless `--purge` is present.
-
-## Manifest registration
+## Run the service
 
 ```sh
-proc-man register
-proc-man register --file ./config/dev-processes.yaml
-proc-man register --dry-run --json
-proc-man deregister --source "$PWD/.proc-man.yaml"
+proc-man serve
+proc-man serve --port 13337
+proc-man serve --data-dir /path/to/data
+proc-man serve --login-shell /bin/zsh
 ```
 
-`register` returns the canonical manifest source and the complete process
-inventory. Each process and endpoint includes an opaque selector.
+The `--host` value must resolve to a loopback address.
 
-Registration reconciles entries by manifest source and process key. It reports
-created, updated, removed, and unchanged processes. An active run keeps its
-launch snapshot when its definition changes.
-
-`deregister --source` stops or cancels active runs and removes current
-definitions from that source. Retained runs remain unless `--purge-logs` is
-present.
-
-## Process inventory
-
-```sh
-proc-man process list
-proc-man process list --tag project:storefront --tag frontend
-proc-man process list --kind service --state running
-proc-man process list --query 4310 --json
-proc-man tag list
-```
-
-Human output includes:
-
-- Process selector.
-- Label and tags.
-- Kind and state.
-- Current run ID.
-- Declared endpoints.
-- Source ownership.
-- latest run result.
-
-The JSON form returns `processes` and `next_cursor`. Each process contains:
-
-- `id` and `selector`.
-- `label`, `tags`, and `kind`.
-- `source`.
-- `state` for services.
-- `active_runs`.
-- `latest_run`.
-- `endpoints`.
-
-Repeated `--tag` flags use AND semantics. `--query` searches labels, tags,
-launch metadata, and declared ports.
-
-Labels can repeat. A label selects a process only when it matches one process.
-An ambiguous label returns matching selectors.
-
-The inventory feeds later commands:
-
-```sh
-proc-man process status proc_01...
-proc-man process start proc_01...
-proc-man process logs proc_01... --run latest
-proc-man open endpoint_01...
-```
-
-## Imperative registration
-
-Long-running service:
+## Register a service
 
 ```sh
 proc-man process register \
   --label "Storefront web" \
   --kind service \
-  --tag project:storefront \
   --tag frontend \
+  --tag project:storefront \
   --port http=http://127.0.0.1:4310/ \
+  --env NODE_ENV=development \
   --cwd "$PWD" \
   -- npm run dev -- --port 4310
 ```
 
-One-shot task:
+Use `--shell` for a shell command:
 
 ```sh
 proc-man process register \
-  --label "Storefront test suite" \
+  --label "API server" \
+  --kind service \
+  --cwd "$PWD" \
+  --shell 'exec ./scripts/start-api'
+```
+
+## Register a task
+
+```sh
+proc-man process register \
+  --label "Test suite" \
   --kind task \
-  --tag project:storefront \
   --tag test \
   --cwd "$PWD" \
   -- npm test
 ```
 
-Shell strings require `--shell`:
+## Find processes
 
 ```sh
-proc-man process register \
-  --label "Database migration" \
-  --kind task \
-  --tag migration \
-  --cwd "$PWD/apps/api" \
-  --shell 'exec ./scripts/migrate'
+proc-man process list
+proc-man process list --tag frontend --tag project:storefront
+proc-man process list --kind service --state running
+proc-man process list --query 4310
+proc-man process status PROCESS_ID
+proc-man tag list
 ```
 
-Imperative definitions support `process update`. Manifest-owned definitions
-return `manifest_owned` and show their source path.
+Repeated tag flags use AND behavior.
+The query searches IDs, labels, tags, commands, directories, and declared ports.
 
-Use the stable process selector to deregister an imperative process:
+## Update and deregister
 
 ```sh
-proc-man process deregister proc_01...
-proc-man process deregister proc_01... --purge-logs
+proc-man process update PROCESS_ID --label "Storefront preview"
+proc-man process update PROCESS_ID --tag frontend --tag preview
+proc-man process deregister PROCESS_ID
 ```
 
-Deregistration stops active runs. Retained logs remain unless `--purge-logs` is
-present.
+Manifest-owned processes reject direct updates.
+Apply their manifest again to update them.
 
-## Labels and tags
+Deregistration stops active runs and removes the process definition.
+Retained run snapshots and logs remain.
+
+## Manage a service
 
 ```sh
-proc-man process update proc_01... --label "Storefront preview"
-proc-man process update proc_01... --add-tag preview
-proc-man process update proc_01... --remove-tag deprecated
+proc-man process start PROCESS_ID
+proc-man process stop PROCESS_ID
+proc-man process restart PROCESS_ID
 ```
 
-The server normalizes tags. The CLI prints the normalized result. `tag list`
-returns existing tags and unique process counts for autocomplete and filters.
+These commands reject task processes.
 
-## Service lifecycle
+## Run a task
 
 ```sh
-proc-man process start proc_01...
-proc-man process stop proc_01...
-proc-man process restart proc_01...
-proc-man process status proc_01... --json
+proc-man process run PROCESS_ID
+proc-man process cancel PROCESS_ID --run RUN_ID
 ```
 
-Start returns the active run while the service is starting or running. Stop is
-idempotent. Restart creates one replacement run after termination.
+The Run command returns immediately with a run ID.
+Use the run commands to inspect its result.
 
-These actions return `invalid_kind` for tasks. Traffic to a declared port never
-starts a process.
-
-## Task execution
+## Read runs and logs
 
 ```sh
-proc-man process run proc_02...
-proc-man process run proc_02... --wait
-proc-man process cancel proc_02... --run run_01...
+proc-man run list
+proc-man run list --process PROCESS_ID
+proc-man run list --kind task --state exited
+proc-man run status RUN_ID
+proc-man process logs PROCESS_ID
+proc-man process logs PROCESS_ID --run RUN_ID
+proc-man process logs PROCESS_ID --stream stderr --query error
+proc-man run logs RUN_ID
+proc-man run logs RUN_ID --format ndjson --output run.ndjson
 ```
 
-Each invocation receives a run ID, terminal result, and logs. Separate task
-runs can overlap. `--wait` streams output and maps the child result to the CLI
-exit contract.
+`process logs` selects the latest run by default.
 
-Run returns `invalid_kind` for services.
-
-## Ports and links
+## Open a declared endpoint
 
 ```sh
-proc-man process status proc_01...
-proc-man open endpoint_01...
+proc-man open ENDPOINT_ID
 ```
 
-Status shows every declared endpoint. Active runs use their launch snapshot.
-Stopped processes use configured values. Changed next-run values receive a
-`next_start` label.
+The command opens HTTP and HTTPS endpoints in the system browser.
+The command prints TCP addresses.
 
-`open` starts the user browser for HTTP or HTTPS. It prints a copyable address
-for TCP.
-
-Proc Man does not allocate, reserve, own, forward, or proxy ports.
-
-## Runs and logs
+## Apply a manifest
 
 ```sh
-proc-man run list --tag project:storefront --include-deregistered
-proc-man run list --kind service --state failed --since 24h
-proc-man run search 'ready|error' --tag frontend --regex --ignore-case
-proc-man process logs proc_01... --run latest
-proc-man process logs proc_01... --follow
-proc-man run logs run_01... --stream stderr --since 15m
-proc-man run logs download run_01... --format ndjson --output run.ndjson
-```
-
-Run listings are newest-first and cursor-paginated. JSON returns `runs` and
-`next_cursor`.
-
-Each run contains:
-
-- Run ID.
-- Process snapshot with label, tags, kind, and source.
-- State and timestamps.
-- Retention deadline.
-- current definition presence.
-
-Search uses literal text by default. `--regex` uses RE2. Follow mode resumes by
-sequence after a connection failure and reports retention gaps.
-
-## Worktree hook example
-
-A worktree can register normal processes without becoming a Proc Man
-resource:
-
-```sh
-cd /path/to/new-worktree
-proc-man register --json
-```
-
-Before removal:
-
-```sh
+proc-man register
+proc-man register --file ./config/processes.yaml
+proc-man register --dry-run --json
 proc-man deregister --source "$PWD/.proc-man.yaml"
-git worktree remove "$PWD"
 ```
 
-The manifest can add branch or project tags when those values help discovery.
+Without `--file`, registration searches parent directories for `.proc-man.yaml`.
 
-## Authentication
+## Manage the user service
 
-`proc-man auth set-password` reads a password from a TTY or
-`--password-file`. Commands resolve credentials from:
+```sh
+proc-man daemon install --now
+proc-man daemon status
+proc-man daemon restart
+proc-man daemon stop
+proc-man daemon start
+proc-man daemon uninstall
+```
 
-1. `PROC_MAN_PASSWORD`.
-2. `--password-file`.
-3. an interactive prompt when permitted.
+## JSON output
 
-Passwords and session tokens never appear in JSON output.
-
-## Machine output
-
-Success:
+Success uses this envelope:
 
 ```json
 {
@@ -313,91 +202,16 @@ Success:
 }
 ```
 
-Error:
+API errors include a stable code and message.
 
-```json
-{
-  "ok": false,
-  "error": {
-    "code": "cwd_unavailable",
-    "message": "the process working directory is not available",
-    "details": {
-      "process_id": "proc_01..."
-    }
-  }
-}
-```
-
-Stable exit codes:
+## Exit codes
 
 | Code | Meaning |
 | --- | --- |
 | `0` | Success |
-| `2` | Invalid invocation or validation failure |
-| `3` | Resource not found or ambiguous selector |
+| `2` | Invalid command or request |
+| `3` | Resource not found |
 | `4` | Lifecycle conflict |
-| `5` | Authentication failure |
-| `6` | Daemon unavailable |
-| `7` | Attempted operation failed |
-
-## First-run path
-
-The root help includes this automation-safe path:
-
-```sh
-set -u
-
-proc-man daemon install --now || exit $?
-registration_json="$(proc-man register --json)" || exit $?
-
-process_selector="$(
-  printf '%s\n' "$registration_json" |
-    jq -r '(.data.processes | sort_by(.selector) | .[0].selector) // empty'
-)"
-
-proc-man process list
-
-if [ -n "$process_selector" ]
-then
-  process_kind="$(
-    printf '%s\n' "$registration_json" |
-      jq -r --arg selector "$process_selector" \
-        '.data.processes[] | select(.selector == $selector) | .kind'
-  )"
-  if [ "$process_kind" = "service" ]
-  then
-    proc-man process start "$process_selector" || :
-  else
-    proc-man process run "$process_selector" || :
-  fi
-  proc-man process logs "$process_selector" --run latest || :
-fi
-
-endpoint_selector="$(
-  printf '%s\n' "$registration_json" |
-    jq -r '[.data.processes[].endpoints[] |
-      select(.protocol == "http" or .protocol == "https")] |
-      sort_by(.selector) | (.[0].selector // empty)'
-)"
-
-if [ -n "$endpoint_selector" ]
-then
-  proc-man open "$endpoint_selector" || :
-fi
-```
-
-Bootstrap, registration, and selector extraction failures stop the path. Later
-diagnostics remain visible.
-
-## Help requirements
-
-Every command help page includes:
-
-- Purpose and lifecycle effect.
-- Arguments and flags with defaults.
-- One human example and one JSON example.
-- Selector forms.
-- Mutation and prompt behavior.
-- Environment variables.
-- Exit codes and common errors.
-- next commands.
+| `5` | Access failure |
+| `6` | Local service unavailable |
+| `7` | Service error |

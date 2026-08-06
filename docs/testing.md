@@ -1,122 +1,106 @@
-# Testing strategy
+# Testing
 
-## Principles
+## Test structure
 
-Deterministic modules own validation and state decisions. Inject process,
-filesystem, SQLite, clock, authentication, and service-manager boundaries.
-
-Use this test pyramid:
+The repository uses three test levels:
 
 1. Pure domain tests.
-2. Focused integration tests.
-3. limited end-to-end tests.
+2. Go integration tests.
+3. Focused browser and service checks.
 
-Bug fixes start with a failing regression test.
+## Go tests
 
-## Pure tests
+```sh
+go test ./...
+```
 
-### Labels, tags, and inventory
+Go tests cover:
 
-- Label length and Unicode boundaries.
-- Duplicate labels with distinct IDs.
-- Tag trimming, lowercase normalization, validation, and duplicates.
-- Free-form tag creation and existing-tag suggestions.
-- Repeated tag filters with AND semantics.
-- Search across labels, tags, ports, and launch metadata.
-- Tag grouping with repeated process IDs and unique aggregate counts.
-- untagged grouping.
+- Process validation and tag normalization.
+- SQLite process and run storage.
+- Per-connection SQLite lock settings.
+- Manifest parsing and reconciliation.
+- Command execution and output capture.
+- API routes and error mapping.
+- systemd and LaunchAgent file generation.
 
-### Process lifecycle
+## React tests
 
-- Every service state transition.
-- Concurrent Start and Restart coalescing.
-- Stop, exit, launch failure, and interruption.
-- Task invocation overlap and cancellation.
-- Invalid-kind actions.
-- Missing working-directory errors.
-- configuration updates during active runs.
-
-### Manifest and ports
-
-- Malformed, unknown, duplicate, and boundary fields.
-- Process key reconciliation.
-- Manifest removal without changing imperative processes.
-- Zero, one, and multiple ports.
-- Port normalization and overlap warnings.
-- Command arguments, shell strings, and placeholders.
-- dry-run plans matching committed reconciliation.
-
-### Logs and retention
-
-- Stdout and stderr sequencing.
-- Partial and oversized lines.
-- Segment rotation.
-- Size, count, age, and unlimited retention.
-- Literal and RE2 search.
-- Label, tag, kind, state, and time filters.
-- retention gaps.
-
-### API and authentication
-
-- Stable serialization and errors.
-- Password hashing and sessions.
-- CLI JSON and exit mapping.
-- process, tag, run, and port responses.
-
-## Integration tests
-
-Use temporary data directories, real SQLite, and small helper executables.
-
-Required cases:
-
-- Migrations and daemon lock.
-- Imperative registration and deregistration.
-- Idempotent manifest reconciliation.
-- Argv and shell execution.
-- Service Start, Stop, Restart, and process-group termination.
-- Overlapping task runs and cancellation.
-- Declared-port persistence without socket acquisition.
-- Active-run snapshots during updates.
-- Restart recovery without relaunch.
-- Log follow and retention gaps.
-- Missing working-directory errors.
-- systemd and LaunchAgent adapters.
-
-Linux and macOS run platform process suites. The Go race detector covers the
-supervisor, log fan-out, and event broadcaster.
-
-## Frontend tests
+```sh
+npm run test:web
+```
 
 React tests cover:
 
-- One process inventory as the primary screen.
-- Label search and tag filters.
-- Tag grouping and repeated process identity.
-- List-to-detail navigation and browser history.
-- Process configuration, ports, environment summary, and run history.
-- Service and task actions.
-- Declared endpoints.
-- Full logs, stream filters, search, follow, and downloads.
-- Manifest-owned messages.
-- Empty, loading, error, and daemon-unavailable states.
-- keyboard, focus, and responsive behavior.
+- Header brand separation.
+- Active Processes navigation.
+- Inventory loading.
+- List-to-detail navigation.
+- Direct process detail routes.
+- Run log display.
 
-## End-to-end tests
+## Production build
 
-1. Register a service, filter it by tag, start it, inspect logs, and stop it.
-2. Register a task, run it, cancel another run, and inspect history.
-3. Group processes by tag and verify repeated rows use one process ID.
-4. Open one process, select a retained run, filter its streams, and search logs.
-5. Return to the inventory and verify that its filters remain.
-6. Search and download logs from a completed run.
-7. Apply and remove a manifest source.
+```sh
+npm run build
+```
 
-## Acceptance gates
+The build type-checks React, creates production files, embeds them, and builds the Go binary.
 
-- Go unit, integration, race, and static checks pass.
-- Frontend tests, typecheck, and build pass.
-- OpenAPI and manifest examples validate.
-- Linux and macOS service tests pass.
-- The release binary serves the SPA.
-- CLI help includes examples, JSON, environment variables, errors, and next
-  actions.
+## Service smoke test
+
+```sh
+npm run test:smoke
+```
+
+The smoke test:
+
+1. Starts the built service with temporary data.
+2. Registers a task and service.
+3. Runs the task.
+4. Starts the service immediately after the task.
+5. Reads the task logs.
+6. Checks the application and detail routes.
+7. Stops the service.
+
+This check requires `curl` and `jq`.
+
+## Browser check
+
+```sh
+npm run test:browser
+```
+
+The browser check loads the production React build with test API data.
+It uses a temporary Chrome profile.
+
+The check verifies:
+
+- The brand sits in the header.
+- The navigation contains one Processes route.
+- The Processes route has an active state.
+- A process opens its detail route.
+- Full logs load.
+- Declared ports load.
+- Mobile layout has no page overflow.
+- The Processes route returns to inventory.
+
+The shell smoke test verifies the embedded HTTP delivery separately.
+
+## Prototype checks
+
+The original static prototype remains as a design reference.
+
+```sh
+npm run test:prototype
+npm run test:prototype:browser
+```
+
+## Full local validation
+
+```sh
+npm test
+npm run test:smoke
+npm run test:browser
+git diff --check
+```

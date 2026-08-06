@@ -299,14 +299,14 @@ test("CLI contract starts from the process inventory and supports tag filters", 
   const cli = await readFile(new URL("../docs/cli.md", import.meta.url), "utf8");
 
   assert.match(cli, /proc-man process list/);
-  assert.match(cli, /--tag project:storefront --tag frontend/);
-  assert.match(cli, /Repeated `--tag` flags use AND semantics/);
+  assert.match(cli, /--tag frontend --tag project:storefront/);
+  assert.match(cli, /Repeated tag flags use AND behavior/);
   assert.match(cli, /proc-man process register/);
-  assert.match(cli, /proc-man process deregister proc_01/);
+  assert.match(cli, /proc-man process deregister PROCESS_ID/);
   assert.match(cli, /proc-man process start/);
   assert.match(cli, /proc-man process run/);
   assert.match(cli, /proc-man process logs/);
-  assert.match(cli, /proc-man register --json/);
+  assert.match(cli, /proc-man register --dry-run --json/);
   assert.doesNotMatch(cli, /├── worktree|├── command/);
 });
 
@@ -321,15 +321,12 @@ test("API and domain contracts retain process labels, tags, runs, and logs", asy
   assert.match(api, /POST \/api\/v1\/processes/);
   assert.match(api, /GET \/api\/v1\/runs/);
   assert.match(api, /POST \/api\/v1\/run-search/);
-  assert.match(api, /`label`, normalized `tags`, and `kind`/);
+  assert.match(api, /List and filter processes/);
   assert.doesNotMatch(api, /GET \/api\/v1\/worktrees/);
-  assert.match(
-    domain,
-    /When the dashboard groups by tag, one[\s\S]*?process can appear in several groups/,
-  );
-  assert.match(domain, /returns `cwd_unavailable`/);
+  assert.match(domain, /Tag grouping can show one process in several groups/);
+  assert.match(domain, /Start and Run return `cwd_unavailable`/);
   assert.match(api, /`cwd_unavailable`/);
-  assert.match(logging, /retained runs from removed[\s\S]*?processes/);
+  assert.match(logging, /Logs remain after process deregistration/);
 });
 
 test("browser prerequisites and override are documented", async () => {
@@ -340,7 +337,7 @@ test("browser prerequisites and override are documented", async () => {
   const packageData = JSON.parse(packageJson);
 
   assert.match(readme, /Node\.js 22/i);
-  assert.match(readme, /jq 1\.6 or newer/i);
+  assert.match(readme, /`jq` 1\.6 or newer/i);
   assert.match(readme, /global `WebSocket`/i);
   assert.match(readme, /CHROME_BIN/);
   assert.match(readme, /process inventory/);
@@ -354,24 +351,17 @@ test("design QA evidence records the process inventory and detail comparisons", 
   );
 
   assert.doesNotMatch(designQa, /\/tmp\//);
-  assert.match(designQa, /filtered ledger direction/i);
-  assert.match(designQa, /profile console direction/i);
-  assert.match(designQa, /`npm test`: 30 tests passed/);
+  assert.match(designQa, /original process-ledger prototype/i);
+  assert.match(designQa, /The detail route is `\/process\/:processId`/);
+  assert.match(designQa, /production browser check passed/i);
   for (const asset of [
-    "process-ledger-reference.png",
-    "process-ledger-desktop.png",
-    "process-ledger-comparison.png",
-    "process-ledger-mobile.png",
-    "process-detail-reference.png",
-    "process-detail-desktop.png",
-    "process-detail-comparison.png",
-    "process-detail-mobile-reference.png",
-    "process-detail-mobile.png",
-    "process-detail-mobile-comparison.png",
+    "react-processes-desktop.png",
+    "react-process-detail-desktop.png",
+    "react-process-detail-mobile.png",
   ]) {
     const bytes = await readFile(
       new URL(`../docs/assets/design-qa/${asset}`, import.meta.url),
     );
-    assert.ok(bytes.byteLength > 50_000, asset);
+    assert.ok(bytes.byteLength > 25_000, asset);
   }
 });

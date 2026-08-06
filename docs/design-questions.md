@@ -1,24 +1,14 @@
-# Design interview record
+# Design decisions
 
 | Question | Decision |
 | --- | --- |
-| What does Proc Man manage? | Registered local processes. |
-| What appears on the primary screen? | One process inventory. |
-| What identifies a process for people? | A required label and tags. |
-| Must labels be unique? | No. Actions use opaque process IDs. |
-| How do users organize processes? | Search, tag filters, and tag grouping. |
-| Are tags constrained? | No. V1 accepts normalized free-form tags and suggests existing values. |
-| What process kinds exist? | Long-running services and one-shot tasks. |
-| Do both kinds have logs? | Yes. Every run captures stdout and stderr. |
-| Can task runs overlap? | Yes. Each invocation has its own run. |
-| Can a service have several active runs? | No. A service has at most one active run. |
-| Who owns a declared port? | The child process owns its socket. |
-| Does Proc Man allocate ports? | No. It stores explicit port metadata. |
-| Are repositories or worktrees resources? | No. They are automation contexts and optional tags. |
-| How does a worktree register? | Its hook applies a normal process manifest. |
-| How does a worktree deregister? | Its removal hook deregisters the manifest source. |
-| What happens when a working directory disappears? | The process stays visible and execution returns `cwd_unavailable`. |
-| Where are logs stored? | Segmented files with metadata in SQLite. |
-| How is administration exposed? | One versioned API, CLI, and embedded SPA. |
-
-No blocking design questions remain for V1.
+| What is the primary resource? | A registered process. |
+| How do users organize processes? | Labels, tags, search, filters, and tag groups. |
+| Where does the product brand appear? | In the application header. |
+| What appears in the navigation rail? | One functional Processes route. |
+| Does a worktree create a product resource? | No. A worktree can apply a normal process manifest. |
+| How are ports represented? | As declared process metadata. |
+| What controls process lifecycle? | Explicit application, CLI, or API actions. |
+| Where do users read logs? | On the process detail page or through the CLI and API. |
+| How does the UI open details? | React Router uses `/process/:processId`. |
+| Where does the service run? | On a loopback address for local development. |

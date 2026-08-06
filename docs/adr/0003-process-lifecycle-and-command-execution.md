@@ -31,7 +31,7 @@ more complex.
 
 - One inventory contains all executable development operations.
 - Labels and tags work the same for services and tasks.
-- Every run uses the same log and retention model.
+- Every run uses the same log model.
 - Kind-specific invalid actions return `invalid_kind`.
 
 ## Alternatives

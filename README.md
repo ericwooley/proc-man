@@ -1,63 +1,124 @@
-# Proc Man
+# proc-man
 
-Proc Man is a local process manager for development commands. Each registered
-process has a human label, tags, a launch definition, runs, and retained logs.
-A process can also declare the ports that its child expects to use.
+proc-man is a local process manager for development commands.
 
-The dashboard and CLI provide one inventory for these tasks:
+Each process has a label, tags, a command, a working directory, declared ports, runs, and logs.
 
-- Find processes by label, tag, state, or declared port.
-- Group processes by tag.
-- Start, stop, and restart long-running services.
-- Run and cancel one-shot tasks.
-- Open declared HTTP endpoints.
-- Inspect current and historical logs.
-- Register and deregister processes from scripts or manifests.
+The Go service supervises processes and serves the React application.
+The CLI and application use the same local API.
+The React application provides the process inventory and process detail routes.
 
-Git worktrees are an important automation use case, but they are not a product
-entity. A worktree creation hook can apply its process manifest. Its removal
-hook can deregister the processes from that manifest source.
+## Features
 
-This repository contains the product and architecture specification plus a
-static UI prototype. Application implementation is outside this phase.
+- Register services and one-shot tasks.
+- Filter and group processes with tags.
+- Start, stop, and restart services.
+- Run and cancel tasks.
+- Record declared ports as process metadata.
+- Read current and retained run logs.
+- Apply and remove process manifests.
+- Install the Go binary as a user service.
 
-## UI prototype
+Git worktrees can register normal process manifests.
+proc-man does not create a worktree resource or worktree page.
 
-The static prototype lives in [`prototype/`](prototype/). It demonstrates the
-process inventory, tag filters, tag grouping, lifecycle actions, declared-port
-links, process details, run history, full logs, and populated, loading, empty,
-and error states.
+## Requirements
 
-Run the prototype:
+- Go 1.24 or newer.
+- Node.js 22 or newer.
+- npm.
+- `jq` 1.6 or newer for the shell smoke test.
+- Google Chrome for the browser check.
+
+The browser check uses Node.js global `WebSocket`.
+Set `CHROME_BIN` when Google Chrome uses another path.
+
+## Build
 
 ```sh
-npm run serve
+npm install --prefix web
+npm run build
 ```
 
-Then open <http://127.0.0.1:4174/>.
+The build creates `bin/proc-man`.
+The Go binary embeds the React production files.
 
-Use these checks:
+## Run locally
+
+```sh
+./bin/proc-man serve
+```
+
+Open <http://127.0.0.1:13337/>.
+
+The service accepts loopback hosts only.
+proc-man targets local development and has no deployment workflow.
+
+## Register a process
+
+Register a service:
+
+```sh
+./bin/proc-man process register \
+  --label "Storefront web" \
+  --kind service \
+  --tag frontend \
+  --tag project:storefront \
+  --port http=http://127.0.0.1:4310/ \
+  --cwd "$PWD" \
+  -- npm run dev -- --port 4310
+```
+
+Register a task:
+
+```sh
+./bin/proc-man process register \
+  --label "Storefront tests" \
+  --kind task \
+  --tag test \
+  --cwd "$PWD" \
+  -- npm test
+```
+
+Use the returned process ID for later commands.
+
+```sh
+./bin/proc-man process list
+./bin/proc-man process start PROCESS_ID
+./bin/proc-man process logs PROCESS_ID
+./bin/proc-man process stop PROCESS_ID
+./bin/proc-man process deregister PROCESS_ID
+```
+
+## Install the user service
+
+Place `bin/proc-man` in a stable executable path.
+
+```sh
+./bin/proc-man daemon install --now
+```
+
+Linux uses a systemd user service.
+macOS uses a per-user LaunchAgent.
+
+## Test
 
 ```sh
 npm test
+npm run test:smoke
 npm run test:browser
 ```
-
-The tests require Node.js 22 or newer and jq 1.6 or newer. The browser test
-requires Node's global `WebSocket` and Google Chrome. Set `CHROME_BIN` when
-Chrome is installed outside `/usr/bin/google-chrome`.
 
 ## Documentation
 
 - [Product requirements](docs/product-requirements.md)
 - [Architecture](docs/architecture.md)
-- [Domain model and lifecycle](docs/domain-model.md)
-- [Domain glossary](docs/glossary.md)
-- [Process manifest](docs/manifest.md)
-- [CLI contract](docs/cli.md)
-- [Administration API](docs/api.md)
-- [Logging and retention](docs/logging.md)
-- [Operations and installation](docs/operations.md)
-- [Testing strategy](docs/testing.md)
-- [Design interview](docs/design-questions.md)
-- [Architecture decision records](docs/adr/README.md)
+- [Domain model](docs/domain-model.md)
+- [Manifest](docs/manifest.md)
+- [CLI](docs/cli.md)
+- [API](docs/api.md)
+- [Logs](docs/logging.md)
+- [Operations](docs/operations.md)
+- [Testing](docs/testing.md)
+- [Architecture decisions](docs/adr/README.md)
+- [Design QA](design-qa.md)

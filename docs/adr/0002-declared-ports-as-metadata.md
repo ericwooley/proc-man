@@ -6,8 +6,8 @@
 
 ## Context
 
-Development processes often use custom ports. Users need to find those values
-later. The child process already owns its listeners.
+Development processes often use custom ports.
+Users need to find those values later.
 
 ## Decision
 
@@ -16,18 +16,15 @@ later. The child process already owns its listeners.
 - Store host, protocol, and optional HTTP path.
 - Use declarations for inventory, links, launch values, and run snapshots.
 - Keep lifecycle independent of endpoint reachability.
-- Permit overlapping declarations with a deterministic warning.
-- Keep the child and operating system authoritative for sockets.
+- Permit overlapping declarations.
 
 ## Consequences
 
-- Proc Man has no traffic path or socket lifecycle.
-- Registration does not depend on current socket state.
 - One process can show several endpoints.
 - Logs and process state remain the diagnostic sources.
+- The child command binds its required sockets.
 
 ## Alternatives
 
-Port reservation prevents the child from binding the same address. Automatic
-allocation creates ownership and race concerns. Process inspection cannot show
-intended ports for stopped processes.
+Port allocation adds configuration that proc-man does not need.
+Explicit declarations remain visible for stopped processes.

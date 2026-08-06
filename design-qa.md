@@ -1,77 +1,69 @@
 # Design QA
 
-## Visual targets
+## Current implementation
 
-The process inventory uses the selected filtered ledger direction.
+The React application uses the original process-ledger prototype as its visual base.
 
-- [Process ledger reference](docs/assets/design-qa/process-ledger-reference.png)
-- [Process ledger implementation](docs/assets/design-qa/process-ledger-desktop.png)
-- [Process ledger comparison](docs/assets/design-qa/process-ledger-comparison.png)
-- [Process ledger mobile implementation](docs/assets/design-qa/process-ledger-mobile.png)
+Current captures:
 
-The process detail page uses the selected profile console direction.
+- [Process inventory](docs/assets/design-qa/react-processes-desktop.png)
+- [Process detail](docs/assets/design-qa/react-process-detail-desktop.png)
+- [Mobile process detail](docs/assets/design-qa/react-process-detail-mobile.png)
 
-- [Process detail reference](docs/assets/design-qa/process-detail-reference.png)
-- [Process detail implementation](docs/assets/design-qa/process-detail-desktop.png)
-- [Process detail comparison](docs/assets/design-qa/process-detail-comparison.png)
-- [Process detail mobile reference](docs/assets/design-qa/process-detail-mobile-reference.png)
-- [Process detail mobile implementation](docs/assets/design-qa/process-detail-mobile.png)
-- [Process detail mobile comparison](docs/assets/design-qa/process-detail-mobile-comparison.png)
+The desktop captures use a 1440 by 1000 pixel viewport.
+The mobile capture uses a 390 by 844 pixel viewport.
 
-The desktop comparisons use a 1440 by 1000 pixel viewport for each side.
-The mobile comparison uses a 390 by 844 pixel viewport for each side.
+## Navigation decision
 
-## Process detail state
+The product logo sits in the header with the `proc-man` wordmark.
 
-The comparison opens Storefront web in the light theme.
-It selects the current run with 52 log lines and three retained runs.
-The page shows process identity, tags, ports, command, directory, environment, run history, and full logs.
+The dark rail contains one Processes navigation item.
+That item routes to `/` and shows an active state on the inventory.
 
-## Fidelity review
+The logo and navigation use different containers and different roles.
+The logo does not appear as a selected navigation item.
 
-The implementation uses the existing Manrope typeface, shell, color tokens, status pills, and Phosphor icons.
-The implementation matches the target card structure, log console, action order, border radius, and control density.
-The desktop comparison preserves both full-size captures, so labels and log controls remain readable.
-The mobile comparison checks the same populated state without horizontal page overflow.
+## Process inventory
 
-The reference shows the first records while its Follow control is active.
-The implementation shows the newest records so that the Follow control reports its actual state.
-The target clips some port actions and run tabs at the mobile width.
-The implementation keeps these controls inside the viewport as an intentional responsive improvement.
-The implementation uses slightly more vertical space for the mobile environment card.
-This low-impact density difference does not hide content or block actions.
+The inventory shows:
 
-## Interaction coverage
+- Search.
+- Kind filters.
+- Tag filters.
+- Tag grouping.
+- Process state.
+- Declared ports.
+- Service and task actions.
+- Process registration.
+- Process deregistration.
 
-- Open a process from its label or row.
-- Open a process directly from its hash route.
-- Return to the same inventory filters.
-- Start, stop, and restart a service.
-- Run and cancel a task.
-- Open or copy a declared endpoint.
-- Expand environment values.
-- Select a retained run.
-- Filter logs by stdout or stderr.
-- Search all logs in the selected run.
-- Toggle log following.
-- Download the selected run logs.
-- Focus and restore the full log panel.
-- Use the detail page at desktop and mobile widths.
+## Process detail
 
-## QA iterations
+The detail route is `/process/:processId`.
 
-1. The first detail capture showed the inventory header below the detail page.
-2. A hidden-state rule now removes that header from the detail route.
-3. The second capture aligned the status, card grid, run tabs, and log controls.
-4. The mobile pass changed the overview grid to one column and contained every control.
-5. The final comparison found no blocking visual or interaction defect.
+The page shows:
+
+- Identity, kind, state, and tags.
+- Declared ports.
+- Launch command and working directory.
+- Environment values.
+- Run history.
+- Full retained logs.
+- Stream and text filters.
+- Follow, download, and log focus controls.
+
+## Responsive check
+
+The mobile layout moves Processes navigation to a fixed bottom bar.
+Cards use one column.
+Controls remain inside the page width.
 
 ## Verification
 
-- `npm test`: 30 tests passed.
-- `npm run test:browser`: Process inventory browser checks passed.
-- `npm run build`: Built the Proc Man HTML prototype.
-- Static checks cover the detail structure, actions, routes, and QA assets.
-- Browser checks cover the list-to-detail journey, full logs, run history, filters, actions, and mobile layout.
+- Three React tests passed.
+- The production frontend build passed.
+- The production browser check passed.
+- The browser check found no horizontal page overflow.
+- The shell smoke test verified embedded application routes.
 
 Final result: passed.

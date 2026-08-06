@@ -1,125 +1,127 @@
 # Architecture
 
-## Overview
+## System shape
 
-Proc Man is one Go binary with three roles:
+proc-man ships as one Go binary.
 
-1. The daemon supervises processes, persists definitions, captures logs, and
-   serves the control plane.
-2. The CLI uses the control-plane API.
-3. The embedded React/Vite SPA uses the same API.
+The binary has three parts:
 
-The daemon is the only authority for process and run state.
+1. The service supervises child process groups.
+2. The CLI calls the local HTTP API.
+3. The embedded React application calls the same API.
 
 ```text
-                         administration port
-                  CLI ─────────┐
-                               ▼
- Browser ───────────────▶ API and SPA
-                               │
-                         Process daemon
-                          │          │
-                   SQLite state   log segments
-                          │
-                    child process ─── declared ports
+CLI ───────────────┐
+                   ▼
+Browser ───────▶ Local API ───────▶ Process supervisor
+                   │                       │
+                   ▼                       ▼
+                 SQLite               NDJSON logs
 ```
 
-The process inventory is flat. Labels and tags provide human organization.
-Manifest source data provides reconciliation ownership only.
+The service owns process and run state.
+The CLI and React application do not access SQLite directly.
 
-## Control plane
+## Local control plane
 
-The administration server binds `127.0.0.1:13337` by default. It exposes:
+The service binds `127.0.0.1:13337` by default.
+It rejects non-loopback host values.
 
-- The embedded SPA.
-- JSON endpoints under `/api/v1`.
-- An OpenAPI document.
-- Server-Sent Events for process, run, and log updates.
-- health and readiness endpoints.
+The server exposes:
 
-The CLI and SPA never edit SQLite or signal process groups directly. A
-single-instance lock prevents two daemons from using one data directory.
+- The embedded React application.
+- JSON routes under `/api/v1`.
+- Process and run events through Server-Sent Events.
+- Run log events through Server-Sent Events.
+- Health and readiness routes.
 
-Password-free loopback access is the default. An optional password protects the
-control plane. Non-loopback access without authentication shows a persistent
-warning.
+A data-directory lock prevents two services from sharing one database.
 
-## Registration
+## Process registry
 
-Imperative registration creates one process. Manifest registration validates a
-complete file and reconciles its process entries in one transaction.
+The process registry is flat.
+Each process has an opaque ID, a human label, and zero or more tags.
 
-Each process receives an opaque stable ID. Labels can repeat. Tags are
-normalized metadata. A manifest entry uses its canonical manifest path and
-stable key for reconciliation.
+Labels can repeat.
+Tags provide filtering and grouping.
 
-Source roots, Git repositories, and worktrees are not API parents. Automation
-can add source-related tags when those values help discovery.
+Manifest source data records configuration provenance.
+Source paths do not create application navigation or API parents.
 
 ## Process execution
 
-A process has kind `service` or `task`. Both kinds use argv or an explicit
-shell string. The login shell initializes the toolchain environment.
+A process has kind `service` or `task`.
 
-Argv definitions use `exec "$@"` to preserve argument boundaries. Shell strings
-use the login shell parser.
+Services support Start, Stop, and Restart.
+One service can have one active run.
 
-Before launch, the daemon sets the working directory and expands:
+Tasks support Run and Cancel.
+Separate task runs can overlap.
 
-- `{definition_id}` and `PROC_MAN_DEFINITION_ID`.
-- `{run_id}` and `PROC_MAN_RUN_ID`.
-- `{manifest_dir}` and `PROC_MAN_MANIFEST_DIR` for manifest-owned processes.
-- named port values such as `{port.http}` and `PROC_MAN_PORT_HTTP`.
+Each run starts in its own Unix process group.
+Stop and Cancel send SIGTERM first.
+The supervisor sends SIGKILL after the configured stop limit.
 
-Each run receives its own process group. Stop or Cancel sends SIGTERM, waits ten
-seconds by default, and sends SIGKILL when required. An intentional daemon
-shutdown terminates all managed process groups.
+Argv commands preserve argument boundaries.
+Shell commands use the configured login shell.
 
-Service state follows the active process group. Task invocations use the same
-execution and log boundary. Declared ports do not gate lifecycle transitions.
+The supervisor adds these environment values:
+
+- `PROC_MAN_PROCESS_ID`
+- `PROC_MAN_RUN_ID`
+- `PROC_MAN_PORT_<NAME>`
+- `PROC_MAN_HOST_<NAME>`
+
+Commands can use `{process_id}`, `{definition_id}`, `{run_id}`, and `{port.<name>}` placeholders.
+
+## Declared ports
+
+Declared ports are process metadata.
+Each port contains a name, host, number, protocol, and optional path.
+
+The application displays HTTP links and copyable TCP addresses.
+The supervisor also adds declared values to the run environment.
+
+Lifecycle state comes from the managed child process.
+Declared endpoint reachability does not change lifecycle state.
 
 ## Persistence
 
 SQLite stores:
 
-- Settings and schema migrations.
-- Process definitions, labels, tags, and source ownership.
-- Commands, working directories, and environment overrides.
+- Process definitions and tags.
+- Commands, directories, and environment overrides.
 - Declared ports.
-- Service state and run history.
-- Process identity and terminal results.
-- Log segment metadata.
-- authentication data.
+- Process state.
+- Run snapshots and terminal results.
 
-SQLite uses WAL, foreign keys, a busy timeout, and embedded migrations.
-Append-only NDJSON segments store process output outside SQLite.
+SQLite uses WAL, foreign keys, and a per-connection busy timeout.
+
+Each run writes one append-only NDJSON file.
+The file contains ordered stdout and stderr records.
 
 ## Recovery
 
-On startup the daemon:
+Service startup follows this sequence:
 
-1. Acquire the single-instance lock.
-2. Open SQLite and apply migrations.
-3. Mark unfinished runs as interrupted.
-4. Validate recorded process identities.
-5. Load process definitions and declared-port metadata.
-6. Serve the API and SPA.
-7. starts log retention.
+1. Create the data directory.
+2. Acquire the data-directory lock.
+3. Open and configure SQLite.
+4. Mark unfinished runs as interrupted.
+5. Reset active process states to stopped.
+6. Start the API and application server.
 
-Recovery does not restart services. The dashboard can use restored labels and
-tags immediately.
+Recovery does not start old services.
 
-## Technology boundaries
+## Frontend
 
-- Go 1.24 for the daemon and CLI.
-- Standard `net/http` for the control plane.
-- Cobra for CLI commands.
-- A pure-Go SQLite driver.
-- React, TypeScript, and Vite for the SPA.
-- OpenAPI for the HTTP contract.
-- Embedded frontend assets and SQL migrations.
+The frontend uses React, TypeScript, Vite, and React Router.
 
-State transitions, validation, reconciliation, tag filtering, retention,
-command expansion, and presentation mapping remain deterministic. Process,
-filesystem, SQLite, clock, and service-manager work stays behind injected
-boundaries.
+The inventory route is `/`.
+The process detail route is `/process/:processId`.
+
+The header owns the product brand.
+The navigation rail contains only the Processes route.
+
+The production build lives in `internal/web/dist`.
+Go embeds this directory into the binary.

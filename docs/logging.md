@@ -1,93 +1,76 @@
-# Logging and retention
+# Logs
 
-## Goals
+## Capture
 
-Every service run and task run has inspectable output during execution and
-after completion.
+proc-man captures stdout and stderr for every run.
 
-Proc Man captures stdout and stderr, assigns a run-local sequence, and adds a
-receive timestamp. Separate pipes cannot provide a stronger total order.
+The supervisor assigns one sequence number and receive time to each record.
+Separate child pipes can report records in either arrival order.
 
 ## Record format
 
 ```json
-{"seq":42,"time":"2026-07-24T22:15:03.123Z","stream":"stderr","text":"address already in use\n","partial":false}
+{"seq":1,"time":"2026-08-06T17:00:00.500Z","stream":"stdout","text":"ready","partial":false}
 ```
 
 Fields:
 
 - `seq` increases within one run.
-- `time` is the UTC daemon receive time.
+- `time` is the UTC receive time.
 - `stream` is `stdout` or `stderr`.
-- `text` contains UTF-8 output.
-- `partial` marks a bounded fragment of a large line.
+- `text` contains one output line.
+- `partial` marks output without a final newline.
 
-## Files and metadata
+## Storage
 
-Each run owns numbered append-only NDJSON segments. SQLite stores segment
-sequence ranges, byte counts, and truncation state.
+Each run owns one append-only NDJSON file.
 
-The writer:
+```text
+DATA_DIR/
+└── logs/
+    └── RUN_ID/
+        └── 000001.ndjson
+```
 
-1. Always drain child pipes.
-2. Write retained records.
-3. Send records to bounded subscriber buffers.
-4. Report gaps to slow subscribers.
+The file uses user-only permissions.
+SQLite stores the run record and log path.
 
-The default retains the newest 50 MiB for one run. Deleted segments update the
-retained sequence range.
+Logs remain after process deregistration.
+Current V1 storage does not remove old logs automatically.
 
-## Search
+## Read and filter
 
-Search supports:
+The application loads all retained records for the selected run.
+It filters records by stdout, stderr, and text.
 
-- Literal text or Go RE2.
-- Case sensitivity.
-- Stdout, stderr, or both.
-- Process ID or label.
-- Repeated tag filters.
-- Process kind and run state.
-- Time range.
-- Cursor pagination.
+The API also filters records by stream, text, sequence, and limit.
 
-Repeated tags use AND semantics. Search includes retained runs from removed
-processes when requested.
+```sh
+proc-man process logs PROCESS_ID
+proc-man process logs PROCESS_ID --stream stderr
+proc-man process logs PROCESS_ID --query failed
+proc-man run logs RUN_ID
+```
 
-## Streaming
+## Live output
 
-The SPA and CLI follow SSE from a sequence cursor. The server sends retained
-records first and then live records.
+The service publishes new records through Server-Sent Events.
 
-On reconnect, the client supplies its last sequence. The server replays retained
-records or reports `retention_gap`.
+The application refreshes active-run logs while Follow is active.
+The run log event route supports direct consumers.
 
-## Downloads
+## Download
 
-One run can download as:
+Download text:
 
-- Combined text with time and stream prefixes.
-- NDJSON with durable record fields.
+```sh
+proc-man run logs RUN_ID --output run.log
+```
 
-The server streams files from disk and does not load a complete download into
-memory.
+Download NDJSON:
 
-## Retention
+```sh
+proc-man run logs RUN_ID --format ndjson --output run.ndjson
+```
 
-Defaults:
-
-- 50 MiB for one run.
-- 20 runs for one process.
-- No age limit.
-
-A process can override each limit or select unlimited retention. Retention runs
-during rotation, terminal transitions, definition updates, periodic age scans,
-and startup recovery.
-
-Removed process history remains until retention deletes it. Explicit
-deregistration can request log purge.
-
-## Daemon logs
-
-Daemon logs contain request IDs, process IDs, run IDs, lifecycle transitions,
-and exits. They exclude passwords, tokens, full inherited environments, and
-secret manifest values.
+The application exposes the same download action on the process detail page.

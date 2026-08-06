@@ -101,7 +101,7 @@ function AppShell({
     <div className="app-shell">
       <header className="brand-header">
         <Link className="brand" to="/" aria-label="proc-man home">
-          <img src="/assets/proc-man.svg" alt="" />
+          <BrandMark />
           <span>proc-man</span>
         </Link>
         <span className="local-badge">local</span>
@@ -576,7 +576,7 @@ function ProcessDetailPage() {
   }, [load]);
 
   useEffect(() => {
-    if (process) heading.current?.focus();
+    if (process) heading.current?.focus({ preventScroll: true });
   }, [process]);
 
   useEffect(() => {
@@ -894,6 +894,20 @@ function InfoCard({ title, icon, children }: PropsWithChildren<{ title: string; 
 function StatusPill({ state }: { state: string }) {
   const normalized = state === "exited" ? "succeeded" : state;
   return <span className={`status-pill ${normalized}`}><i />{normalized}</span>;
+}
+
+function BrandMark() {
+  return (
+    <svg className="brand-mark" viewBox="0 0 100 100" aria-hidden="true">
+      <rect x="25" y="22" width="14" height="14" rx="5" />
+      <rect x="45" y="22" width="14" height="14" rx="5" />
+      <rect x="25" y="43" width="14" height="14" rx="5" />
+      <rect x="45" y="43" width="14" height="14" rx="5" />
+      <rect x="65" y="43" width="14" height="14" rx="5" />
+      <rect x="25" y="64" width="14" height="14" rx="5" />
+      <rect x="45" y="64" width="14" height="14" rx="5" opacity=".35" />
+    </svg>
+  );
 }
 
 function ErrorBanner({ message, onRetry }: { message: string; onRetry: () => void }) {

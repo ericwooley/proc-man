@@ -6,23 +6,24 @@
 
 ## Context
 
-Proc Man needs consistent process administration through a CLI, browser, and
-automation. Direct database or process-group access would split authority.
+The CLI and React application need the same process lifecycle rules.
+Direct database access would create separate authorities.
 
 ## Decision
 
-- Provide one JSON API under `/api/v1`.
-- Publish OpenAPI and stable CLI JSON.
-- Make the CLI and SPA API clients.
-- Bind `127.0.0.1:13337` by default.
-- Support an optional Argon2id password.
-- Use HttpOnly SameSite sessions for the SPA.
-- Warn on non-loopback access without authentication.
-- Use SSE for process, run, and log updates.
-- Keep TLS outside V1.
+- Serve one JSON API under `/api/v1`.
+- Bind the administration server to loopback hosts only.
+- Make the CLI and React application API clients.
+- Use opaque process, endpoint, and run IDs.
+- Publish lifecycle events through Server-Sent Events.
+- Publish live run records through a separate event route.
+- Expose health, readiness, settings, and OpenAPI routes.
 
 ## Consequences
 
-- All clients use the same lifecycle behavior.
-- Automation receives a documented contract.
-- Optional remote access requires a trusted network or external secure tunnel.
+- The CLI and application share state and errors.
+- Automation can use stable JSON without reading SQLite.
+- React Router routes can refresh through the embedded SPA fallback.
+- Local clients require no credential configuration.
+
+V1 remains local development only.
