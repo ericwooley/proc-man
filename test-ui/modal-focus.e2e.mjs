@@ -223,6 +223,59 @@ try {
     ).hidden`,
     "Inline logs did not open.",
   );
+  assert.match(
+    await evaluate(
+      `document.querySelector(
+        '[data-process-id="proc_storefront_web"] .log-panel'
+      ).textContent`,
+    ),
+    /Storefront web compiled client bundle/,
+  );
+  assert.ok(
+    await evaluate(
+      `document.querySelectorAll(
+        '[data-process-id="proc_storefront_web"] [data-run-select] option'
+      ).length`,
+    ) >= 2,
+    "Storefront web should expose retained runs.",
+  );
+  await evaluate(`(() => {
+    const select = document.querySelector(
+      '[data-process-id="proc_storefront_web"] [data-run-select]'
+    );
+    select.value = "run_storefront_web_previous";
+    select.dispatchEvent(new Event("change", { bubbles: true }));
+  })()`);
+  await waitFor(
+    `document.querySelector(
+      '[data-process-id="proc_storefront_web"] .log-panel'
+    ).textContent.includes("Previous Storefront web run stopped cleanly")`,
+    "The retained run logs did not appear.",
+  );
+  await evaluate(
+    `document.querySelector('[data-toggle-logs="proc_platform_api"]').click()`,
+  );
+  await waitFor(
+    `!document.querySelector(
+      '[data-process-id="proc_platform_api"] .log-panel'
+    ).hidden`,
+    "Platform API logs did not open.",
+  );
+  const platformLogs = await evaluate(
+    `document.querySelector(
+      '[data-process-id="proc_platform_api"] .log-panel'
+    ).textContent`,
+  );
+  assert.match(platformLogs, /Platform API listening on/);
+  assert.doesNotMatch(platformLogs, /Storefront web compiled client bundle/);
+
+  await evaluate(`(() => {
+    const select = document.querySelector(
+      '[data-process-id="proc_storefront_web"] [data-run-select]'
+    );
+    select.value = "run_storefront_web_current";
+    select.dispatchEvent(new Event("change", { bubbles: true }));
+  })()`);
   await evaluate(`(() => {
     const input = document.querySelector(
       '[data-process-id="proc_storefront_web"] [data-log-search]'

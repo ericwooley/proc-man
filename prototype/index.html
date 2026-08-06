@@ -100,15 +100,16 @@
     place-items: center;
     padding: 22px;
   }
-  button, input { font: inherit; color: inherit; }
+  button, input, select { font: inherit; color: inherit; }
   button { cursor: pointer; }
   button[disabled] { cursor: not-allowed; opacity: .46; }
-  button:focus-visible, input:focus-visible, a:focus-visible {
+  button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible {
     outline: 3px solid var(--focus);
     outline-offset: 2px;
   }
   .proto-bar button:focus-visible, .log-panel button:focus-visible,
-  .log-panel input:focus-visible, .rail button:focus-visible {
+  .log-panel input:focus-visible, .log-panel select:focus-visible,
+  .rail button:focus-visible {
     outline-color: var(--focus-inverse);
   }
   .ph { font-size: 16px; line-height: 1; flex: 0 0 auto; }
@@ -582,6 +583,15 @@
     color: #eef0ec;
     font-size: 11.5px;
   }
+  .log-toolbar select {
+    max-width: 190px;
+    border: 1px solid rgba(255, 255, 255, .16);
+    border-radius: 8px;
+    padding: 6px 28px 6px 9px;
+    background: #252825;
+    color: #eef0ec;
+    font-size: 11.5px;
+  }
   .log-toolbar .btn {
     background: rgba(255, 255, 255, .06);
     border-color: rgba(255, 255, 255, .12);
@@ -991,7 +1001,7 @@
       tags: ["project:platform", "backend", "auth"],
       kind: "service",
       state: "failed",
-      error: "The process exited with code 1 before it accepted connections.",
+      error: "The process exited with code 1.",
       ports: [
         { name: "http", host: "127.0.0.1", port: 4313, protocol: "http", path: "/health" }
       ]
@@ -1060,30 +1070,163 @@
     }
   ]
 
-  const LOGS = {
-    running: [
-      { time: "18:41:02.114", stream: "stdout", text: "Compiled client bundle in 812ms" },
-      { time: "18:41:15.902", stream: "stdout", text: "GET /api/cart 200 12ms" }
+  const RUNS_BY_PROCESS = {
+    proc_storefront_web: [
+      {
+        id: "run_storefront_web_current",
+        state: "running",
+        when: "Current run",
+        lines: [
+          { time: "18:41:02.114", stream: "stdout", text: "Storefront web compiled client bundle in 812ms" },
+          { time: "18:41:15.902", stream: "stdout", text: "Storefront web GET /api/cart 200 12ms" }
+        ]
+      },
+      {
+        id: "run_storefront_web_previous",
+        state: "exited",
+        code: 0,
+        when: "Yesterday",
+        lines: [
+          { time: "17:02:11.220", stream: "stdout", text: "Previous Storefront web run stopped cleanly" }
+        ]
+      }
     ],
-    failed: [
-      { time: "18:12:40.001", stream: "stdout", text: "Starting service on the declared HTTP port" },
-      { time: "18:12:40.093", stream: "stderr", text: "Error: address 127.0.0.1:4313 is already in use" },
-      { time: "18:12:40.101", stream: "stdout", text: "Process exited with code 1" }
+    proc_storefront_api: [
+      {
+        id: "run_storefront_api_current",
+        state: "running",
+        when: "Current run",
+        lines: [
+          { time: "18:40:52.902", stream: "stdout", text: "Storefront API started on http://127.0.0.1:4311/" }
+        ]
+      },
+      {
+        id: "run_storefront_api_previous",
+        state: "exited",
+        code: 1,
+        when: "Yesterday",
+        lines: [
+          { time: "16:34:21.440", stream: "stderr", text: "Storefront API exited with code 1" }
+        ]
+      }
     ],
-    stopped: [
-      { time: "17:02:11.220", stream: "stdout", text: "Received SIGTERM and stopped" }
+    proc_storefront_tests: [
+      {
+        id: "run_storefront_tests_latest",
+        state: "exited",
+        code: 0,
+        when: "2m ago",
+        lines: [
+          { time: "18:39:00.010", stream: "stdout", text: "PASS src/cart.test.ts with 24 tests" },
+          { time: "18:39:00.402", stream: "stdout", text: "Storefront test suite exited with code 0" }
+        ]
+      }
     ],
-    starting: [
-      { time: "18:44:50.010", stream: "stdout", text: "Starting process" }
+    proc_storefront_migrate: [
+      {
+        id: "run_storefront_migrate_latest",
+        state: "exited",
+        code: 0,
+        when: "1h ago",
+        lines: [
+          { time: "17:42:18.701", stream: "stdout", text: "Applied 3 Storefront database migrations" }
+        ]
+      }
     ],
-    canceled: [
-      { time: "yesterday", stream: "stdout", text: "Run canceled by user" }
+    proc_auth_service: [
+      {
+        id: "run_auth_service_latest",
+        state: "exited",
+        code: 1,
+        when: "29m ago",
+        lines: [
+          { time: "18:12:40.001", stream: "stdout", text: "Starting Auth service" },
+          { time: "18:12:40.093", stream: "stderr", text: "Error: address 127.0.0.1:4313 is already in use" },
+          { time: "18:12:40.101", stream: "stdout", text: "Auth service exited with code 1" }
+        ]
+      }
     ],
-    succeeded: [
-      { time: "18:39:00.010", stream: "stdout", text: "PASS src/cart.test.ts with 24 tests" },
-      { time: "18:39:00.402", stream: "stdout", text: "Task exited with code 0" }
+    proc_notification_worker: [
+      {
+        id: "run_notification_worker_current",
+        state: "starting",
+        when: "Current run",
+        lines: [
+          { time: "18:44:50.010", stream: "stdout", text: "Notification worker is starting" }
+        ]
+      }
     ],
-    never: []
+    proc_platform_api: [
+      {
+        id: "run_platform_api_current",
+        state: "running",
+        when: "Current run",
+        lines: [
+          { time: "18:43:09.012", stream: "stdout", text: "Platform API listening on http://127.0.0.1:8090/" },
+          { time: "18:43:19.402", stream: "stdout", text: "Platform API GET /v1/processes 200 8ms" }
+        ]
+      },
+      {
+        id: "run_platform_api_previous",
+        state: "exited",
+        code: 0,
+        when: "Monday",
+        lines: [
+          { time: "16:28:11.220", stream: "stdout", text: "Previous Platform API run stopped cleanly" }
+        ]
+      }
+    ],
+    proc_seed_data: [],
+    proc_docs_preview: [
+      {
+        id: "run_docs_preview_latest",
+        state: "exited",
+        code: 0,
+        when: "3h ago",
+        lines: [
+          { time: "15:14:33.512", stream: "stdout", text: "Docs site preview stopped cleanly" }
+        ]
+      }
+    ],
+    proc_ml_training: [
+      {
+        id: "run_ml_training_current",
+        state: "running",
+        when: "18m",
+        lines: [
+          { time: "18:26:17.821", stream: "stdout", text: "ML training job completed epoch 12 of 40" }
+        ]
+      },
+      {
+        id: "run_ml_training_previous",
+        state: "canceled",
+        when: "Tuesday",
+        lines: [
+          { time: "14:02:51.019", stream: "stdout", text: "Previous ML training run was canceled" }
+        ]
+      }
+    ],
+    proc_vector_search: [
+      {
+        id: "run_vector_search_latest",
+        state: "exited",
+        code: 0,
+        when: "4h ago",
+        lines: [
+          { time: "14:40:07.431", stream: "stdout", text: "Vector search API stopped cleanly" }
+        ]
+      }
+    ],
+    proc_local_proxy: [
+      {
+        id: "run_local_fixture_latest",
+        state: "canceled",
+        when: "2d ago",
+        lines: [
+          { time: "Wednesday", stream: "stdout", text: "Local fixture generator run was canceled" }
+        ]
+      }
+    ]
   }
 
   const state = {
@@ -1095,6 +1238,7 @@
     groupByTag: false,
     tags: new Set(),
     openLogs: new Set(),
+    selectedRuns: new Map(),
     logQueries: new Map(),
     collapsedGroups: new Set(),
     pendingDeregister: null,
@@ -1106,6 +1250,7 @@
   const tagRow = document.getElementById("tagRow")
   const toast = document.getElementById("toast")
   let toastTimer
+  let runSequence = 1
 
   function escapeHtml(value) {
     return String(value).replace(
@@ -1123,10 +1268,28 @@
   function processState(process) {
     if (process.kind === "service") return process.state
     if (!process.lastRun) return "never"
-    if (process.lastRun.state === "exited") {
-      return process.lastRun.code === 0 ? "succeeded" : "failed"
-    }
-    return process.lastRun.state
+    return runState(process.lastRun)
+  }
+
+  function runState(run) {
+    if (run.state === "exited") return run.code === 0 ? "succeeded" : "failed"
+    return run.state
+  }
+
+  function processRuns(process) {
+    return RUNS_BY_PROCESS[process.id] || []
+  }
+
+  function selectedRun(process) {
+    const runs = processRuns(process)
+    const selectedId = state.selectedRuns.get(process.id)
+    return runs.find(run => run.id === selectedId) || runs[0] || null
+  }
+
+  function addRun(process, run) {
+    RUNS_BY_PROCESS[process.id] ||= []
+    RUNS_BY_PROCESS[process.id].unshift(run)
+    state.selectedRuns.set(process.id, run.id)
   }
 
   function portUrl(port) {
@@ -1253,21 +1416,32 @@
   }
 
   function logMarkup(process, instanceKey) {
-    const currentState = processState(process)
-    const lines = LOGS[currentState] || LOGS.stopped
-    const query = state.logQueries.get(process.id) || ""
+    const runs = processRuns(process)
+    const run = selectedRun(process)
+    const queryKey = run ? `${process.id}:${run.id}` : process.id
+    const query = state.logQueries.get(queryKey) || ""
+    const lines = run?.lines || []
     const matches = lines.filter(line => `${line.time} ${line.stream} ${line.text}`.toLowerCase().includes(query.toLowerCase()))
-    const live = ["running", "starting"].includes(currentState)
+    const live = run && ["running", "starting"].includes(run.state)
 
     return `
       <div class="log-panel" ${state.openLogs.has(process.id) ? "" : "hidden"}>
         <div class="log-toolbar">
+          <label class="sr-only" for="run-select-${escapeHtml(instanceKey)}">Select a run for ${escapeHtml(process.label)}</label>
+          <select id="run-select-${escapeHtml(instanceKey)}" data-run-select="${process.id}">
+            ${runs.map(item => `
+              <option value="${escapeHtml(item.id)}" ${item.id === run?.id ? "selected" : ""}>
+                ${escapeHtml(item.when)} · ${escapeHtml(runState(item))}
+              </option>
+            `).join("")}
+          </select>
           <i class="ph ph-magnifying-glass" aria-hidden="true"></i>
           <label class="sr-only" for="log-search-${escapeHtml(instanceKey)}">Search logs for ${escapeHtml(process.label)}</label>
           <input id="log-search-${escapeHtml(instanceKey)}" data-log-search="${process.id}" value="${escapeHtml(query)}"
             placeholder="Search this run">
-          <span>${live ? "Following" : "Latest run"}</span>
-          <button class="btn icon-only" data-download-logs="${process.id}" aria-label="Download logs for ${escapeHtml(process.label)}">
+          <span>${live ? "Following" : "Retained run"}</span>
+          <button class="btn icon-only" data-download-logs="${process.id}" data-run-id="${escapeHtml(run?.id || "")}"
+            aria-label="Download selected logs for ${escapeHtml(process.label)}">
             <i class="ph ph-download-simple" aria-hidden="true"></i>
           </button>
         </div>
@@ -1279,7 +1453,7 @@
                   <span class="log-message">${escapeHtml(line.text)}</span>
                 </div>
               `).join("")
-            : `<span class="muted">${lines.length ? "No log lines match this search." : "Run this process to create logs."}</span>`
+            : `<span class="muted">${lines.length ? "No log lines match this search." : "This run has no logs."}</span>`
           }
           ${live && !query ? '<div class="log-line"><span class="log-time">now</span><span class="log-cursor"></span></div>' : ""}
         </div>
@@ -1424,9 +1598,24 @@
 
   function serviceAction(process, action) {
     if (action === "start") {
+      const run = {
+        id: `run_${process.id}_${runSequence++}`,
+        state: "starting",
+        when: "Current run",
+        lines: [
+          { time: "now", stream: "stdout", text: `${process.label} is starting` }
+        ]
+      }
+      addRun(process, run)
       process.state = "starting"
       render()
       setTimeout(() => {
+        run.state = "running"
+        run.lines.push({
+          time: "now",
+          stream: "stdout",
+          text: `${process.label} is running`
+        })
         process.state = "running"
         delete process.error
         render()
@@ -1434,20 +1623,54 @@
       return
     }
     if (action === "stop") {
+      const run = processRuns(process)[0]
+      if (run) run.state = "stopping"
       process.state = "stopping"
       render()
       setTimeout(() => {
+        if (run) {
+          run.state = "exited"
+          run.code = 0
+          run.when = "just now"
+          run.lines.push({
+            time: "now",
+            stream: "stdout",
+            text: `${process.label} stopped cleanly`
+          })
+        }
         process.state = "stopped"
         render()
       }, 700)
       return
     }
+    const previousRun = processRuns(process)[0]
+    if (previousRun) previousRun.state = "stopping"
     process.state = "stopping"
     render()
     setTimeout(() => {
+      if (previousRun) {
+        previousRun.state = "exited"
+        previousRun.code = 0
+        previousRun.when = "just now"
+      }
+      const run = {
+        id: `run_${process.id}_${runSequence++}`,
+        state: "starting",
+        when: "Current run",
+        lines: [
+          { time: "now", stream: "stdout", text: `${process.label} is restarting` }
+        ]
+      }
+      addRun(process, run)
       process.state = "starting"
       render()
       setTimeout(() => {
+        run.state = "running"
+        run.lines.push({
+          time: "now",
+          stream: "stdout",
+          text: `${process.label} is running`
+        })
         process.state = "running"
         delete process.error
         render()
@@ -1457,13 +1680,40 @@
 
   function taskAction(process, action) {
     if (action === "cancel") {
+      const run = processRuns(process)[0]
+      if (run) {
+        run.state = "canceled"
+        run.when = "just now"
+        run.lines.push({
+          time: "now",
+          stream: "stdout",
+          text: `${process.label} run was canceled`
+        })
+      }
       process.lastRun = { state: "canceled", when: "just now" }
       render()
       return
     }
+    const run = {
+      id: `run_${process.id}_${runSequence++}`,
+      state: "running",
+      when: "Current run",
+      lines: [
+        { time: "now", stream: "stdout", text: `${process.label} run started` }
+      ]
+    }
+    addRun(process, run)
     process.lastRun = { state: "running", when: "just now" }
     render()
     setTimeout(() => {
+      run.state = "exited"
+      run.code = 0
+      run.when = "just now"
+      run.lines.push({
+        time: "now",
+        stream: "stdout",
+        text: `${process.label} exited with code 0`
+      })
       process.lastRun = { state: "exited", code: 0, when: "just now" }
       render()
     }, 1000)
@@ -1563,7 +1813,11 @@
     const index = PROCESSES.findIndex(process => process.id === state.pendingDeregister)
     if (index < 0) return
     const label = PROCESSES[index].label
+    const id = PROCESSES[index].id
     PROCESSES.splice(index, 1)
+    delete RUNS_BY_PROCESS[id]
+    state.openLogs.delete(id)
+    state.selectedRuns.delete(id)
     closeDialog()
     render()
     showToast(`${label} was deregistered.`)
@@ -1581,12 +1835,22 @@
     const search = event.target.closest("[data-log-search]")
     if (!search) return
     const id = search.dataset.logSearch
+    const process = PROCESSES.find(item => item.id === id)
+    const run = selectedRun(process)
+    const queryKey = run ? `${id}:${run.id}` : id
     const selectionStart = search.selectionStart
-    state.logQueries.set(id, search.value)
+    state.logQueries.set(queryKey, search.value)
     render()
     const next = document.querySelector(`[data-log-search="${id}"]`)
     next.focus()
     next.setSelectionRange(selectionStart, selectionStart)
+  })
+
+  document.addEventListener("change", event => {
+    const runSelect = event.target.closest("[data-run-select]")
+    if (!runSelect) return
+    state.selectedRuns.set(runSelect.dataset.runSelect, runSelect.value)
+    render()
   })
 
   document.addEventListener("click", event => {
@@ -1663,7 +1927,8 @@
     const download = event.target.closest("[data-download-logs]")
     if (download) {
       const process = PROCESSES.find(item => item.id === download.dataset.downloadLogs)
-      showToast(`Prepared the latest logs for ${process.label}.`)
+      const run = processRuns(process).find(item => item.id === download.dataset.runId)
+      showToast(`Prepared ${run?.when || "selected run"} logs for ${process.label}.`)
       return
     }
     if (event.target.closest("#retryLoad")) {

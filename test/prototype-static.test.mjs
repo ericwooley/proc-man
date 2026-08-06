@@ -123,7 +123,7 @@ test("dashboard exposes one process inventory with labels, tags, ports, and logs
 test("process fixtures use stable unique IDs, labels, tags, kinds, and declared ports", async () => {
   const html = await readFile(new URL("index.html", prototypeDirectory), "utf8");
   const fixtureBlock = html.match(
-    /const PROCESSES = \[([\s\S]*?)\n  \]\n\n  const LOGS/,
+    /const PROCESSES = \[([\s\S]*?)\n  \]\n\n  const RUNS_BY_PROCESS/,
   )?.[1];
 
   assert.ok(fixtureBlock);
@@ -166,6 +166,13 @@ test("process actions, logs, registration, and deregistration are wired", async 
   assert.match(html, /id="deregisterDialog"/);
   assert.match(html, /port-start process register/);
   assert.match(html, /Retained run logs stay available/);
+  assert.match(html, /const RUNS_BY_PROCESS =/);
+  assert.doesNotMatch(html, /LOGS\[currentState\]/);
+  assert.match(html, /Storefront web compiled client bundle/);
+  assert.match(html, /Platform API listening on/);
+  assert.match(html, /data-run-select/);
+  assert.match(html, /The process exited with code 1\./);
+  assert.doesNotMatch(html, /accepted connections/i);
   assert.match(html, /data-state="populated"/);
   assert.match(html, /data-state="loading"/);
   assert.match(html, /data-state="empty"/);
