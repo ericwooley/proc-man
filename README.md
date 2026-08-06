@@ -1,6 +1,6 @@
-# Port Start
+# Proc Man
 
-Port Start is a local process manager for development commands. Each registered
+Proc Man is a local process manager for development commands. Each registered
 process has a human label, tags, a launch definition, runs, and retained logs.
 A process can also declare the ports that its child expects to use.
 

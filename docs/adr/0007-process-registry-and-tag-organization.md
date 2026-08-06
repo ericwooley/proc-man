@@ -6,7 +6,7 @@
 
 ## Context
 
-Git worktrees motivated Port Start, but they are not the resource that users
+Git worktrees motivated Proc Man, but they are not the resource that users
 need to operate. Users need labeled processes, actions, ports, runs, and logs.
 
 A worktree-first model makes source directories control navigation, API

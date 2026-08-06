@@ -174,7 +174,7 @@ test("process actions, logs, registration, and deregistration are wired", async 
   assert.match(html, /PROCESSES\.splice\(index, 1\)/);
   assert.match(html, /id="registerDialog"/);
   assert.match(html, /id="deregisterDialog"/);
-  assert.match(html, /port-start process register/);
+  assert.match(html, /proc-man process register/);
   assert.match(html, /Retained run logs stay available/);
   assert.match(html, /Storefront web compiled client bundle/);
   assert.match(html, /Platform API listening on/);
@@ -298,15 +298,15 @@ test("light and dark body-copy tokens meet WCAG AA contrast", async () => {
 test("CLI contract starts from the process inventory and supports tag filters", async () => {
   const cli = await readFile(new URL("../docs/cli.md", import.meta.url), "utf8");
 
-  assert.match(cli, /port-start process list/);
+  assert.match(cli, /proc-man process list/);
   assert.match(cli, /--tag project:storefront --tag frontend/);
   assert.match(cli, /Repeated `--tag` flags use AND semantics/);
-  assert.match(cli, /port-start process register/);
-  assert.match(cli, /port-start process deregister proc_01/);
-  assert.match(cli, /port-start process start/);
-  assert.match(cli, /port-start process run/);
-  assert.match(cli, /port-start process logs/);
-  assert.match(cli, /port-start register --json/);
+  assert.match(cli, /proc-man process register/);
+  assert.match(cli, /proc-man process deregister proc_01/);
+  assert.match(cli, /proc-man process start/);
+  assert.match(cli, /proc-man process run/);
+  assert.match(cli, /proc-man process logs/);
+  assert.match(cli, /proc-man register --json/);
   assert.doesNotMatch(cli, /├── worktree|├── command/);
 });
 

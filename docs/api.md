@@ -3,7 +3,7 @@
 ## Contract
 
 The API base path is `/api/v1`. The server and
-`port-start api openapi` expose the OpenAPI document.
+`proc-man api openapi` expose the OpenAPI document.
 
 JSON uses UTC RFC 3339 timestamps, string IDs, and explicit enums. V1 permits
 additive fields. A breaking change requires another API version.

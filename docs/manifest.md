@@ -2,9 +2,9 @@
 
 ## Discovery
 
-The canonical filename is `.port-start.yaml`.
+The canonical filename is `.proc-man.yaml`.
 
-`port-start register` searches from the current directory upward and reads the
+`proc-man register` searches from the current directory upward and reads the
 nearest manifest. `--file` selects another file. Relative working directories
 resolve from the manifest directory.
 
@@ -131,12 +131,12 @@ Named ports provide placeholders and environment variables:
 | `{manifest_dir}` | Canonical manifest directory. |
 | `{definition_id}` | Stable process ID. |
 | `{run_id}` | New run ID. |
-| `PORT_START_PORT_HTTP` | Normalized port variable. |
-| `PORT_START_URL_HTTP` | HTTP or HTTPS URL. |
+| `PROC_MAN_PORT_HTTP` | Normalized port variable. |
+| `PROC_MAN_URL_HTTP` | HTTP or HTTPS URL. |
 
 ## Reconciliation
 
-`port-start register`:
+`proc-man register`:
 
 1. Validate the file.
 2. Calculate the required process set.
@@ -145,12 +145,12 @@ Named ports provide placeholders and environment variables:
 5. Preserve active-run snapshots.
 6. Leave imperative processes unchanged.
 
-`port-start register --dry-run` returns the same change plan without writes.
-`port-start deregister --source` removes processes from one manifest source.
+`proc-man register --dry-run` returns the same change plan without writes.
+`proc-man deregister --source` removes processes from one manifest source.
 
 The CLI exposes the schema:
 
 ```sh
-port-start schema manifest
-port-start schema manifest --format json
+proc-man schema manifest
+proc-man schema manifest --format json
 ```

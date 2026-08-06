@@ -125,7 +125,7 @@ values.
 
 ## Manifest reconciliation
 
-`port-start register` reads a process manifest and reconciles entries by:
+`proc-man register` reads a process manifest and reconciles entries by:
 
 ```text
 canonical manifest path
@@ -141,7 +141,7 @@ Registration:
 5. Leave imperative processes unchanged.
 6. Return stable process selectors and a change plan.
 
-`port-start deregister --source` stops active runs and removes current
+`proc-man deregister --source` stops active runs and removes current
 definitions from that manifest source. Retained runs remain until retention
 deletes them, unless the request purges logs.
 

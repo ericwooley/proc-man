@@ -6,7 +6,7 @@
 
 ## Context
 
-Port Start needs consistent process administration through a CLI, browser, and
+Proc Man needs consistent process administration through a CLI, browser, and
 automation. Direct database or process-group access would split authority.
 
 ## Decision

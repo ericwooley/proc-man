@@ -21,7 +21,7 @@ later. The child process already owns its listeners.
 
 ## Consequences
 
-- Port Start has no traffic path or socket lifecycle.
+- Proc Man has no traffic path or socket lifecycle.
 - Registration does not depend on current socket state.
 - One process can show several endpoints.
 - Logs and process state remain the diagnostic sources.

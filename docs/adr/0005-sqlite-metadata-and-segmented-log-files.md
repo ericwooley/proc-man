@@ -6,7 +6,7 @@
 
 ## Context
 
-Port Start needs durable process definitions and run history. Process logs are
+Proc Man needs durable process definitions and run history. Process logs are
 large, appended continuously, streamed, searched, and downloaded.
 
 ## Decision

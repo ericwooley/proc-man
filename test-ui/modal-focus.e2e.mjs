@@ -42,9 +42,9 @@ async function findDebugPage(port) {
   throw new Error("Chrome debugging endpoint did not become ready");
 }
 
-const userDataDirectory = await mkdtemp(join(tmpdir(), "port-start-chrome-"));
+const userDataDirectory = await mkdtemp(join(tmpdir(), "proc-man-chrome-"));
 const downloadDirectory = await mkdtemp(
-  join(tmpdir(), "port-start-downloads-"),
+  join(tmpdir(), "proc-man-downloads-"),
 );
 const debuggingPort = await getAvailablePort();
 const chrome = spawn(
@@ -139,7 +139,7 @@ try {
       exposedIcons: document.querySelectorAll(".ph:not([aria-hidden='true'])").length
     })`),
     {
-      title: "Port Start - Process manager",
+      title: "Proc Man - Process manager",
       heading: "Processes",
       rows: 12,
       uniqueRows: 12,

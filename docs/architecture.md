@@ -2,7 +2,7 @@
 
 ## Overview
 
-Port Start is one Go binary with three roles:
+Proc Man is one Go binary with three roles:
 
 1. The daemon supervises processes, persists definitions, captures logs, and
    serves the control plane.
@@ -66,10 +66,10 @@ use the login shell parser.
 
 Before launch, the daemon sets the working directory and expands:
 
-- `{definition_id}` and `PORT_START_DEFINITION_ID`.
-- `{run_id}` and `PORT_START_RUN_ID`.
-- `{manifest_dir}` and `PORT_START_MANIFEST_DIR` for manifest-owned processes.
-- named port values such as `{port.http}` and `PORT_START_PORT_HTTP`.
+- `{definition_id}` and `PROC_MAN_DEFINITION_ID`.
+- `{run_id}` and `PROC_MAN_RUN_ID`.
+- `{manifest_dir}` and `PROC_MAN_MANIFEST_DIR` for manifest-owned processes.
+- named port values such as `{port.http}` and `PROC_MAN_PORT_HTTP`.
 
 Each run receives its own process group. Stop or Cancel sends SIGTERM, waits ten
 seconds by default, and sends SIGKILL when required. An intentional daemon

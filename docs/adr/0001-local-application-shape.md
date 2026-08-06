@@ -6,7 +6,7 @@
 
 ## Context
 
-Port Start must provide permanent local process administration through a CLI
+Proc Man must provide permanent local process administration through a CLI
 and web application. It must supervise process groups, persist configuration,
 and retain logs.
 

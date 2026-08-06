@@ -38,4 +38,4 @@ await rm(new URL("../dist", import.meta.url), { recursive: true, force: true });
 await mkdir(new URL("../dist/server", import.meta.url), { recursive: true });
 await writeFile(new URL("../dist/server/index.js", import.meta.url), worker);
 
-console.log("Built the Port Start HTML prototype.");
+console.log("Built the Proc Man HTML prototype.");

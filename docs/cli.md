@@ -2,7 +2,7 @@
 
 ## Principles
 
-`port-start` supports people and automation.
+`proc-man` supports people and automation.
 
 - Every command uses the daemon API.
 - Human output goes to stdout.
@@ -16,14 +16,14 @@
 The administration endpoint resolves in this order:
 
 1. `--admin-url`.
-2. `PORT_START_ADMIN_URL`.
+2. `PROC_MAN_ADMIN_URL`.
 3. Saved CLI configuration.
 4. `http://127.0.0.1:13337`.
 
 ## Command tree
 
 ```text
-port-start
+proc-man
 ├── serve
 ├── daemon
 │   ├── install
@@ -67,19 +67,19 @@ port-start
 
 ## Daemon commands
 
-`port-start serve` runs the daemon in the foreground. Important flags include
+`proc-man serve` runs the daemon in the foreground. Important flags include
 `--host`, `--port`, `--data-dir`, `--config`, and `--login-shell`.
 
-`port-start daemon install --now` installs and starts the user service.
+`proc-man daemon install --now` installs and starts the user service.
 Uninstall keeps application data unless `--purge` is present.
 
 ## Manifest registration
 
 ```sh
-port-start register
-port-start register --file ./config/dev-processes.yaml
-port-start register --dry-run --json
-port-start deregister --source "$PWD/.port-start.yaml"
+proc-man register
+proc-man register --file ./config/dev-processes.yaml
+proc-man register --dry-run --json
+proc-man deregister --source "$PWD/.proc-man.yaml"
 ```
 
 `register` returns the canonical manifest source and the complete process
@@ -96,11 +96,11 @@ present.
 ## Process inventory
 
 ```sh
-port-start process list
-port-start process list --tag project:storefront --tag frontend
-port-start process list --kind service --state running
-port-start process list --query 4310 --json
-port-start tag list
+proc-man process list
+proc-man process list --tag project:storefront --tag frontend
+proc-man process list --kind service --state running
+proc-man process list --query 4310 --json
+proc-man tag list
 ```
 
 Human output includes:
@@ -132,10 +132,10 @@ An ambiguous label returns matching selectors.
 The inventory feeds later commands:
 
 ```sh
-port-start process status proc_01...
-port-start process start proc_01...
-port-start process logs proc_01... --run latest
-port-start open endpoint_01...
+proc-man process status proc_01...
+proc-man process start proc_01...
+proc-man process logs proc_01... --run latest
+proc-man open endpoint_01...
 ```
 
 ## Imperative registration
@@ -143,7 +143,7 @@ port-start open endpoint_01...
 Long-running service:
 
 ```sh
-port-start process register \
+proc-man process register \
   --label "Storefront web" \
   --kind service \
   --tag project:storefront \
@@ -156,7 +156,7 @@ port-start process register \
 One-shot task:
 
 ```sh
-port-start process register \
+proc-man process register \
   --label "Storefront test suite" \
   --kind task \
   --tag project:storefront \
@@ -168,7 +168,7 @@ port-start process register \
 Shell strings require `--shell`:
 
 ```sh
-port-start process register \
+proc-man process register \
   --label "Database migration" \
   --kind task \
   --tag migration \
@@ -182,8 +182,8 @@ return `manifest_owned` and show their source path.
 Use the stable process selector to deregister an imperative process:
 
 ```sh
-port-start process deregister proc_01...
-port-start process deregister proc_01... --purge-logs
+proc-man process deregister proc_01...
+proc-man process deregister proc_01... --purge-logs
 ```
 
 Deregistration stops active runs. Retained logs remain unless `--purge-logs` is
@@ -192,9 +192,9 @@ present.
 ## Labels and tags
 
 ```sh
-port-start process update proc_01... --label "Storefront preview"
-port-start process update proc_01... --add-tag preview
-port-start process update proc_01... --remove-tag deprecated
+proc-man process update proc_01... --label "Storefront preview"
+proc-man process update proc_01... --add-tag preview
+proc-man process update proc_01... --remove-tag deprecated
 ```
 
 The server normalizes tags. The CLI prints the normalized result. `tag list`
@@ -203,10 +203,10 @@ returns existing tags and unique process counts for autocomplete and filters.
 ## Service lifecycle
 
 ```sh
-port-start process start proc_01...
-port-start process stop proc_01...
-port-start process restart proc_01...
-port-start process status proc_01... --json
+proc-man process start proc_01...
+proc-man process stop proc_01...
+proc-man process restart proc_01...
+proc-man process status proc_01... --json
 ```
 
 Start returns the active run while the service is starting or running. Stop is
@@ -218,9 +218,9 @@ starts a process.
 ## Task execution
 
 ```sh
-port-start process run proc_02...
-port-start process run proc_02... --wait
-port-start process cancel proc_02... --run run_01...
+proc-man process run proc_02...
+proc-man process run proc_02... --wait
+proc-man process cancel proc_02... --run run_01...
 ```
 
 Each invocation receives a run ID, terminal result, and logs. Separate task
@@ -232,8 +232,8 @@ Run returns `invalid_kind` for services.
 ## Ports and links
 
 ```sh
-port-start process status proc_01...
-port-start open endpoint_01...
+proc-man process status proc_01...
+proc-man open endpoint_01...
 ```
 
 Status shows every declared endpoint. Active runs use their launch snapshot.
@@ -243,18 +243,18 @@ Stopped processes use configured values. Changed next-run values receive a
 `open` starts the user browser for HTTP or HTTPS. It prints a copyable address
 for TCP.
 
-Port Start does not allocate, reserve, own, forward, or proxy ports.
+Proc Man does not allocate, reserve, own, forward, or proxy ports.
 
 ## Runs and logs
 
 ```sh
-port-start run list --tag project:storefront --include-deregistered
-port-start run list --kind service --state failed --since 24h
-port-start run search 'ready|error' --tag frontend --regex --ignore-case
-port-start process logs proc_01... --run latest
-port-start process logs proc_01... --follow
-port-start run logs run_01... --stream stderr --since 15m
-port-start run logs download run_01... --format ndjson --output run.ndjson
+proc-man run list --tag project:storefront --include-deregistered
+proc-man run list --kind service --state failed --since 24h
+proc-man run search 'ready|error' --tag frontend --regex --ignore-case
+proc-man process logs proc_01... --run latest
+proc-man process logs proc_01... --follow
+proc-man run logs run_01... --stream stderr --since 15m
+proc-man run logs download run_01... --format ndjson --output run.ndjson
 ```
 
 Run listings are newest-first and cursor-paginated. JSON returns `runs` and
@@ -273,18 +273,18 @@ sequence after a connection failure and reports retention gaps.
 
 ## Worktree hook example
 
-A worktree can register normal processes without becoming a Port Start
+A worktree can register normal processes without becoming a Proc Man
 resource:
 
 ```sh
 cd /path/to/new-worktree
-port-start register --json
+proc-man register --json
 ```
 
 Before removal:
 
 ```sh
-port-start deregister --source "$PWD/.port-start.yaml"
+proc-man deregister --source "$PWD/.proc-man.yaml"
 git worktree remove "$PWD"
 ```
 
@@ -292,10 +292,10 @@ The manifest can add branch or project tags when those values help discovery.
 
 ## Authentication
 
-`port-start auth set-password` reads a password from a TTY or
+`proc-man auth set-password` reads a password from a TTY or
 `--password-file`. Commands resolve credentials from:
 
-1. `PORT_START_PASSWORD`.
+1. `PROC_MAN_PASSWORD`.
 2. `--password-file`.
 3. an interactive prompt when permitted.
 
@@ -347,15 +347,15 @@ The root help includes this automation-safe path:
 ```sh
 set -u
 
-port-start daemon install --now || exit $?
-registration_json="$(port-start register --json)" || exit $?
+proc-man daemon install --now || exit $?
+registration_json="$(proc-man register --json)" || exit $?
 
 process_selector="$(
   printf '%s\n' "$registration_json" |
     jq -r '(.data.processes | sort_by(.selector) | .[0].selector) // empty'
 )"
 
-port-start process list
+proc-man process list
 
 if [ -n "$process_selector" ]
 then
@@ -366,11 +366,11 @@ then
   )"
   if [ "$process_kind" = "service" ]
   then
-    port-start process start "$process_selector" || :
+    proc-man process start "$process_selector" || :
   else
-    port-start process run "$process_selector" || :
+    proc-man process run "$process_selector" || :
   fi
-  port-start process logs "$process_selector" --run latest || :
+  proc-man process logs "$process_selector" --run latest || :
 fi
 
 endpoint_selector="$(
@@ -382,7 +382,7 @@ endpoint_selector="$(
 
 if [ -n "$endpoint_selector" ]
 then
-  port-start open "$endpoint_selector" || :
+  proc-man open "$endpoint_selector" || :
 fi
 ```
 

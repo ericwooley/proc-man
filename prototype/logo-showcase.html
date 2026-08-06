@@ -4,12 +4,12 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light dark">
-  <title>Port Start - Brand mark</title>
+  <title>Proc Man - Brand mark</title>
   <link rel="icon" href="./assets/logos/port-matrix.svg" type="image/svg+xml">
   <link rel="stylesheet" href="./assets/phosphor/style.css">
   <script>
     (() => {
-      const saved = localStorage.getItem("port-start-logo-theme");
+      const saved = localStorage.getItem("proc-man-logo-theme");
       document.documentElement.dataset.theme =
         saved ?? (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
     })();
@@ -204,7 +204,7 @@
   <main class="shell">
     <header>
       <div>
-        <p class="eyebrow">Port Start · Brand mark</p>
+        <p class="eyebrow">Proc Man · Brand mark</p>
         <h1>One place for every process run.</h1>
         <p class="subtitle">Port Matrix is the product mark for the local process manager. Its modular P reflects labeled processes, tags, runs, logs, and declared ports in one inventory.</p>
       </div>
@@ -215,7 +215,7 @@
     </header>
 
     <section class="content">
-      <div class="hero" aria-label="Port Matrix mark on the Port Start accent color">
+      <div class="hero" aria-label="Port Matrix mark on the Proc Man accent color">
         <div class="mark-field"><img src="./assets/logos/port-matrix.svg" alt="Port Matrix mark"></div>
       </div>
       <article class="details">
@@ -248,7 +248,7 @@
       themeButton.addEventListener("click", () => {
         const theme = root.dataset.theme === "dark" ? "light" : "dark";
         root.dataset.theme = theme;
-        localStorage.setItem("port-start-logo-theme", theme);
+        localStorage.setItem("proc-man-logo-theme", theme);
         paintThemeIcon();
       });
       paintThemeIcon();

@@ -2,7 +2,7 @@
 
 | Question | Decision |
 | --- | --- |
-| What does Port Start manage? | Registered local processes. |
+| What does Proc Man manage? | Registered local processes. |
 | What appears on the primary screen? | One process inventory. |
 | What identifies a process for people? | A required label and tags. |
 | Must labels be unique? | No. Actions use opaque process IDs. |
@@ -13,7 +13,7 @@
 | Can task runs overlap? | Yes. Each invocation has its own run. |
 | Can a service have several active runs? | No. A service has at most one active run. |
 | Who owns a declared port? | The child process owns its socket. |
-| Does Port Start allocate ports? | No. It stores explicit port metadata. |
+| Does Proc Man allocate ports? | No. It stores explicit port metadata. |
 | Are repositories or worktrees resources? | No. They are automation contexts and optional tags. |
 | How does a worktree register? | Its hook applies a normal process manifest. |
 | How does a worktree deregister? | Its removal hook deregisters the manifest source. |

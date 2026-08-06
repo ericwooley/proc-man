@@ -43,14 +43,14 @@ test("CLI first-run flow continues diagnostics and selects deterministically", a
         (Number(version[1]) === 1 && Number(version[2]) >= 6)),
     "jq 1.6 or newer is required for the documented CLI walkthrough test",
   );
-  const fixtureDirectory = await mkdtemp(join(tmpdir(), "port-start-cli-docs-"));
-  const fakeCli = join(fixtureDirectory, "port-start");
+  const fixtureDirectory = await mkdtemp(join(tmpdir(), "proc-man-cli-docs-"));
+  const fakeCli = join(fixtureDirectory, "proc-man");
   const callsPath = join(fixtureDirectory, "calls.log");
 
   await writeFile(
     fakeCli,
     `#!/bin/sh
-printf '%s\\n' "$*" >> "$PORT_START_CALLS"
+printf '%s\\n' "$*" >> "$PROC_MAN_CALLS"
 case "$*" in
   "daemon install --now")
     exit 0
@@ -75,7 +75,7 @@ esac
       env: {
         ...process.env,
         PATH: `${fixtureDirectory}:${process.env.PATH}`,
-        PORT_START_CALLS: callsPath,
+        PROC_MAN_CALLS: callsPath,
       },
     });
     const calls = await readFile(callsPath, "utf8");
@@ -87,7 +87,7 @@ esac
     assert.doesNotMatch(calls, /^command /m);
     assert.match(
       cli,
-      /## Worktree hook example[\s\S]*?port-start register --json[\s\S]*?port-start deregister --source "\$PWD\/\.port-start\.yaml"/,
+      /## Worktree hook example[\s\S]*?proc-man register --json[\s\S]*?proc-man deregister --source "\$PWD\/\.proc-man\.yaml"/,
     );
   } finally {
     await rm(fixtureDirectory, { recursive: true, force: true });

@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Port Start provides one local inventory for development processes. Each process
+Proc Man provides one local inventory for development processes. Each process
 has a label, tags, execution configuration, runs, and retained logs. A process
 can be a long-running service or a one-shot task.
 
@@ -15,7 +15,7 @@ separate resource, page, or ownership hierarchy.
 
 ## Users
 
-The primary user is a developer who runs Port Start under one operating-system
+The primary user is a developer who runs Proc Man under one operating-system
 account on Linux or macOS. Coding agents and local automation are supported
 clients. V1 is single-user and single-host.
 
@@ -82,7 +82,7 @@ clients. V1 is single-user and single-host.
 - Store host, protocol, and optional URL path metadata.
 - Display copyable addresses and browser links.
 - Expose declared values through explicit launch placeholders.
-- Keep socket ownership and traffic outside Port Start.
+- Keep socket ownership and traffic outside Proc Man.
 
 ### Logs
 
@@ -107,7 +107,7 @@ directory. The manifest registers normal processes and can add tags such as
 `project:storefront`, `branch:agent-42`, or `purpose:preview`.
 
 A worktree removal hook deregisters the manifest source before it removes the
-directory. No worktree record remains in Port Start.
+directory. No worktree record remains in Proc Man.
 
 ## Success criteria
 

@@ -5,7 +5,7 @@
 Every service run and task run has inspectable output during execution and
 after completion.
 
-Port Start captures stdout and stderr, assigns a run-local sequence, and adds a
+Proc Man captures stdout and stderr, assigns a run-local sequence, and adds a
 receive timestamp. Separate pipes cannot provide a stronger total order.
 
 ## Record format

@@ -4,12 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light dark">
-<title>Port Start - Process manager</title>
+<title>Proc Man - Process manager</title>
 <link rel="icon" href="./assets/logos/port-matrix.svg" type="image/svg+xml">
 <link rel="stylesheet" href="./assets/phosphor/style.css">
 <script>
   (() => {
-    const saved = localStorage.getItem("port-start-prototype-theme")
+    const saved = localStorage.getItem("proc-man-prototype-theme")
     document.documentElement.dataset.theme =
       saved ??
       (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")
@@ -1159,7 +1159,7 @@
 
   <div class="frame">
     <aside class="rail" aria-label="Primary navigation">
-      <a class="brand" href="./logo-showcase.html" aria-label="Open the Port Start brand reference">
+      <a class="brand" href="./logo-showcase.html" aria-label="Open the Proc Man brand reference">
         <span class="brand-symbol" aria-hidden="true"></span>
       </a>
       <button class="active" id="showProcesses" type="button"
@@ -1231,7 +1231,7 @@
         </button>
       </div>
       <div class="dialog-body">
-        <pre id="registerCommand">port-start process register \
+        <pre id="registerCommand">proc-man process register \
   --label "Storefront web" \
   --kind service \
   --tag project:storefront \
@@ -1602,17 +1602,17 @@
       directory: "~/code/storefront",
       environment: [
         ["NODE_ENV", "development"],
-        ["PORT_START_PORT_HTTP", "4310"],
-        ["PORT_START_HOST_HTTP", "127.0.0.1"],
-        ["PORT_START_URL_HTTP", "http://127.0.0.1:4310/"],
-        ["PORT_START_PROCESS_ID", "proc_storefront_web"],
-        ["PORT_START_RUN_ID", "run_storefront_web_current"]
+        ["PROC_MAN_PORT_HTTP", "4310"],
+        ["PROC_MAN_HOST_HTTP", "127.0.0.1"],
+        ["PROC_MAN_URL_HTTP", "http://127.0.0.1:4310/"],
+        ["PROC_MAN_PROCESS_ID", "proc_storefront_web"],
+        ["PROC_MAN_RUN_ID", "run_storefront_web_current"]
       ]
     },
     proc_storefront_api: {
       command: "npm run api -- --port 4311",
       directory: "~/code/storefront",
-      environment: [["NODE_ENV", "development"], ["PORT_START_PORT_HTTP", "4311"]]
+      environment: [["NODE_ENV", "development"], ["PROC_MAN_PORT_HTTP", "4311"]]
     },
     proc_storefront_tests: {
       command: "npm test",
@@ -1627,7 +1627,7 @@
     proc_auth_service: {
       command: "go run ./cmd/auth --port 4313",
       directory: "~/code/platform",
-      environment: [["APP_ENV", "development"], ["PORT_START_PORT_HTTP", "4313"]]
+      environment: [["APP_ENV", "development"], ["PROC_MAN_PORT_HTTP", "4313"]]
     },
     proc_notification_worker: {
       command: "go run ./cmd/worker",
@@ -1637,7 +1637,7 @@
     proc_platform_api: {
       command: "go run ./cmd/api --port 8090",
       directory: "~/code/platform",
-      environment: [["APP_ENV", "development"], ["PORT_START_PORT_HTTP", "8090"]]
+      environment: [["APP_ENV", "development"], ["PROC_MAN_PORT_HTTP", "8090"]]
     },
     proc_seed_data: {
       command: "go run ./cmd/seed",
@@ -1647,7 +1647,7 @@
     proc_docs_preview: {
       command: "npm run docs:dev -- --port 4318",
       directory: "~/code/docs",
-      environment: [["NODE_ENV", "development"], ["PORT_START_PORT_HTTP", "4318"]]
+      environment: [["NODE_ENV", "development"], ["PROC_MAN_PORT_HTTP", "4318"]]
     },
     proc_ml_training: {
       command: "python -m training.run --profile local",
@@ -1657,7 +1657,7 @@
     proc_vector_search: {
       command: "python -m vector_api --port 8099",
       directory: "~/code/ml",
-      environment: [["PYTHONUNBUFFERED", "1"], ["PORT_START_PORT_HTTP", "8099"]]
+      environment: [["PYTHONUNBUFFERED", "1"], ["PROC_MAN_PORT_HTTP", "8099"]]
     },
     proc_local_proxy: {
       command: "node scripts/generate-fixtures.mjs",
@@ -1941,7 +1941,7 @@
     return PROCESS_DETAILS[process.id] || {
       command: process.kind === "service" ? "npm run dev" : "npm run task",
       directory: "~/code/local",
-      environment: [["PORT_START_PROCESS_ID", process.id]]
+      environment: [["PROC_MAN_PROCESS_ID", process.id]]
     }
   }
 
@@ -2279,7 +2279,7 @@
       return
     }
     processDetail.innerHTML = detailMarkup(process)
-    document.title = `${process.label} - Port Start`
+    document.title = `${process.label} - Proc Man`
     syncThemeControls()
     const focusTarget = focusHeading
       ? processDetail.querySelector(".detail-title")
@@ -2307,7 +2307,7 @@
     inventoryHeader.hidden = false
     body.hidden = false
     processDetail.hidden = true
-    document.title = "Port Start - Process manager"
+    document.title = "Proc Man - Process manager"
     if (state.detailRestoreFocusOnInventory) {
       const processId = state.detailReturnFocusProcessId
       const instanceKey = state.detailReturnFocusInstanceKey
@@ -2474,10 +2474,10 @@
           <div class="empty-inner">
             <div class="empty-icon"><i class="ph ph-terminal" aria-hidden="true"></i></div>
             <h2>Register your first process</h2>
-            <p>Add a label and tags. Port Start will keep each run and its logs easy to find.</p>
+            <p>Add a label and tags. Proc Man will keep each run and its logs easy to find.</p>
             <div class="snippet">
-              <span>port-start register</span>
-              <button data-copy-command="port-start register" aria-label="Copy registration command">
+              <span>proc-man register</span>
+              <button data-copy-command="proc-man register" aria-label="Copy registration command">
                 <i class="ph ph-copy" aria-hidden="true"></i>
               </button>
             </div>
@@ -2554,7 +2554,7 @@
 
   function setTheme(theme) {
     document.documentElement.dataset.theme = theme
-    localStorage.setItem("port-start-prototype-theme", theme)
+    localStorage.setItem("proc-man-prototype-theme", theme)
     syncThemeControls()
   }
 

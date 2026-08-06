@@ -70,7 +70,7 @@ This low-impact density difference does not hide content or block actions.
 
 - `npm test`: 30 tests passed.
 - `npm run test:browser`: Process inventory browser checks passed.
-- `npm run build`: Built the Port Start HTML prototype.
+- `npm run build`: Built the Proc Man HTML prototype.
 - Static checks cover the detail structure, actions, routes, and QA assets.
 - Browser checks cover the list-to-detail journey, full logs, run history, filters, actions, and mobile layout.
 

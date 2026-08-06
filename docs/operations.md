@@ -12,23 +12,23 @@ V1 supports Linux and macOS.
 
 ### Linux
 
-- Configuration: `${XDG_CONFIG_HOME:-$HOME/.config}/port-start/config.yaml`
-- Database: `${XDG_DATA_HOME:-$HOME/.local/share}/port-start/`
-- Logs: `${XDG_STATE_HOME:-$HOME/.local/state}/port-start/logs/`
+- Configuration: `${XDG_CONFIG_HOME:-$HOME/.config}/proc-man/config.yaml`
+- Database: `${XDG_DATA_HOME:-$HOME/.local/share}/proc-man/`
+- Logs: `${XDG_STATE_HOME:-$HOME/.local/state}/proc-man/logs/`
 
 ### macOS
 
 - Configuration and database:
-  `$HOME/Library/Application Support/port-start/`
-- Logs: `$HOME/Library/Logs/port-start/`
+  `$HOME/Library/Application Support/proc-man/`
+- Logs: `$HOME/Library/Logs/proc-man/`
 
-`PORT_START_DATA_DIR` or `serve --data-dir` overrides the database, lock, and
+`PROC_MAN_DATA_DIR` or `serve --data-dir` overrides the database, lock, and
 run-log root. Credential files use user-only permissions.
 
 ## Configuration precedence
 
 1. Command flag.
-2. `PORT_START_*` environment variable.
+2. `PROC_MAN_*` environment variable.
 3. Configuration file.
 4. built-in default.
 
@@ -38,7 +38,7 @@ shell, stop limit, task limit, and retention defaults.
 ## User-service installation
 
 ```sh
-port-start daemon install --now
+proc-man daemon install --now
 ```
 
 The installer writes a systemd user unit or LaunchAgent, reloads the service
@@ -61,8 +61,8 @@ run error.
 Authentication is disabled by default.
 
 ```sh
-port-start auth set-password
-port-start auth clear-password
+proc-man auth set-password
+proc-man auth clear-password
 ```
 
 The daemon stores an Argon2id hash. A password change revokes all sessions.
@@ -70,21 +70,21 @@ Non-loopback access without authentication shows a persistent warning.
 
 ## Manifest automation
 
-Any directory can contain `.port-start.yaml`.
+Any directory can contain `.proc-man.yaml`.
 
 ```sh
 cd /path/to/source
-port-start register --json
+proc-man register --json
 ```
 
 Removal automation uses the source path:
 
 ```sh
-port-start deregister --source "$PWD/.port-start.yaml" --json
+proc-man deregister --source "$PWD/.proc-man.yaml" --json
 ```
 
 This pattern works for Git worktrees, ordinary repositories, generated
-directories, and local tools. Port Start stores process records, not worktree
+directories, and local tools. Proc Man stores process records, not worktree
 records.
 
 ## Startup and recovery
@@ -106,7 +106,7 @@ service automatically.
 
 ## Missing working directories
 
-Port Start keeps a process registered when its configured directory disappears.
+Proc Man keeps a process registered when its configured directory disappears.
 Start and Run return `cwd_unavailable`. The process remains visible by label and
 tags so the user can inspect its configuration and retained logs.
 
