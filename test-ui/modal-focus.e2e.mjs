@@ -421,6 +421,10 @@ try {
     ),
     true,
   );
+  assert.equal(
+    await evaluate(`document.getElementById("toast").textContent`),
+    "Local fixture generator was deregistered. 1 retained run remains available.",
+  );
 
   for (const screen of ["loading", "empty", "error"]) {
     await evaluate(
