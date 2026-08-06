@@ -403,6 +403,20 @@ func (store *Store) Tags(ctx context.Context) (map[string]int, error) {
 	return tags, rows.Err()
 }
 
+func (store *Store) ProcessesBySource(ctx context.Context, path string) ([]domain.Process, error) {
+	processes, err := store.ListProcesses(ctx, domain.ProcessFilter{})
+	if err != nil {
+		return nil, err
+	}
+	result := make([]domain.Process, 0)
+	for _, process := range processes {
+		if process.Source.Kind == "manifest" && process.Source.Path == path {
+			result = append(result, process)
+		}
+	}
+	return result, nil
+}
+
 type rowScanner interface {
 	Scan(dest ...any) error
 }
