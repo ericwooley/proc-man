@@ -25,7 +25,8 @@ static UI prototype. Application implementation is outside this phase.
 
 The static prototype lives in [`prototype/`](prototype/). It demonstrates the
 process inventory, tag filters, tag grouping, lifecycle actions, declared-port
-links, run history, logs, and populated, loading, empty, and error states.
+links, process details, run history, full logs, and populated, loading, empty,
+and error states.
 
 Run the prototype:
 

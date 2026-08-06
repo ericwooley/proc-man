@@ -92,9 +92,11 @@ React tests cover:
 - One process inventory as the primary screen.
 - Label search and tag filters.
 - Tag grouping and repeated process identity.
+- List-to-detail navigation and browser history.
+- Process configuration, ports, environment summary, and run history.
 - Service and task actions.
 - Declared endpoints.
-- Runs, logs, search, follow, and downloads.
+- Full logs, stream filters, search, follow, and downloads.
 - Manifest-owned messages.
 - Empty, loading, error, and daemon-unavailable states.
 - keyboard, focus, and responsive behavior.
@@ -104,8 +106,10 @@ React tests cover:
 1. Register a service, filter it by tag, start it, inspect logs, and stop it.
 2. Register a task, run it, cancel another run, and inspect history.
 3. Group processes by tag and verify repeated rows use one process ID.
-4. Search and download logs from a completed run.
-5. Apply and remove a manifest source.
+4. Open one process, select a retained run, filter its streams, and search logs.
+5. Return to the inventory and verify that its filters remain.
+6. Search and download logs from a completed run.
+7. Apply and remove a manifest source.
 
 ## Acceptance gates
 

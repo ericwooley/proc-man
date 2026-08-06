@@ -41,6 +41,18 @@ clients. V1 is single-user and single-host.
 - Keep every repeated row connected to the same stable process ID.
 - Show an `untagged` group for processes without tags.
 
+### Process details
+
+- Open one process detail page from its inventory row or label.
+- Provide a clear return path that preserves the inventory filters.
+- Show the label, stable process ID, kind, state, tags, and lifecycle actions.
+- Show the launch command, working directory, environment summary, and ports.
+- List current and retained runs with their state, time, duration, and exit code.
+- Make the selected run logs the primary detail-page region.
+- Search the selected run and filter stdout or stderr records.
+- Follow an active run and download one retained run.
+- Support a direct process-detail URL for refresh and browser navigation.
+
 ### Execution
 
 - Support `service` and `task` process kinds.
@@ -103,9 +115,10 @@ directory. No worktree record remains in Port Start.
 2. A user can group the process list by tags.
 3. A user can execute a service or task from the CLI and dashboard.
 4. A user can inspect current and historical logs for one process.
-5. A user can open or copy a declared endpoint.
-6. A script can apply and remove a manifest idempotently.
-7. A daemon restart restores process definitions and run history.
+5. A user can open one process page and inspect its configuration and full logs.
+6. A user can open or copy a declared endpoint.
+7. A script can apply and remove a manifest idempotently.
+8. A daemon restart restores process definitions and run history.
 
 ## Non-goals for V1
 
