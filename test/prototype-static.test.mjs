@@ -347,20 +347,27 @@ test("browser prerequisites and override are documented", async () => {
   assert.equal(packageData.engines?.node, ">=22");
 });
 
-test("design QA evidence records the process ledger comparison", async () => {
+test("design QA evidence records the process inventory and detail comparisons", async () => {
   const designQa = await readFile(
     new URL("../design-qa.md", import.meta.url),
     "utf8",
   );
 
   assert.doesNotMatch(designQa, /\/tmp\//);
-  assert.match(designQa, /filtered process ledger/i);
+  assert.match(designQa, /filtered ledger direction/i);
+  assert.match(designQa, /profile console direction/i);
   assert.match(designQa, /`npm test`: 30 tests passed/);
   for (const asset of [
     "process-ledger-reference.png",
     "process-ledger-desktop.png",
     "process-ledger-comparison.png",
     "process-ledger-mobile.png",
+    "process-detail-reference.png",
+    "process-detail-desktop.png",
+    "process-detail-comparison.png",
+    "process-detail-mobile-reference.png",
+    "process-detail-mobile.png",
+    "process-detail-mobile-comparison.png",
   ]) {
     const bytes = await readFile(
       new URL(`../docs/assets/design-qa/${asset}`, import.meta.url),

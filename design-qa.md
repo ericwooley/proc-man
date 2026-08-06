@@ -1,65 +1,75 @@
 # Design QA
 
-## Visual target
+## Visual targets
 
-The selected direction uses a filtered process ledger. It keeps the process
-inventory visible while users filter, group, execute, and inspect processes.
+The process inventory uses the selected filtered ledger direction.
 
-- [Selected process ledger](docs/assets/design-qa/process-ledger-reference.png)
-- [Implemented desktop prototype](docs/assets/design-qa/process-ledger-desktop.png)
-- [Side-by-side comparison](docs/assets/design-qa/process-ledger-comparison.png)
-- [Implemented mobile prototype](docs/assets/design-qa/process-ledger-mobile.png)
+- [Process ledger reference](docs/assets/design-qa/process-ledger-reference.png)
+- [Process ledger implementation](docs/assets/design-qa/process-ledger-desktop.png)
+- [Process ledger comparison](docs/assets/design-qa/process-ledger-comparison.png)
+- [Process ledger mobile implementation](docs/assets/design-qa/process-ledger-mobile.png)
 
-The desktop reference and implementation use a 1440 by 1000 pixel viewport.
-The mobile capture uses a 390 by 844 pixel viewport.
+The process detail page uses the selected profile console direction.
 
-## Product structure
+- [Process detail reference](docs/assets/design-qa/process-detail-reference.png)
+- [Process detail implementation](docs/assets/design-qa/process-detail-desktop.png)
+- [Process detail comparison](docs/assets/design-qa/process-detail-comparison.png)
+- [Process detail mobile reference](docs/assets/design-qa/process-detail-mobile-reference.png)
+- [Process detail mobile implementation](docs/assets/design-qa/process-detail-mobile.png)
+- [Process detail mobile comparison](docs/assets/design-qa/process-detail-mobile-comparison.png)
 
-The prototype has one primary Processes screen. Each row shows a label, tags,
-state, kind, declared ports, actions, and inline logs.
+The desktop comparisons use a 1440 by 1000 pixel viewport for each side.
+The mobile comparison uses a 390 by 844 pixel viewport for each side.
 
-Search covers labels, tags, and declared ports. Repeated tag filters use AND
-semantics. The grouping control creates one section per tag.
+## Process detail state
 
-A process with several tags appears in each matching group. Every repeated row
-uses the same process ID. Summary counts use unique process IDs.
+The comparison opens Storefront web in the light theme.
+It selects the current run with 52 log lines and three retained runs.
+The page shows process identity, tags, ports, command, directory, environment, run history, and full logs.
+
+## Fidelity review
+
+The implementation uses the existing Manrope typeface, shell, color tokens, status pills, and Phosphor icons.
+The implementation matches the target card structure, log console, action order, border radius, and control density.
+The desktop comparison preserves both full-size captures, so labels and log controls remain readable.
+The mobile comparison checks the same populated state without horizontal page overflow.
+
+The target clips some port actions and run tabs at the mobile width.
+The implementation keeps these controls inside the viewport as an intentional responsive improvement.
+The implementation uses slightly more vertical space for the mobile environment card.
+This low-impact density difference does not hide content or block actions.
 
 ## Interaction coverage
 
-- Search by label, tag, and declared port.
-- Filter by state, kind, and several tags.
-- Group by tag and collapse one group.
+- Open a process from its label or row.
+- Open a process directly from its hash route.
+- Return to the same inventory filters.
 - Start, stop, and restart a service.
 - Run and cancel a task.
 - Open or copy a declared endpoint.
-- Expand, search, follow, and download logs.
-- Open registration help.
-- Confirm process deregistration.
-- Use populated, loading, empty, and error states.
-- Use the dashboard at desktop and mobile widths.
-- Use dialogs with keyboard focus containment and Escape.
-- Use light and dark themes.
+- Expand environment values.
+- Select a retained run.
+- Filter logs by stdout or stderr.
+- Search all logs in the selected run.
+- Toggle log following.
+- Download the selected run logs.
+- Focus and restore the full log panel.
+- Use the detail page at desktop and mobile widths.
 
 ## QA iterations
 
-1. The first design pass compared three process-only layouts. The filtered
-   ledger best matched the required discovery and grouping workflow.
-2. The implementation replaced inline artwork with the local Phosphor icon
-   font and the existing Port Matrix asset.
-3. Runtime checks found repeated dynamic input IDs in grouped rows. Instance
-   keys now keep DOM IDs unique while process IDs stay stable.
-4. The mobile tag list first expanded the header and clipped controls. It now
-   uses one horizontal list within the available width.
-5. The final comparison confirmed the selected shell, typography, density,
-   color, status treatment, row layout, and tag controls.
+1. The first detail capture showed the inventory header below the detail page.
+2. A hidden-state rule now removes that header from the detail route.
+3. The second capture aligned the status, card grid, run tabs, and log controls.
+4. The mobile pass changed the overview grid to one column and contained every control.
+5. The final comparison found no blocking visual or interaction defect.
 
 ## Verification
 
 - `npm test`: 30 tests passed.
 - `npm run test:browser`: Process inventory browser checks passed.
 - `npm run build`: Built the Port Start HTML prototype.
-- Static contrast checks cover light and dark text, status labels, and focus.
-- Browser checks cover filtering, grouping, actions, logs, dialogs, and mobile.
-- HTML surfaces use local icons and external product artwork.
+- Static checks cover the detail structure, actions, routes, and QA assets.
+- Browser checks cover the list-to-detail journey, full logs, run history, filters, actions, and mobile layout.
 
 Final result: passed.

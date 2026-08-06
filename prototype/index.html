@@ -1408,6 +1408,17 @@
         lines: [
           { time: "17:02:11.220", stream: "stdout", text: "Previous Storefront web run stopped cleanly" }
         ]
+      },
+      {
+        id: "run_storefront_web_older",
+        state: "exited",
+        code: 0,
+        when: "Yesterday, 9:14am",
+        duration: "44m",
+        started: "Yesterday, 9:14am",
+        lines: [
+          { time: "09:58:22.104", stream: "stdout", text: "Storefront web run stopped cleanly" }
+        ]
       }
     ],
     proc_storefront_api: [
@@ -2007,12 +2018,13 @@
           <div class="detail-identity">
             <div class="detail-title-row">
               <h1 class="detail-title">${escapeHtml(process.label)}</h1>
-              <span class="pill ${processState(process)}">${processState(process)}</span>
             </div>
             <div class="detail-subtitle">
               <code data-detail-process-id>${escapeHtml(process.id)}</code>
               <span>·</span>
               <span>${escapeHtml(process.kind)}</span>
+              <span>·</span>
+              <span class="pill ${processState(process)}">${processState(process)}</span>
             </div>
             <div class="detail-tags">
               ${(process.tags.length ? process.tags : ["untagged"]).map(tag =>
@@ -2083,10 +2095,7 @@
         </div>
 
         <section class="detail-context">
-          <h3 class="detail-section-title">
-            <i class="ph ph-clock-counter-clockwise" aria-hidden="true"></i>
-            Run history
-          </h3>
+          <h3 class="sr-only">Run history</h3>
           <div class="detail-runs">
             ${runs.length
               ? runs.map(item => detailRunMarkup(item, item.id === run?.id)).join("")

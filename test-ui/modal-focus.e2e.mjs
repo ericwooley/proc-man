@@ -179,7 +179,7 @@ try {
       command: "npm run dev -- --port 4310",
       directory: "~/code/storefront",
       ports: 2,
-      runs: 2,
+      runs: 3,
       logLines: 52,
     },
   );
@@ -594,6 +594,35 @@ try {
       topActionsVisible: true,
       tagScroll: true,
       tagOverflow: "auto",
+    },
+  );
+  await evaluate(
+    `document.querySelector('[data-open-process="proc_storefront_web"]').click()`,
+  );
+  await waitFor(
+    `!document.getElementById("processDetail").hidden`,
+    "The mobile process detail page did not open.",
+  );
+  assert.deepEqual(
+    await evaluate(`({
+      overflow: document.documentElement.scrollWidth > innerWidth,
+      detailOverflow:
+        document.querySelector(".detail-scroll").scrollWidth >
+        document.querySelector(".detail-scroll").clientWidth,
+      overviewColumns:
+        getComputedStyle(document.querySelector(".detail-overview")).gridTemplateColumns
+          .split(" ").length,
+      backVisible:
+        document.getElementById("detailBack").getBoundingClientRect().right <= innerWidth,
+      logVisible:
+        document.querySelector(".detail-log-panel").getBoundingClientRect().width <= innerWidth
+    })`),
+    {
+      overflow: false,
+      detailOverflow: false,
+      overviewColumns: 1,
+      backVisible: true,
+      logVisible: true,
     },
   );
 
