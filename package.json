@@ -12,6 +12,7 @@
     "build:prototype": "node scripts/build.mjs",
     "build:web": "npm --prefix web run build",
     "dev:web": "npm --prefix web run dev",
+    "hooks:install": "sh scripts/install-git-hooks.sh",
     "serve": "./bin/proc-man serve",
     "test": "npm run test:go && npm run test:web && npm run test:prototype",
     "test:browser": "node test-ui/react-build.e2e.mjs",

@@ -43,6 +43,17 @@ npm run build
 The build creates `bin/proc-man`.
 The Go binary embeds the React production files.
 
+## Development setup
+
+Enable the repository Git hooks after each new clone:
+
+```sh
+npm run hooks:install
+```
+
+The `commit-msg` hook requires Conventional Commit headers.
+For example, use `feat(cli): add directory filtering`.
+
 ## Run locally
 
 ```sh

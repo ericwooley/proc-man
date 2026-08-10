@@ -1,5 +1,12 @@
 # Testing
 
+## Commit messages
+
+Run `npm run hooks:install` after cloning the repository.
+This command sets `core.hooksPath` to `.githooks` for the local checkout.
+
+The `commit-msg` hook accepts Conventional Commit headers and Git merge or revert messages.
+
 ## Test structure
 
 The repository uses three test levels:
