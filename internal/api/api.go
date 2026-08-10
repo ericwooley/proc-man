@@ -108,10 +108,11 @@ func (server *Server) tags(response http.ResponseWriter, request *http.Request) 
 func (server *Server) listProcesses(response http.ResponseWriter, request *http.Request) {
 	query := request.URL.Query()
 	processes, err := server.store.ListProcesses(request.Context(), domain.ProcessFilter{
-		Query: query.Get("query"),
-		Tags:  query["tag"],
-		Kind:  domain.ProcessKind(query.Get("kind")),
-		State: domain.ProcessState(query.Get("state")),
+		Query:     query.Get("query"),
+		Directory: query.Get("directory"),
+		Tags:      query["tag"],
+		Kind:      domain.ProcessKind(query.Get("kind")),
+		State:     domain.ProcessState(query.Get("state")),
 	})
 	if err != nil {
 		writeError(response, err)

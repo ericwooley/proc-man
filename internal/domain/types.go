@@ -124,10 +124,11 @@ type LogRecord struct {
 }
 
 type ProcessFilter struct {
-	Query string
-	Tags  []string
-	Kind  ProcessKind
-	State ProcessState
+	Query     string
+	Directory string
+	Tags      []string
+	Kind      ProcessKind
+	State     ProcessState
 }
 
 type RunFilter struct {

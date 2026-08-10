@@ -37,6 +37,16 @@ func TestProcessLifecycleAndFilters(t *testing.T) {
 	if created.Selector != created.ID {
 		t.Fatalf("Selector = %q", created.Selector)
 	}
+	_, err = store.CreateProcess(ctx, domain.Process{
+		ID:      "proc_two",
+		Label:   "Admin task",
+		Kind:    domain.ProcessKindTask,
+		Command: domain.Command{Argv: []string{"true"}},
+		CWD:     "/workspace/admin",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	processes, err := store.ListProcesses(ctx, domain.ProcessFilter{
 		Query: "4310", Tags: []string{"FRONTEND"},
@@ -46,6 +56,16 @@ func TestProcessLifecycleAndFilters(t *testing.T) {
 	}
 	if len(processes) != 1 || processes[0].ID != created.ID {
 		t.Fatalf("Processes = %#v", processes)
+	}
+
+	processes, err = store.ListProcesses(ctx, domain.ProcessFilter{
+		Directory: "/workspace/storefront",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(processes) != 1 || processes[0].ID != created.ID {
+		t.Fatalf("Directory processes = %#v", processes)
 	}
 
 	created.Label = "Storefront preview"

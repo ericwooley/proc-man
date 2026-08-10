@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"path/filepath"
 	"testing"
 	"time"
@@ -46,6 +47,17 @@ func TestProcessTaskAndLogsJourney(t *testing.T) {
 	if created.Process.ID == "" {
 		t.Fatal("created process has no ID")
 	}
+	if created.Process.Source.Kind != "imperative" {
+		t.Fatalf("Source kind = %q", created.Process.Source.Kind)
+	}
+	requestJSON(t, http.MethodPost, server.URL+"/api/v1/processes", map[string]any{
+		"label": "Other task",
+		"kind":  "task",
+		"cwd":   filepath.Join(root, "other"),
+		"command": map[string]any{
+			"shell": "true",
+		},
+	}, http.StatusCreated, nil)
 
 	var listed struct {
 		Processes []domain.Process `json:"processes"`
@@ -56,6 +68,14 @@ func TestProcessTaskAndLogsJourney(t *testing.T) {
 	)
 	if len(listed.Processes) != 1 {
 		t.Fatalf("Processes = %#v", listed.Processes)
+	}
+
+	requestJSON(t, http.MethodGet,
+		server.URL+"/api/v1/processes?directory="+url.QueryEscape(root),
+		nil, http.StatusOK, &listed,
+	)
+	if len(listed.Processes) != 1 || listed.Processes[0].ID != created.Process.ID {
+		t.Fatalf("Directory processes = %#v", listed.Processes)
 	}
 
 	var started struct {

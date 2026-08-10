@@ -217,6 +217,10 @@ func (store *Store) ListProcesses(ctx context.Context, filter domain.ProcessFilt
 	defer rows.Close()
 
 	query := strings.ToLower(strings.TrimSpace(filter.Query))
+	directory := strings.TrimSpace(filter.Directory)
+	if directory != "" {
+		directory = filepath.Clean(directory)
+	}
 	requiredTags, err := domain.NormalizeTags(filter.Tags)
 	if err != nil {
 		return nil, err
@@ -235,6 +239,9 @@ func (store *Store) ListProcesses(ctx context.Context, filter domain.ProcessFilt
 			continue
 		}
 		if filter.State != "" && process.State != filter.State {
+			continue
+		}
+		if directory != "" && filepath.Clean(process.CWD) != directory {
 			continue
 		}
 		if !containsAll(process.Tags, requiredTags) {

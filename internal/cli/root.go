@@ -95,6 +95,11 @@ func (app *application) processRegisterCommand() *cobra.Command {
 				}
 				cwd = value
 			}
+			absoluteCWD, err := filepath.Abs(cwd)
+			if err != nil {
+				return fmt.Errorf("resolve working directory: %w", err)
+			}
+			cwd = absoluteCWD
 			definition := domain.Process{
 				Label: label, Kind: domain.ProcessKind(kind), Tags: tags, CWD: cwd,
 				Env: parseKeyValues(environment),
@@ -104,7 +109,6 @@ func (app *application) processRegisterCommand() *cobra.Command {
 			} else {
 				definition.Command.Argv = arguments
 			}
-			var err error
 			definition.Ports, err = parsePorts(ports)
 			if err != nil {
 				return err
@@ -133,7 +137,7 @@ func (app *application) processRegisterCommand() *cobra.Command {
 }
 
 func (app *application) processListCommand() *cobra.Command {
-	var query, kind, state string
+	var query, directory, kind, state string
 	var tags []string
 	command := &cobra.Command{
 		Use:   "list",
@@ -141,6 +145,13 @@ func (app *application) processListCommand() *cobra.Command {
 		RunE: func(command *cobra.Command, _ []string) error {
 			values := url.Values{}
 			values.Set("query", query)
+			if strings.TrimSpace(directory) != "" {
+				absoluteDirectory, err := filepath.Abs(directory)
+				if err != nil {
+					return fmt.Errorf("resolve directory: %w", err)
+				}
+				values.Set("directory", absoluteDirectory)
+			}
 			values.Set("kind", kind)
 			values.Set("state", state)
 			for _, tag := range tags {
@@ -158,14 +169,14 @@ func (app *application) processListCommand() *cobra.Command {
 				return app.print(response)
 			}
 			writer := tabwriter.NewWriter(app.output, 0, 4, 2, ' ', 0)
-			fmt.Fprintln(writer, "ID\tLABEL\tKIND\tSTATE\tTAGS\tPORTS")
+			fmt.Fprintln(writer, "ID\tLABEL\tDIRECTORY\tKIND\tSTATE\tTAGS\tPORTS")
 			for _, process := range response.Processes {
 				portValues := make([]string, 0, len(process.Ports))
 				for _, port := range process.Ports {
 					portValues = append(portValues, port.Name+":"+strconv.Itoa(port.Port))
 				}
-				fmt.Fprintf(writer, "%s\t%s\t%s\t%s\t%s\t%s\n",
-					process.ID, process.Label, process.Kind, process.State,
+				fmt.Fprintf(writer, "%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
+					process.ID, process.Label, process.CWD, process.Kind, process.State,
 					strings.Join(process.Tags, ","), strings.Join(portValues, ","),
 				)
 			}
@@ -173,6 +184,7 @@ func (app *application) processListCommand() *cobra.Command {
 		},
 	}
 	command.Flags().StringVar(&query, "query", "", "Search label, tags, ports, and command")
+	command.Flags().StringVar(&directory, "directory", "", "Exact associated directory")
 	command.Flags().StringSliceVar(&tags, "tag", nil, "Required tag")
 	command.Flags().StringVar(&kind, "kind", "", "Process kind")
 	command.Flags().StringVar(&state, "state", "", "Process state")
