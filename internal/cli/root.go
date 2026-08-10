@@ -38,15 +38,30 @@ func New(version string, output, errorsOutput io.Writer) *cobra.Command {
 		version: version, output: output, errors: errorsOutput,
 		adminURL: first(os.Getenv("PROC_MAN_ADMIN_URL"), "http://127.0.0.1:13337"),
 	}
+	var printAgentInstructions bool
 	root := &cobra.Command{
 		Use:           "proc-man",
 		Short:         "Manage local development processes and logs",
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		Version:       version,
+		Args:          cobra.NoArgs,
+		RunE: func(command *cobra.Command, _ []string) error {
+			if printAgentInstructions {
+				_, err := fmt.Fprint(app.output, agentInstructions)
+				return err
+			}
+			return command.Help()
+		},
 	}
 	root.SetOut(output)
 	root.SetErr(errorsOutput)
+	root.Flags().BoolVar(
+		&printAgentInstructions,
+		"agent-instructions",
+		false,
+		"Print markdown instructions for coding agents",
+	)
 	root.PersistentFlags().StringVar(&app.adminURL, "admin-url", app.adminURL, "proc-man service URL")
 	root.PersistentFlags().BoolVar(&app.jsonOutput, "json", false, "Print stable JSON")
 	root.AddCommand(

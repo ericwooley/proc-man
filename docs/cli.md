@@ -12,6 +12,17 @@ The administration URL resolves in this order:
 
 Add `--json` for stable machine output.
 
+## Agent instructions
+
+Print reusable markdown instructions for coding agents:
+
+```sh
+proc-man --agent-instructions
+proc-man --agent-instructions >> AGENTS.md
+```
+
+This command does not require the local service.
+
 ## Command tree
 
 ```text

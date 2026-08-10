@@ -11,6 +11,24 @@ import (
 	"proc-man/internal/domain"
 )
 
+func TestAgentInstructionsPrintMarkdownWithoutServiceAccess(t *testing.T) {
+	t.Parallel()
+	var output bytes.Buffer
+	var errorsOutput bytes.Buffer
+	command := New("test", &output, &errorsOutput)
+	command.SetArgs([]string{"--agent-instructions"})
+
+	if err := command.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if output.String() != agentInstructions {
+		t.Fatalf("Output = %q, want agent instructions", output.String())
+	}
+	if errorsOutput.Len() != 0 {
+		t.Fatalf("Error output = %q", errorsOutput.String())
+	}
+}
+
 func TestProcessListFiltersAndDisplaysDirectory(t *testing.T) {
 	t.Parallel()
 	directory, err := os.Getwd()

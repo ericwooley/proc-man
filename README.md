@@ -56,6 +56,12 @@ npm run hooks:install
 The `commit-msg` hook requires Conventional Commit headers.
 For example, use `feat(cli): add directory filtering`.
 
+Append proc-man usage instructions to a repository agent file:
+
+```sh
+proc-man --agent-instructions >> AGENTS.md
+```
+
 ## Run locally
 
 ```sh
