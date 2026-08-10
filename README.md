@@ -113,6 +113,32 @@ Use the returned process ID for later commands.
 ./bin/proc-man process deregister PROCESS_ID
 ```
 
+## Install with Homebrew
+
+The Homebrew cask supports macOS and Linux.
+Replace `OWNER` with the GitHub repository owner.
+
+Install proc-man and add its tap:
+
+```sh
+brew install --cask OWNER/tap/proc-man
+```
+
+Upgrade an installed release:
+
+```sh
+brew update
+brew upgrade --cask proc-man
+```
+
+Remove proc-man:
+
+```sh
+brew uninstall --cask proc-man
+```
+
+Windows users can download a ZIP archive from the GitHub Release.
+
 ## Install the user service
 
 Place `bin/proc-man` in a stable executable path.
