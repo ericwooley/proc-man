@@ -116,25 +116,36 @@ Use the returned process ID for later commands.
 ## Install with Homebrew
 
 The Homebrew cask supports macOS and Linux.
-Replace `OWNER` with the GitHub repository owner.
+[Homebrew requires explicit trust](https://docs.brew.sh/Tap-Trust) for non-official taps.
+These commands work after a release publishes the cask to `ericwooley/homebrew-tap`.
 
-Install proc-man and add its tap:
+Install proc-man with its fully qualified cask name:
 
 ```sh
-brew install --cask OWNER/tap/proc-man
+brew install --cask ericwooley/tap/proc-man
+```
+
+This command adds `ericwooley/tap` and trusts only the proc-man cask.
+
+You can also add the tap before installation:
+
+```sh
+brew tap ericwooley/tap
+brew install --cask ericwooley/tap/proc-man
 ```
 
 Upgrade an installed release:
 
 ```sh
 brew update
-brew upgrade --cask proc-man
+brew upgrade --cask ericwooley/tap/proc-man
 ```
 
-Remove proc-man:
+Remove proc-man and its tap:
 
 ```sh
 brew uninstall --cask proc-man
+brew untap ericwooley/tap
 ```
 
 Windows users can download a ZIP archive from the GitHub Release.

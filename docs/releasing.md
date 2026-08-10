@@ -14,7 +14,7 @@ Each release also contains `checksums.txt`.
 
 ## Homebrew tap
 
-The release workflow publishes a Homebrew cask to `<owner>/homebrew-tap`.
+The release workflow publishes a Homebrew cask to `ericwooley/homebrew-tap`.
 The cask supports macOS and Linux.
 Create that repository before the first release.
 
@@ -22,10 +22,19 @@ Add the `HOMEBREW_TAP_GITHUB_TOKEN` Actions secret to this repository.
 The token needs content write access to the tap repository.
 The default GitHub Actions token cannot write to another repository.
 
-Install a published release with:
+[Homebrew requires explicit trust](https://docs.brew.sh/Tap-Trust) for non-official taps.
+Use the fully qualified cask name to trust only proc-man:
 
 ```sh
-brew install --cask OWNER/tap/proc-man
+brew install --cask ericwooley/tap/proc-man
+```
+
+Homebrew adds `ericwooley/tap` during this installation.
+Users can also add the tap first:
+
+```sh
+brew tap ericwooley/tap
+brew install --cask ericwooley/tap/proc-man
 ```
 
 ## Create a release
