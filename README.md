@@ -190,3 +190,7 @@ See [Releasing](docs/releasing.md) for the required tap repository and token.
 - [Releasing](docs/releasing.md)
 - [Architecture decisions](docs/adr/README.md)
 - [Design QA](design-qa.md)
+
+## License
+
+proc-man is available under the [MIT License](LICENSE).
