@@ -10,7 +10,6 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"syscall"
 	"time"
 
 	"proc-man/internal/domain"
@@ -57,10 +56,7 @@ type Options struct {
 
 func New(state *store.Store, options Options) *Manager {
 	if options.Shell == "" {
-		options.Shell = os.Getenv("SHELL")
-	}
-	if options.Shell == "" {
-		options.Shell = "/bin/sh"
+		options.Shell = defaultShell()
 	}
 	if options.StopTimeout <= 0 {
 		options.StopTimeout = 10 * time.Second
@@ -137,7 +133,7 @@ func (manager *Manager) launch(ctx context.Context, process domain.Process) (dom
 	command.Stderr = stderr
 	command.Dir = process.CWD
 	command.Env = manager.environment(process, run.ID)
-	command.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	configureManagedCommand(command)
 	if err := manager.store.CreateRun(ctx, run); err != nil {
 		writer.Close()
 		return domain.Run{}, err
@@ -158,7 +154,7 @@ func (manager *Manager) launch(ctx context.Context, process domain.Process) (dom
 	run.PID = command.Process.Pid
 	run.State = domain.RunStateRunning
 	if err := manager.store.UpdateRun(ctx, run); err != nil {
-		_ = syscall.Kill(-command.Process.Pid, syscall.SIGKILL)
+		_ = killManagedProcess(command)
 		writer.Close()
 		return domain.Run{}, err
 	}
@@ -190,11 +186,10 @@ func (manager *Manager) command(process domain.Process, runID string) (*exec.Cmd
 		for index, argument := range process.Command.Argv {
 			arguments[index] = expand(argument, process, runID)
 		}
-		shellArgs := append([]string{"-lc", `exec "$@"`, "proc-man-run"}, arguments...)
-		return exec.Command(manager.shell, shellArgs...), nil
+		return exec.Command(arguments[0], arguments[1:]...), nil
 	}
 	if process.Command.Shell != "" {
-		return exec.Command(manager.shell, "-lc", expand(process.Command.Shell, process, runID)), nil
+		return newShellCommand(manager.shell, expand(process.Command.Shell, process, runID)), nil
 	}
 	return nil, fmt.Errorf("process has no command")
 }
@@ -355,7 +350,7 @@ func (manager *Manager) stop(ctx context.Context, active *activeRun) (domain.Run
 	if run.Process.Kind == domain.ProcessKindService {
 		_ = manager.store.SetProcessState(ctx, run.Process.ID, domain.ProcessStateStopping)
 	}
-	if err := syscall.Kill(-active.command.Process.Pid, syscall.SIGTERM); err != nil && !errors.Is(err, syscall.ESRCH) {
+	if err := terminateManagedProcess(active.command); err != nil {
 		return run, fmt.Errorf("stop process group: %w", err)
 	}
 	go func() {
@@ -364,7 +359,7 @@ func (manager *Manager) stop(ctx context.Context, active *activeRun) (domain.Run
 		select {
 		case <-active.done:
 		case <-timer.C:
-			_ = syscall.Kill(-active.command.Process.Pid, syscall.SIGKILL)
+			_ = killManagedProcess(active.command)
 		}
 	}()
 	return run, nil

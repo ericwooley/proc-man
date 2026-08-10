@@ -18,6 +18,8 @@ The React application provides the process inventory and process detail routes.
 - Read current and retained run logs.
 - Apply and remove process manifests.
 - Install the Go binary as a user service.
+- Download release archives for macOS, Linux, and Windows.
+- Install macOS and Linux releases through a Homebrew tap.
 
 Git worktrees can register normal process manifests.
 proc-man does not create a worktree resource or worktree page.
@@ -124,6 +126,13 @@ npm run test:smoke
 npm run test:browser
 ```
 
+## Release
+
+Version tags create archives for macOS, Linux, and Windows.
+The release workflow also updates the repository owner’s `homebrew-tap` cask.
+
+See [Releasing](docs/releasing.md) for the required tap repository and token.
+
 ## Documentation
 
 - [Product requirements](docs/product-requirements.md)
@@ -135,5 +144,6 @@ npm run test:browser
 - [Logs](docs/logging.md)
 - [Operations](docs/operations.md)
 - [Testing](docs/testing.md)
+- [Releasing](docs/releasing.md)
 - [Architecture decisions](docs/adr/README.md)
 - [Design QA](design-qa.md)

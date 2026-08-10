@@ -1,0 +1,61 @@
+version: 2
+
+project_name: proc-man
+dist: release-dist
+
+builds:
+  - id: proc-man
+    main: ./cmd/proc-man
+    binary: proc-man
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - darwin
+      - linux
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w -X main.version={{ .Version }}
+
+archives:
+  - id: proc-man
+    ids:
+      - proc-man
+    formats:
+      - tar.gz
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    files:
+      - README.md
+
+checksum:
+  name_template: checksums.txt
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^chore:"
+      - "^Merge "
+
+homebrew_casks:
+  - name: proc-man
+    ids:
+      - proc-man
+    binaries:
+      - proc-man
+    description: Manage local development processes and logs
+    homepage: "https://github.com/{{ .Env.GITHUB_REPOSITORY }}"
+    repository:
+      owner: "{{ .Env.TAP_OWNER }}"
+      name: homebrew-tap
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+    commit_author:
+      name: proc-man release bot
+      email: actions@github.com

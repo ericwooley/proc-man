@@ -9,7 +9,6 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
-	"syscall"
 	"time"
 
 	"proc-man/internal/api"
@@ -67,7 +66,7 @@ func (app *application) serveCommand() *cobra.Command {
 				ReadHeaderTimeout: 5 * time.Second,
 				IdleTimeout:       60 * time.Second,
 			}
-			ctx, cancel := signal.NotifyContext(command.Context(), os.Interrupt, syscall.SIGTERM)
+			ctx, cancel := signal.NotifyContext(command.Context(), shutdownSignals()...)
 			defer cancel()
 			errorsChannel := make(chan error, 1)
 			go func() {
@@ -109,7 +108,7 @@ func acquireLock(path string) (*os.File, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := syscall.Flock(int(file.Fd()), syscall.LOCK_EX|syscall.LOCK_NB); err != nil {
+	if err := lockFile(file); err != nil {
 		file.Close()
 		return nil, fmt.Errorf("another proc-man service uses this data directory")
 	}

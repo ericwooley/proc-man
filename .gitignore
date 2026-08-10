@@ -1,4 +1,5 @@
 /dist/
+/release-dist/
 tmp/
 *.site.tar.gz
 /bin/

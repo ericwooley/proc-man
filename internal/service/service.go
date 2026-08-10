@@ -58,7 +58,7 @@ func (manager *Manager) Uninstall() error {
 		return manager.Run("systemctl", "--user", "daemon-reload")
 	case "darwin":
 		path := manager.launchAgentPath()
-		_ = manager.Run("launchctl", "bootout", "gui/"+fmt.Sprint(os.Getuid()), path)
+		_ = manager.Run("launchctl", "bootout", "gui/"+fmt.Sprint(currentUserID()), path)
 		if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
 			return err
 		}
@@ -73,7 +73,7 @@ func (manager *Manager) Action(action string) error {
 	case "linux":
 		return manager.Run("systemctl", "--user", action, "proc-man.service")
 	case "darwin":
-		domain := "gui/" + fmt.Sprint(os.Getuid())
+		domain := "gui/" + fmt.Sprint(currentUserID())
 		label := domain + "/dev.proc-man"
 		switch action {
 		case "start":
@@ -146,7 +146,7 @@ func (manager *Manager) installLaunchAgent(now bool) (string, error) {
 		return "", err
 	}
 	if now {
-		if err := manager.Run("launchctl", "bootstrap", "gui/"+fmt.Sprint(os.Getuid()), path); err != nil {
+		if err := manager.Run("launchctl", "bootstrap", "gui/"+fmt.Sprint(currentUserID()), path); err != nil {
 			return "", err
 		}
 	}
