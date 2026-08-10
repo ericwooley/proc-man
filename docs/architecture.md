@@ -44,6 +44,8 @@ Each process has an opaque ID, a human label, and zero or more tags.
 
 Labels can repeat.
 Tags provide filtering and grouping.
+The working directory associates each process with one directory.
+Clients can filter or group the flat registry by this value.
 
 Manifest source data records configuration provenance.
 Source paths do not create application navigation or API parents.

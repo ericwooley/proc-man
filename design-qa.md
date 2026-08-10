@@ -29,8 +29,11 @@ The inventory shows:
 
 - Search.
 - Kind filters.
+- Directory filters.
 - Tag filters.
+- Directory grouping.
 - Tag grouping.
+- Associated directories on each process row.
 - Process state.
 - Declared ports.
 - Service and task actions.
@@ -60,7 +63,7 @@ Controls remain inside the page width.
 
 ## Verification
 
-- Three React tests passed.
+- Four React tests passed.
 - The production frontend build passed.
 - The production browser check passed.
 - The browser check found no horizontal page overflow.

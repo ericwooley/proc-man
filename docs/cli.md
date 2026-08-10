@@ -62,6 +62,9 @@ The `--host` value must resolve to a loopback address.
 
 ## Register a service
 
+`process register` creates one imperative process without a manifest file.
+The current directory becomes the working directory when `--cwd` is absent.
+
 ```sh
 proc-man process register \
   --label "Storefront web" \
@@ -99,6 +102,7 @@ proc-man process register \
 
 ```sh
 proc-man process list
+proc-man process list --directory .
 proc-man process list --tag frontend --tag project:storefront
 proc-man process list --kind service --state running
 proc-man process list --query 4310
@@ -107,6 +111,8 @@ proc-man tag list
 ```
 
 Repeated tag flags use AND behavior.
+The directory filter uses an exact absolute path.
+The CLI resolves relative directory values before it calls the API.
 The query searches IDs, labels, tags, commands, directories, and declared ports.
 
 ## Update and deregister

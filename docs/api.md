@@ -26,11 +26,13 @@ The application and CLI use this API.
 Process list filters are:
 
 - `query`
+- `directory`
 - repeated `tag`
 - `kind`
 - `state`
 
 Repeated tags use AND behavior.
+The directory filter matches the exact stored working directory.
 
 ## Runs
 

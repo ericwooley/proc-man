@@ -29,6 +29,17 @@ const process: Process = {
   updated_at: "2026-08-06T17:00:00Z",
 };
 
+const otherProcess: Process = {
+  ...process,
+  id: "proc_02",
+  selector: "admin-worker",
+  label: "Admin worker",
+  tags: ["backend"],
+  state: "stopped",
+  cwd: "/code/admin",
+  ports: [],
+};
+
 const run: Run = {
   id: "run_01",
   process_id: process.id,
@@ -51,7 +62,7 @@ beforeEach(() => {
   vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
     const url = String(input);
     if (url === "/api/v1/processes") {
-      return json({ processes: [process] });
+      return json({ processes: [process, otherProcess] });
     }
     if (url === `/api/v1/processes/${process.id}`) {
       return json({ process, runs: [run] });
@@ -126,5 +137,32 @@ describe("App navigation", () => {
     expect(await screen.findByRole("heading", { name: "Storefront web" })).toBeVisible();
     expect(screen.getByText("npm run dev -- --port 4310")).toBeVisible();
     expect(await screen.findByText("ready on port 4310")).toBeVisible();
+  });
+
+  it("filters and groups processes by their associated directory", async () => {
+    render(
+      <MemoryRouter initialEntries={["/"]}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText("Storefront web")).toBeVisible();
+    expect(screen.getByText("Admin worker")).toBeVisible();
+    expect(screen.getByText("/code/storefront")).toBeVisible();
+
+    fireEvent.change(screen.getByRole("combobox", { name: "Filter by directory" }), {
+      target: { value: "/code/admin" },
+    });
+    expect(screen.queryByText("Storefront web")).not.toBeInTheDocument();
+    expect(screen.getByText("Admin worker")).toBeVisible();
+
+    fireEvent.change(screen.getByRole("combobox", { name: "Filter by directory" }), {
+      target: { value: "" },
+    });
+    fireEvent.change(screen.getByRole("combobox", { name: "Group processes" }), {
+      target: { value: "directory" },
+    });
+    expect(screen.getByRole("button", { name: "/code/storefront, 1 process" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "/code/admin, 1 process" })).toBeVisible();
   });
 });

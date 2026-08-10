@@ -11,6 +11,7 @@ Coding agents and scripts can register the same processes through the CLI or API
 ## Process registration
 
 - Register one process through the CLI, API, or application.
+- Register an imperative command without a manifest file.
 - Require a label and process kind.
 - Accept zero or more tags.
 - Accept an argv command or explicit shell command.
@@ -31,7 +32,9 @@ Coding agents and scripts can register the same processes through the CLI or API
 - Show all processes on one primary page.
 - Search labels, tags, commands, directories, and declared ports.
 - Filter by process kind.
+- Filter by an exact working directory.
 - Filter by one or more tags.
+- Group matching processes by working directory.
 - Group matching processes by tag.
 - Show an `untagged` group when required.
 

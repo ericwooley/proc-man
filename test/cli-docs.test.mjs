@@ -9,6 +9,8 @@ test("CLI docs cover process registration, execution, logs, and manifest hooks",
   );
 
   assert.match(cli, /proc-man process register/);
+  assert.match(cli, /proc-man process list --directory \./);
+  assert.match(cli, /without a manifest file/);
   assert.match(cli, /proc-man process start PROCESS_ID/);
   assert.match(cli, /proc-man process run PROCESS_ID/);
   assert.match(cli, /proc-man process logs PROCESS_ID/);

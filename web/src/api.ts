@@ -38,6 +38,7 @@ async function request<T>(
 
 export type ProcessQuery = {
   query?: string;
+  directory?: string;
   tags?: string[];
   kind?: string;
   state?: string;
@@ -48,6 +49,7 @@ export async function listProcesses(
 ): Promise<Process[]> {
   const query = new URLSearchParams();
   if (input.query) query.set("query", input.query);
+  if (input.directory) query.set("directory", input.directory);
   if (input.kind) query.set("kind", input.kind);
   if (input.state) query.set("state", input.state);
   input.tags?.forEach((tag) => query.append("tag", tag));

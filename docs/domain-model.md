@@ -42,6 +42,10 @@ The working directory must exist when a run starts.
 The process remains registered when its directory disappears.
 Start and Run return `cwd_unavailable` when the directory is missing.
 
+The working directory also associates the process with a directory.
+Clients can filter or group processes by this exact value.
+The directory remains process data and does not become a parent resource.
+
 ## Declared port
 
 A declared port has:

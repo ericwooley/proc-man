@@ -267,12 +267,29 @@ h1, h2, p { margin-top: 0; }
   cursor: pointer;
 }
 .segmented button.selected { color: var(--ink); background: var(--surface-strong); box-shadow: 0 2px 8px rgba(0,0,0,.08); }
-.switch-control { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 11px; font-weight: 700; cursor: pointer; }
-.switch-control input { position: absolute; opacity: 0; pointer-events: none; }
-.switch-control > span { position: relative; width: 36px; height: 20px; background: var(--border); border-radius: 999px; }
-.switch-control > span::after { content: ""; position: absolute; top: 3px; left: 3px; width: 14px; height: 14px; background: white; border-radius: 50%; transition: transform .16s ease; }
-.switch-control input:checked + span { background: var(--violet); }
-.switch-control input:checked + span::after { transform: translateX(16px); }
+.select-control, .directory-filter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+.select-control select, .directory-filter select {
+  min-height: 38px;
+  padding: 0 30px 0 10px;
+  color: var(--ink);
+  background: var(--surface-strong);
+  border: 1px solid var(--border);
+  border-radius: 9px;
+}
+.directory-filter-row {
+  display: flex;
+  margin-top: 14px;
+}
+.directory-filter { min-width: 0; }
+.directory-filter svg { flex: none; width: 15px; height: 15px; }
+.directory-filter select { width: min(620px, 70vw); }
 .tag-filter-row {
   display: flex;
   align-items: center;
@@ -333,6 +350,7 @@ h1, h2, p { margin-top: 0; }
 }
 .process-row:hover { background: color-mix(in srgb, var(--violet) 3%, var(--surface-strong)); }
 .process-identity { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.process-identity > div { min-width: 0; }
 .process-icon, .detail-icon {
   display: grid;
   place-items: center;
@@ -347,6 +365,17 @@ h1, h2, p { margin-top: 0; }
 .process-label { padding: 0; color: var(--ink); background: transparent; border: 0; font-size: 13px; font-weight: 800; cursor: pointer; }
 .row-tags, .detail-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
 .row-tags span, .detail-tags span { padding: 3px 6px; color: var(--violet); background: color-mix(in srgb, var(--violet) 7%, var(--surface)); border-radius: 6px; font-size: 9px; font-weight: 750; }
+.row-directory {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  margin-top: 5px;
+  color: var(--muted);
+  font-size: 9px;
+}
+.row-directory svg { flex: none; width: 12px; height: 12px; }
+.row-directory span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .status-pill {
   display: inline-flex;
   align-items: center;
@@ -372,6 +401,7 @@ h1, h2, p { margin-top: 0; }
 .process-group { background: var(--surface-strong); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
 .process-group .process-table { border: 0; border-top: 1px solid var(--border); border-radius: 0; }
 .group-heading { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 44px; padding: 0 14px; color: var(--ink); background: var(--surface-strong); border: 0; cursor: pointer; }
+.group-heading strong { overflow: hidden; text-align: left; text-overflow: ellipsis; white-space: nowrap; }
 .group-heading span { margin-left: auto; color: var(--muted); font-size: 11px; }
 .skeleton { display: grid; gap: 1px; overflow: hidden; border: 1px solid var(--border); border-radius: 14px; }
 .skeleton div { height: 76px; background: linear-gradient(90deg, var(--surface-muted), var(--surface-strong), var(--surface-muted)); background-size: 200% 100%; animation: shimmer 1.4s infinite; }
@@ -469,7 +499,9 @@ h1, h2, p { margin-top: 0; }
   .inventory-tools { grid-template-columns: 1fr; }
   .segmented { width: 100%; }
   .segmented button { flex: 1; }
-  .switch-control { justify-self: start; }
+  .select-control { justify-self: start; }
+  .directory-filter { width: 100%; }
+  .directory-filter select { width: 100%; min-width: 0; }
   .inventory-summary { gap: 12px; overflow-x: auto; white-space: nowrap; }
   .process-row { grid-template-columns: minmax(0, 1fr); gap: 10px; padding: 14px; }
   .process-row > [role="cell"]:nth-child(2) { position: absolute; right: 14px; margin-top: 1px; }

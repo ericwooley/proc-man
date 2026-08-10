@@ -176,7 +176,11 @@ try {
       brandParent: document.querySelector(".brand").parentElement.tagName,
       brandInNav: Boolean(document.querySelector(".rail .brand")),
       navCount: document.querySelectorAll(".rail-link").length,
-      navActive: document.querySelector(".rail-link").classList.contains("active")
+      navActive: document.querySelector(".rail-link").classList.contains("active"),
+      directory: document.querySelector(".row-directory").innerText,
+      hasDirectoryFilter: Boolean(document.querySelector('select[aria-label="Filter by directory"]')),
+      hasDirectoryGrouping: [...document.querySelectorAll('select[aria-label="Group processes"] option')]
+        .some(option => option.value === "directory")
     })`),
     {
       heading: "Processes",
@@ -184,7 +188,20 @@ try {
       brandInNav: false,
       navCount: 1,
       navActive: true,
+      directory: repository,
+      hasDirectoryFilter: true,
+      hasDirectoryGrouping: true,
     },
+  );
+
+  await evaluate(`(() => {
+    const group = document.querySelector('select[aria-label="Group processes"]');
+    group.value = "directory";
+    group.dispatchEvent(new Event("change", { bubbles: true }));
+  })()`);
+  await waitFor(
+    `document.querySelector(".group-heading strong")?.textContent === ${JSON.stringify(repository)}`,
+    "Directory grouping did not render",
   );
 
   if (process.env.PROC_MAN_INVENTORY_SCREENSHOT) {

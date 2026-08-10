@@ -66,6 +66,7 @@ import type {
 } from "./types";
 
 type Theme = "light" | "dark";
+type GroupMode = "none" | "tag" | "directory";
 
 export function App() {
   const [theme, setTheme] = useState<Theme>(() => {
@@ -136,8 +137,9 @@ function InventoryPage() {
   const [processes, setProcesses] = useState<Process[]>([]);
   const [query, setQuery] = useState("");
   const [kind, setKind] = useState<"all" | "service" | "task">("all");
+  const [directory, setDirectory] = useState("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  const [groupByTag, setGroupByTag] = useState(false);
+  const [groupMode, setGroupMode] = useState<GroupMode>("none");
   const [collapsedGroups, setCollapsedGroups] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -171,10 +173,25 @@ function InventoryPage() {
     return [...counts.entries()].sort(([left], [right]) => left.localeCompare(right));
   }, [processes]);
 
+  const directories = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const process of processes) {
+      counts.set(process.cwd, (counts.get(process.cwd) ?? 0) + 1);
+    }
+    return [...counts.entries()].sort(([left], [right]) => left.localeCompare(right));
+  }, [processes]);
+
+  useEffect(() => {
+    if (directory && !directories.some(([path]) => path === directory)) {
+      setDirectory("");
+    }
+  }, [directories, directory]);
+
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase();
     return processes.filter((process) => {
       if (kind !== "all" && process.kind !== kind) return false;
+      if (directory && process.cwd !== directory) return false;
       if (!selectedTags.every((tag) => process.tags.includes(tag))) return false;
       if (!needle) return true;
       const searchable = [
@@ -193,18 +210,31 @@ function InventoryPage() {
       ];
       return searchable.some((value) => value.toLowerCase().includes(needle));
     });
-  }, [kind, processes, query, selectedTags]);
+  }, [directory, kind, processes, query, selectedTags]);
 
   const groups = useMemo(() => {
-    if (!groupByTag) return [];
-    const allTags = new Set(filtered.flatMap((process) => process.tags.length ? process.tags : ["untagged"]));
-    return [...allTags].sort().map((tag) => ({
-      tag,
-      processes: filtered.filter((process) =>
-        tag === "untagged" ? process.tags.length === 0 : process.tags.includes(tag),
-      ),
-    }));
-  }, [filtered, groupByTag]);
+    if (groupMode === "tag") {
+      const allTags = new Set(filtered.flatMap((process) => process.tags.length ? process.tags : ["untagged"]));
+      return [...allTags].sort().map((tag) => ({
+        key: `tag:${tag}`,
+        label: tag,
+        type: "tag" as const,
+        processes: filtered.filter((process) =>
+          tag === "untagged" ? process.tags.length === 0 : process.tags.includes(tag),
+        ),
+      }));
+    }
+    if (groupMode === "directory") {
+      const allDirectories = new Set(filtered.map((process) => process.cwd));
+      return [...allDirectories].sort().map((cwd) => ({
+        key: `directory:${cwd}`,
+        label: cwd,
+        type: "directory" as const,
+        processes: filtered.filter((process) => process.cwd === cwd),
+      }));
+    }
+    return [];
+  }, [filtered, groupMode]);
 
   async function act(process: Process, action: "start" | "stop" | "restart" | "run") {
     try {
@@ -268,16 +298,38 @@ function InventoryPage() {
             </button>
           ))}
         </div>
-        <label className="switch-control">
-          <input
-            type="checkbox"
-            checked={groupByTag}
-            onChange={(event) => setGroupByTag(event.target.checked)}
-          />
-          <span aria-hidden="true" />
-          Group by tag
+        <label className="select-control">
+          <span>Group</span>
+          <select
+            aria-label="Group processes"
+            value={groupMode}
+            onChange={(event) => setGroupMode(event.target.value as GroupMode)}
+          >
+            <option value="none">None</option>
+            <option value="tag">Tag</option>
+            <option value="directory">Directory</option>
+          </select>
         </label>
       </div>
+
+      {directories.length > 0 && (
+        <div className="directory-filter-row">
+          <label className="directory-filter">
+            <Folder />
+            <span>Directory</span>
+            <select
+              aria-label="Filter by directory"
+              value={directory}
+              onChange={(event) => setDirectory(event.target.value)}
+            >
+              <option value="">All directories</option>
+              {directories.map(([path, count]) => (
+                <option value={path} key={path}>{path} ({count})</option>
+              ))}
+            </select>
+          </label>
+        </div>
+      )}
 
       {tags.length > 0 && (
         <div className="tag-filter-row" aria-label="Filter by tags">
@@ -321,27 +373,28 @@ function InventoryPage() {
         <ProcessSkeleton />
       ) : filtered.length === 0 ? (
         <EmptyState hasProcesses={processes.length > 0} onRegister={() => setRegisterOpen(true)} />
-      ) : groupByTag ? (
+      ) : groupMode !== "none" ? (
         <div className="process-groups">
           {groups.map((group) => {
-            const collapsed = collapsedGroups.includes(group.tag);
+            const collapsed = collapsedGroups.includes(group.key);
             return (
-              <section className="process-group" key={group.tag}>
+              <section className="process-group" key={group.key}>
                 <button
                   type="button"
                   className="group-heading"
                   aria-expanded={!collapsed}
+                  aria-label={`${group.label}, ${group.processes.length} ${group.processes.length === 1 ? "process" : "processes"}`}
                   onClick={() =>
                     setCollapsedGroups((current) =>
-                      current.includes(group.tag)
-                        ? current.filter((tag) => tag !== group.tag)
-                        : [...current, group.tag],
+                      current.includes(group.key)
+                        ? current.filter((key) => key !== group.key)
+                        : [...current, group.key],
                     )
                   }
                 >
                   {collapsed ? <CaretRight /> : <CaretDown />}
-                  <Tag />
-                  <strong>{group.tag}</strong>
+                  {group.type === "directory" ? <Folder /> : <Tag />}
+                  <strong>{group.label}</strong>
                   <span>{group.processes.length}</span>
                 </button>
                 {!collapsed && (
@@ -436,6 +489,10 @@ function ProcessTable({
                 {(process.tags.length ? process.tags : ["untagged"]).map((tag) => (
                   <span key={tag}>{tag}</span>
                 ))}
+              </div>
+              <div className="row-directory" title={process.cwd}>
+                <Folder />
+                <span>{process.cwd}</span>
               </div>
             </div>
           </div>

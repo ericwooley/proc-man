@@ -11,7 +11,7 @@ The React application provides the process inventory and process detail routes.
 ## Features
 
 - Register services and one-shot tasks.
-- Filter and group processes with tags.
+- Filter and group processes with tags or working directories.
 - Start, stop, and restart services.
 - Run and cancel tasks.
 - Record declared ports as process metadata.
@@ -56,6 +56,9 @@ proc-man targets local development and has no deployment workflow.
 
 ## Register a process
 
+These commands register processes directly.
+They do not require a manifest file.
+
 Register a service:
 
 ```sh
@@ -84,6 +87,7 @@ Use the returned process ID for later commands.
 
 ```sh
 ./bin/proc-man process list
+./bin/proc-man process list --directory .
 ./bin/proc-man process start PROCESS_ID
 ./bin/proc-man process logs PROCESS_ID
 ./bin/proc-man process stop PROCESS_ID
