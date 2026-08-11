@@ -41,6 +41,7 @@ jobs:
         run: |
           brew tap-new proc-man/ci
           tap_path="$(brew --repository proc-man/ci)"
+          mkdir -p "$tap_path/Casks"
           install -m 0644 .github/test-casks/proc-man-ci.rb \
             "$tap_path/Casks/proc-man-ci.rb"
           install -m 0644 "$RUNNER_TEMP/proc-man-ci.tar.gz" \

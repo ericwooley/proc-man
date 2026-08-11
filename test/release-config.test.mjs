@@ -74,6 +74,7 @@ test("macOS ARM64 checks CLI startup and LaunchAgent installation", async () => 
   assert.match(goModule, /^go 1\.26$/m);
   assert.match(workflow, /runs-on: macos-26/);
   assert.match(workflow, /GOARCH:\s*arm64/);
+  assert.match(workflow, /mkdir -p "\$tap_path\/Casks"/);
   assert.match(workflow, /proc-man --help/);
   assert.match(workflow, /proc-man daemon install --now/);
   assert.match(workflow, /launchctl print/);
