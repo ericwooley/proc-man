@@ -39,17 +39,16 @@ brew install --cask ericwooley/tap/proc-man
 
 ## Create a release
 
-Each merge to `main` runs Release Please.
-Release Please reads Conventional Commit headers and creates or updates one release pull request.
+Each push to `main` runs semantic-release.
+It reads all Conventional Commits since the previous version tag.
 
 - `fix:` creates a patch version.
 - `feat:` creates a minor version.
 - A `!` after the type or a `BREAKING CHANGE:` footer creates a major version.
 - Other commit types do not create a version unless they contain a breaking change.
 
-Merge the generated release pull request when its version and changelog are ready.
-That merge creates the version tag and GitHub Release.
-The same workflow builds and uploads the archives, checksums, and Homebrew cask.
+The workflow creates the version tag and GitHub Release without a release pull request.
+It then builds and uploads the archives, checksums, and Homebrew cask.
 
 To retry artifact publication for an existing tag, run the Release workflow manually and provide the tag.
 

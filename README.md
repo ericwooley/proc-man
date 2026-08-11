@@ -171,9 +171,9 @@ npm run test:browser
 
 ## Release
 
-Merges to `main` update a Release Please pull request from Conventional Commits.
-Merge that release pull request to create the version tag and GitHub Release.
-The same workflow builds archives for macOS, Linux, and Windows.
+Each qualifying push to `main` creates a version from its Conventional Commits.
+The workflow creates the version tag and GitHub Release directly.
+It then builds archives for macOS, Linux, and Windows.
 It also updates the `ericwooley/homebrew-tap` cask.
 
 See [Releasing](docs/releasing.md) for the required tap repository and token.

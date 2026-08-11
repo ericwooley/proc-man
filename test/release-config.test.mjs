@@ -29,8 +29,8 @@ test("main workflow versions Conventional Commits and publishes release artifact
 
   assert.match(workflow, /branches:\s*\n\s*- main/);
   assert.match(workflow, /workflow_dispatch:/);
-  assert.match(workflow, /googleapis\/release-please-action@v4/);
-  assert.match(workflow, /release_created == 'true'/);
+  assert.match(workflow, /semantic-release@25\.0\.9/);
+  assert.match(workflow, /steps\.version\.outputs\.tag/);
   assert.match(workflow, /inputs\.tag/);
   assert.match(workflow, /contents: write/);
   assert.match(workflow, /pull-requests: write/);
@@ -40,16 +40,15 @@ test("main workflow versions Conventional Commits and publishes release artifact
   assert.match(workflow, /args: release --clean/);
 });
 
-test("release manifest bootstraps proc-man semantic versions", async () => {
-  const configuration = JSON.parse(
-    await readFile(new URL("../release-please-config.json", import.meta.url), "utf8"),
-  );
-  const manifest = JSON.parse(
-    await readFile(new URL("../.release-please-manifest.json", import.meta.url), "utf8"),
+test("semantic release publishes Conventional Commit versions from main", async () => {
+  const configuration = await readFile(
+    new URL("../release.config.cjs", import.meta.url),
+    "utf8",
   );
 
-  assert.equal(configuration.packages["."]["release-type"], "go");
-  assert.equal(configuration.packages["."]["package-name"], "proc-man");
-  assert.match(configuration["bootstrap-sha"], /^[0-9a-f]{40}$/);
-  assert.equal(manifest["."], "0.0.0");
+  assert.match(configuration, /branches:\s*\["main"\]/);
+  assert.match(configuration, /tagFormat:\s*"v\$\{version\}"/);
+  assert.match(configuration, /@semantic-release\/commit-analyzer/);
+  assert.match(configuration, /@semantic-release\/release-notes-generator/);
+  assert.match(configuration, /@semantic-release\/github/);
 });
