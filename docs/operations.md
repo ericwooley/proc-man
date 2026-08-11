@@ -66,7 +66,7 @@ proc-man daemon install --now
 The command installs the user service and starts it immediately.
 The generated service file records the current executable path.
 
-Homebrew runs this command automatically during installation and upgrades.
+Run this command after Homebrew installation and upgrades.
 Run `proc-man daemon uninstall` before Homebrew removes the Formula.
 
 Check the installed daemon:

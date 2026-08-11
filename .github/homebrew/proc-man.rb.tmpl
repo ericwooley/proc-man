@@ -32,13 +32,10 @@ class ProcMan < Formula
     bin.install "proc-man"
   end
 
-  def post_install
-    system bin/"proc-man", "daemon", "install", "--now"
-  end
-
   def caveats
     <<~EOS
-      proc-man installs and starts its user service during installation.
+      Start or update the proc-man user service after installation or upgrade:
+        proc-man daemon install --now
       Run `proc-man daemon uninstall` before `brew uninstall proc-man`.
     EOS
   end

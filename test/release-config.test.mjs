@@ -23,7 +23,8 @@ test("release configuration builds all supported desktop systems", async () => {
   assert.match(configuration, /files:\s*[\s\S]*- LICENSE[\s\S]*- README\.md/);
   assert.match(formula, /on_macos do[\s\S]*on_intel do[\s\S]*on_arm do/);
   assert.match(formula, /on_linux do[\s\S]*on_intel do[\s\S]*on_arm do/);
-  assert.match(formula, /def post_install[\s\S]*system bin\s*\/\s*"proc-man", "daemon", "install", "--now"/);
+  assert.doesNotMatch(formula, /def post_install/);
+  assert.match(formula, /proc-man daemon install --now/);
 });
 
 test("main workflow versions Conventional Commits and publishes release artifacts", async () => {

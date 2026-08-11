@@ -126,8 +126,8 @@ brew install ericwooley/apps/proc-man
 ```
 
 This command adds `ericwooley/apps` and trusts only the proc-man Formula.
-It also installs and starts the proc-man user service.
-The Formula uses the default daemon setup command on macOS and Linux:
+It installs the proc-man executable.
+Start the service with the default daemon setup command on macOS and Linux:
 
 ```sh
 proc-man daemon install --now
@@ -176,7 +176,7 @@ proc-man daemon install --now
 
 The command installs and starts a systemd user service on Linux.
 The command installs and starts a per-user LaunchAgent on macOS.
-Homebrew runs this command automatically during installation and upgrades.
+Run this command after Homebrew installation and upgrades.
 
 ## Test
 
