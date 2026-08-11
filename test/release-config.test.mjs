@@ -53,9 +53,8 @@ test("main workflow versions Conventional Commits and publishes release artifact
   assert.match(workflow, /render-homebrew-formula\.mjs/);
   assert.match(workflow, /Formula\/proc-man\.rb/);
   assert.match(workflow, /gh api --method PUT/);
-  assert.match(workflow, /cask_path="Casks\/proc-man\.rb"/);
-  assert.match(workflow, /--jq '\.sha \/\/ empty'/);
-  assert.match(workflow, /gh api --method DELETE/);
+  assert.doesNotMatch(workflow, /Casks\/proc-man\.rb/);
+  assert.doesNotMatch(workflow, /gh api --method DELETE/);
   assert.match(workflow, /proc-man daemon install --now/);
   assert.match(workflow, /launchctl print/);
 });

@@ -97,7 +97,6 @@ jobs:
         run: |
           formula_path="$RUNNER_TEMP/proc-man.rb"
           formula_api="repos/$TAP_OWNER/homebrew-apps/contents/Formula/proc-man.rb"
-          cask_path="Casks/proc-man.rb"
           version="${RELEASE_TAG#v}"
 
           node scripts/render-homebrew-formula.mjs \
@@ -116,15 +115,6 @@ jobs:
             formula_args+=(-f "sha=$formula_sha")
           fi
           gh api --method PUT "$formula_api" "${formula_args[@]}"
-
-          cask_sha="$(gh api "repos/$TAP_OWNER/homebrew-apps/contents/$cask_path" \
-            --jq '.sha // empty' 2>/dev/null || true)"
-          if [[ -n "$cask_sha" ]]; then
-            gh api --method DELETE \
-              "repos/$TAP_OWNER/homebrew-apps/contents/$cask_path" \
-              -f message='chore: remove legacy proc-man cask' \
-              -f sha="$cask_sha"
-          fi
 
   macos-arm64-formula:
     name: Verify the published macOS ARM64 Formula
