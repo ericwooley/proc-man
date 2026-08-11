@@ -59,7 +59,7 @@ homebrew_casks:
     homepage: "https://github.com/{{ .Env.GITHUB_REPOSITORY }}"
     repository:
       owner: "{{ .Env.TAP_OWNER }}"
-      name: homebrew-tap
+      name: homebrew-apps
       token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
     commit_author:
       name: proc-man release bot

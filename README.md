@@ -117,35 +117,35 @@ Use the returned process ID for later commands.
 
 The Homebrew cask supports macOS and Linux.
 [Homebrew requires explicit trust](https://docs.brew.sh/Tap-Trust) for non-official taps.
-These commands work after a release publishes the cask to `ericwooley/homebrew-tap`.
+These commands work after a release publishes the cask to `ericwooley/homebrew-apps`.
 
 Install proc-man with its fully qualified cask name:
 
 ```sh
-brew install --cask ericwooley/tap/proc-man
+brew install --cask ericwooley/apps/proc-man
 ```
 
-This command adds `ericwooley/tap` and trusts only the proc-man cask.
+This command adds `ericwooley/apps` and trusts only the proc-man cask.
 
 You can also add the tap before installation:
 
 ```sh
-brew tap ericwooley/tap
-brew install --cask ericwooley/tap/proc-man
+brew tap ericwooley/apps
+brew install --cask ericwooley/apps/proc-man
 ```
 
 Upgrade an installed release:
 
 ```sh
 brew update
-brew upgrade --cask ericwooley/tap/proc-man
+brew upgrade --cask ericwooley/apps/proc-man
 ```
 
 Remove proc-man and its tap:
 
 ```sh
 brew uninstall --cask proc-man
-brew untap ericwooley/tap
+brew untap ericwooley/apps
 ```
 
 Windows users can download a ZIP archive from the GitHub Release.
@@ -174,7 +174,7 @@ npm run test:browser
 Each qualifying push to `main` creates a version from its Conventional Commits.
 The workflow creates the version tag and GitHub Release directly.
 It then builds archives for macOS, Linux, and Windows.
-It also updates the `ericwooley/homebrew-tap` cask.
+It also updates the `ericwooley/homebrew-apps` cask.
 
 See [Releasing](docs/releasing.md) for the required tap repository and token.
 

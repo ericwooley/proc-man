@@ -14,7 +14,7 @@ test("release configuration builds all supported desktop systems", async () => {
   assert.match(configuration, /goos: windows\s*\n\s*formats:\s*\[zip\]/);
   assert.match(configuration, /homebrew_casks:/);
   assert.match(configuration, /homepage:.*GITHUB_REPOSITORY/);
-  assert.match(configuration, /name: homebrew-tap/);
+  assert.match(configuration, /name: homebrew-apps/);
   assert.match(configuration, /HOMEBREW_TAP_GITHUB_TOKEN/);
   assert.match(configuration, /release:\s*[\s\S]*mode: keep-existing/);
   assert.match(configuration, /replace_existing_artifacts: true/);
