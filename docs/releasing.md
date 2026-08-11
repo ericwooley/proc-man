@@ -51,6 +51,8 @@ It reads all Conventional Commits since the previous version tag.
 
 The workflow creates the version tag and GitHub Release without a release pull request.
 It then builds and uploads the archives, checksums, and Homebrew cask.
+The workflow installs the published cask on macOS 26 ARM64.
+The release passes after CLI startup and LaunchAgent checks succeed.
 
 To retry artifact publication for an existing tag, run the Release workflow manually and provide the tag.
 

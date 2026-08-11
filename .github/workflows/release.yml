@@ -25,6 +25,8 @@ jobs:
     name: Version and publish
     environment: release
     runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.release-tag.outputs.tag }}
     steps:
       - name: Check out the release source
         uses: actions/checkout@v4
@@ -64,8 +66,20 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Resolve the release tag
+        id: release-tag
+        env:
+          CREATED_TAG: ${{ steps.version.outputs.tag }}
+          REQUESTED_TAG: ${{ inputs.tag }}
+        run: |
+          release_tag="$CREATED_TAG"
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            release_tag="$REQUESTED_TAG"
+          fi
+          printf 'tag=%s\n' "$release_tag" >> "$GITHUB_OUTPUT"
+
       - name: Publish archives and the Homebrew cask
-        if: steps.version.outputs.tag != '' || github.event_name == 'workflow_dispatch'
+        if: steps.release-tag.outputs.tag != ''
         uses: goreleaser/goreleaser-action@v7
         with:
           distribution: goreleaser
@@ -76,3 +90,56 @@ jobs:
           GITHUB_REPOSITORY: ${{ github.repository }}
           HOMEBREW_TAP_GITHUB_TOKEN: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN }}
           TAP_OWNER: ${{ github.repository_owner }}
+
+  macos-arm64-cask:
+    name: Verify the published macOS ARM64 cask
+    needs: release
+    if: needs.release.outputs.tag != ''
+    runs-on: macos-26
+    timeout-minutes: 15
+    env:
+      RELEASE_TAG: ${{ needs.release.outputs.tag }}
+    steps:
+      - name: Install and verify the published cask
+        run: |
+          run_bounded() {
+            limit="$1"
+            shift
+            "$@" &
+            command_pid=$!
+            (
+              sleep "$limit"
+              kill -TERM "$command_pid" 2>/dev/null || exit 0
+              sleep 2
+              kill -KILL "$command_pid" 2>/dev/null || true
+            ) &
+            watchdog_pid=$!
+            set +e
+            wait "$command_pid"
+            status=$?
+            set -e
+            kill "$watchdog_pid" 2>/dev/null || true
+            wait "$watchdog_pid" 2>/dev/null || true
+            return "$status"
+          }
+
+          brew update
+          run_bounded 180 brew install --cask ericwooley/apps/proc-man
+          run_bounded 20 proc-man --help > "$RUNNER_TEMP/proc-man-help.txt"
+          grep -q "Manage local development processes and logs" \
+            "$RUNNER_TEMP/proc-man-help.txt"
+          expected_version="${RELEASE_TAG#v}"
+          proc-man --version | grep -F "proc-man version $expected_version"
+          run_bounded 60 proc-man daemon install --now
+          launchctl print "gui/$(id -u)/dev.proc-man"
+          for attempt in {1..10}; do
+            if curl --fail --silent http://127.0.0.1:13337/ > /dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          exit 1
+
+      - name: Remove the published cask
+        if: always()
+        run: brew uninstall --cask ericwooley/apps/proc-man || true

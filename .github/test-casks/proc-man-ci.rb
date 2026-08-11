@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 cask "proc-man-ci" do
   version "ci"
   sha256 :no_check

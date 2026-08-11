@@ -43,6 +43,12 @@ test("main workflow versions Conventional Commits and publishes release artifact
   assert.match(workflow, /npm run build:web/);
   assert.match(workflow, /goreleaser\/goreleaser-action@v7/);
   assert.match(workflow, /args: release --clean/);
+  assert.match(workflow, /macos-arm64-cask:/);
+  assert.match(workflow, /needs: release/);
+  assert.match(workflow, /runs-on: macos-26/);
+  assert.match(workflow, /brew install --cask ericwooley\/apps\/proc-man/);
+  assert.match(workflow, /proc-man daemon install --now/);
+  assert.match(workflow, /launchctl print/);
 });
 
 test("semantic release publishes Conventional Commit versions from main", async () => {

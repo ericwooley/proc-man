@@ -94,6 +94,14 @@ The check verifies:
 
 The shell smoke test verifies the embedded HTTP delivery separately.
 
+## macOS ARM64 checks
+
+The macOS 26 ARM64 workflow builds and installs a test Homebrew cask.
+It checks CLI startup, LaunchAgent loading, and the service HTTP endpoint.
+
+The release workflow also installs the published cask on macOS 26 ARM64.
+It checks the published version before the release workflow passes.
+
 ## Prototype checks
 
 The original static prototype remains as a design reference.
