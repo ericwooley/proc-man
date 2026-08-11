@@ -107,7 +107,7 @@ jobs:
             "$formula_path"
 
           formula_content="$(base64 < "$formula_path" | tr -d '\n')"
-          formula_sha="$(gh api "$formula_api" --jq .sha 2>/dev/null || true)"
+          formula_sha="$(gh api "$formula_api" --jq '.sha // empty' 2>/dev/null || true)"
           formula_args=(
             -f "message=chore: update proc-man Formula to $RELEASE_TAG"
             -f "content=$formula_content"
@@ -118,7 +118,7 @@ jobs:
           gh api --method PUT "$formula_api" "${formula_args[@]}"
 
           cask_sha="$(gh api "repos/$TAP_OWNER/homebrew-apps/contents/$cask_path" \
-            --jq .sha 2>/dev/null || true)"
+            --jq '.sha // empty' 2>/dev/null || true)"
           if [[ -n "$cask_sha" ]]; then
             gh api --method DELETE \
               "repos/$TAP_OWNER/homebrew-apps/contents/$cask_path" \
