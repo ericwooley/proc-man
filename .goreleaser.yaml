@@ -63,6 +63,13 @@ homebrew_casks:
           system_command "#{staged_path}/proc-man", args: ["daemon", "uninstall"]
       post:
         install: |
+          if OS.mac?
+            executable = "#{staged_path}/proc-man"
+            replacement = "#{staged_path}/.proc-man-replacement"
+            FileUtils.copy_file executable, replacement
+            FileUtils.chmod 0755, replacement
+            FileUtils.mv replacement, executable, force: true
+          end
           system_command "#{staged_path}/proc-man", args: ["daemon", "install", "--now"]
     repository:
       owner: "{{ .Env.TAP_OWNER }}"

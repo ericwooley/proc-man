@@ -18,6 +18,8 @@ test("release configuration builds all supported desktop systems", async () => {
   assert.match(configuration, /HOMEBREW_TAP_GITHUB_TOKEN/);
   assert.match(configuration, /hooks:\s*[\s\S]*uninstall:\s*\|[\s\S]*\["daemon", "uninstall"\]/);
   assert.match(configuration, /hooks:\s*[\s\S]*install:\s*\|[\s\S]*\["daemon", "install", "--now"\]/);
+  assert.match(configuration, /FileUtils\.copy_file executable, replacement/);
+  assert.match(configuration, /FileUtils\.mv replacement, executable, force: true/);
   assert.match(configuration, /release:\s*[\s\S]*mode: keep-existing/);
   assert.match(configuration, /replace_existing_artifacts: true/);
   assert.match(configuration, /files:\s*[\s\S]*- LICENSE[\s\S]*- README\.md/);
@@ -54,4 +56,20 @@ test("semantic release publishes Conventional Commit versions from main", async 
   assert.match(configuration, /@semantic-release\/commit-analyzer/);
   assert.match(configuration, /@semantic-release\/release-notes-generator/);
   assert.match(configuration, /@semantic-release\/github/);
+});
+
+test("macOS ARM64 checks CLI startup and LaunchAgent installation", async () => {
+  const goModule = await readFile(new URL("../go.mod", import.meta.url), "utf8");
+  const workflow = await readFile(
+    new URL("../.github/workflows/macos-arm64.yml", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(goModule, /^go 1\.26$/m);
+  assert.match(workflow, /runs-on: macos-26/);
+  assert.match(workflow, /GOARCH:\s*arm64/);
+  assert.match(workflow, /proc-man --help/);
+  assert.match(workflow, /proc-man daemon install --now/);
+  assert.match(workflow, /launchctl print/);
+  assert.match(workflow, /brew install --cask/);
 });

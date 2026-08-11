@@ -1,0 +1,69 @@
+name: macOS ARM64
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  startup-and-service:
+    name: Homebrew startup and LaunchAgent
+    runs-on: macos-26
+    timeout-minutes: 15
+    env:
+      GOARCH: arm64
+    steps:
+      - name: Check out the source
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Build the release binary
+        env:
+          CGO_ENABLED: "0"
+          GOOS: darwin
+        run: |
+          mkdir -p "$RUNNER_TEMP/proc-man-build"
+          go build -ldflags "-s -w -X main.version=ci" \
+            -o "$RUNNER_TEMP/proc-man-build/proc-man" ./cmd/proc-man
+          tar -czf "$RUNNER_TEMP/proc-man-ci.tar.gz" \
+            -C "$RUNNER_TEMP/proc-man-build" proc-man
+
+      - name: Install the Homebrew cask
+        run: |
+          brew tap-new proc-man/ci
+          tap_path="$(brew --repository proc-man/ci)"
+          install -m 0644 .github/test-casks/proc-man-ci.rb \
+            "$tap_path/Casks/proc-man-ci.rb"
+          install -m 0644 "$RUNNER_TEMP/proc-man-ci.tar.gz" \
+            "$tap_path/proc-man-ci.tar.gz"
+          brew install --cask proc-man/ci/proc-man-ci
+
+      - name: Check CLI startup and daemon installation
+        run: |
+          proc-man --help > "$RUNNER_TEMP/proc-man-help.txt"
+          grep -q "Manage local development processes and logs" \
+            "$RUNNER_TEMP/proc-man-help.txt"
+          proc-man daemon install --now
+          launchctl print "gui/$(id -u)/dev.proc-man"
+          for attempt in {1..10}; do
+            if curl --fail --silent http://127.0.0.1:13337/ > /dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          exit 1
+
+      - name: Remove the test cask
+        if: always()
+        run: |
+          brew uninstall --cask proc-man/ci/proc-man-ci || true
+          brew untap proc-man/ci || true
