@@ -1,0 +1,49 @@
+# frozen_string_literal: true
+
+class ProcMan < Formula
+  desc "Manage local development processes and logs"
+  homepage "https://github.com/ericwooley/proc-man"
+  version "__VERSION__"
+  license "MIT"
+
+  on_macos do
+    on_intel do
+      url "https://github.com/ericwooley/proc-man/releases/download/v#{version}/proc-man_#{version}_darwin_amd64.tar.gz"
+      sha256 "__DARWIN_AMD64_SHA256__"
+    end
+    on_arm do
+      url "https://github.com/ericwooley/proc-man/releases/download/v#{version}/proc-man_#{version}_darwin_arm64.tar.gz"
+      sha256 "__DARWIN_ARM64_SHA256__"
+    end
+  end
+
+  on_linux do
+    on_intel do
+      url "https://github.com/ericwooley/proc-man/releases/download/v#{version}/proc-man_#{version}_linux_amd64.tar.gz"
+      sha256 "__LINUX_AMD64_SHA256__"
+    end
+    on_arm do
+      url "https://github.com/ericwooley/proc-man/releases/download/v#{version}/proc-man_#{version}_linux_arm64.tar.gz"
+      sha256 "__LINUX_ARM64_SHA256__"
+    end
+  end
+
+  def install
+    bin.install "proc-man"
+  end
+
+  def post_install
+    system bin/"proc-man", "daemon", "install", "--now"
+  end
+
+  def caveats
+    <<~EOS
+      proc-man installs and starts its user service during installation.
+      Run `proc-man daemon uninstall` before `brew uninstall proc-man`.
+    EOS
+  end
+
+  test do
+    system bin/"proc-man", "--help"
+  end
+end

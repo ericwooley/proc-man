@@ -78,7 +78,7 @@ jobs:
           fi
           printf 'tag=%s\n' "$release_tag" >> "$GITHUB_OUTPUT"
 
-      - name: Publish archives and the Homebrew cask
+      - name: Publish release archives
         if: steps.release-tag.outputs.tag != ''
         uses: goreleaser/goreleaser-action@v7
         with:
@@ -87,12 +87,47 @@ jobs:
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
-          HOMEBREW_TAP_GITHUB_TOKEN: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN }}
-          TAP_OWNER: ${{ github.repository_owner }}
 
-  macos-arm64-cask:
-    name: Verify the published macOS ARM64 cask
+      - name: Publish the Homebrew Formula
+        if: steps.release-tag.outputs.tag != ''
+        env:
+          GH_TOKEN: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ steps.release-tag.outputs.tag }}
+          TAP_OWNER: ${{ github.repository_owner }}
+        run: |
+          formula_path="$RUNNER_TEMP/proc-man.rb"
+          formula_api="repos/$TAP_OWNER/homebrew-apps/contents/Formula/proc-man.rb"
+          cask_path="Casks/proc-man.rb"
+          version="${RELEASE_TAG#v}"
+
+          node scripts/render-homebrew-formula.mjs \
+            "$version" \
+            release-dist/checksums.txt \
+            .github/homebrew/proc-man.rb.tmpl \
+            "$formula_path"
+
+          formula_content="$(base64 < "$formula_path" | tr -d '\n')"
+          formula_sha="$(gh api "$formula_api" --jq .sha 2>/dev/null || true)"
+          formula_args=(
+            -f "message=chore: update proc-man Formula to $RELEASE_TAG"
+            -f "content=$formula_content"
+          )
+          if [[ -n "$formula_sha" ]]; then
+            formula_args+=(-f "sha=$formula_sha")
+          fi
+          gh api --method PUT "$formula_api" "${formula_args[@]}"
+
+          cask_sha="$(gh api "repos/$TAP_OWNER/homebrew-apps/contents/$cask_path" \
+            --jq .sha 2>/dev/null || true)"
+          if [[ -n "$cask_sha" ]]; then
+            gh api --method DELETE \
+              "repos/$TAP_OWNER/homebrew-apps/contents/$cask_path" \
+              -f message='chore: remove legacy proc-man cask' \
+              -f sha="$cask_sha"
+          fi
+
+  macos-arm64-formula:
+    name: Verify the published macOS ARM64 Formula
     needs: release
     if: needs.release.outputs.tag != ''
     runs-on: macos-26
@@ -100,7 +135,7 @@ jobs:
     env:
       RELEASE_TAG: ${{ needs.release.outputs.tag }}
     steps:
-      - name: Install and verify the published cask
+      - name: Install and verify the published Formula
         run: |
           run_bounded() {
             limit="$1"
@@ -124,7 +159,7 @@ jobs:
           }
 
           brew update
-          run_bounded 180 brew install --cask ericwooley/apps/proc-man
+          run_bounded 180 brew install ericwooley/apps/proc-man
           run_bounded 20 proc-man --help > "$RUNNER_TEMP/proc-man-help.txt"
           grep -q "Manage local development processes and logs" \
             "$RUNNER_TEMP/proc-man-help.txt"
@@ -140,6 +175,8 @@ jobs:
           done
           exit 1
 
-      - name: Remove the published cask
+      - name: Remove the published Formula
         if: always()
-        run: brew uninstall --cask ericwooley/apps/proc-man || true
+        run: |
+          proc-man daemon uninstall || true
+          brew uninstall ericwooley/apps/proc-man || true

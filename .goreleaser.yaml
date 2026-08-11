@@ -48,33 +48,3 @@ changelog:
 release:
   mode: keep-existing
   replace_existing_artifacts: true
-
-homebrew_casks:
-  - name: proc-man
-    ids:
-      - proc-man
-    binaries:
-      - proc-man
-    description: Manage local development processes and logs
-    homepage: "https://github.com/{{ .Env.GITHUB_REPOSITORY }}"
-    hooks:
-      pre:
-        uninstall: |
-          system_command "#{staged_path}/proc-man", args: ["daemon", "uninstall"]
-      post:
-        install: |
-          if OS.mac?
-            executable = "#{staged_path}/proc-man"
-            replacement = "#{staged_path}/.proc-man-replacement"
-            FileUtils.copy_file executable, replacement
-            FileUtils.chmod 0755, replacement
-            FileUtils.mv replacement, executable, force: true
-          end
-          system_command "#{staged_path}/proc-man", args: ["daemon", "install", "--now"]
-    repository:
-      owner: "{{ .Env.TAP_OWNER }}"
-      name: homebrew-apps
-      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
-    commit_author:
-      name: proc-man release bot
-      email: actions@github.com
