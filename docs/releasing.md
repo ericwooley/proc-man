@@ -14,10 +14,10 @@ Each release also contains `checksums.txt`.
 
 ## Homebrew tap
 
-The release workflow publishes a Homebrew cask to `ericwooley/homebrew-apps`.
-The cask supports macOS and Linux.
-The cask installs and starts the proc-man user service.
-The cask removes the user service during uninstallation.
+The release workflow publishes a Homebrew Formula to `ericwooley/homebrew-apps`.
+The Formula supports macOS and Linux.
+The Formula installs and starts the proc-man user service.
+Remove the user service before removing the Formula.
 Create that repository before the first release.
 
 Add the `HOMEBREW_TAP_GITHUB_TOKEN` Actions secret to this repository.
@@ -25,10 +25,10 @@ The token needs content write access to the tap repository.
 The default GitHub Actions token cannot write to another repository.
 
 [Homebrew requires explicit trust](https://docs.brew.sh/Tap-Trust) for non-official taps.
-Use the fully qualified cask name to trust only proc-man:
+Use the fully qualified Formula name to trust only proc-man:
 
 ```sh
-brew install --cask ericwooley/apps/proc-man
+brew install ericwooley/apps/proc-man
 ```
 
 Homebrew adds `ericwooley/apps` during this installation.
@@ -36,7 +36,7 @@ Users can also add the tap first:
 
 ```sh
 brew tap ericwooley/apps
-brew install --cask ericwooley/apps/proc-man
+brew install ericwooley/apps/proc-man
 ```
 
 ## Create a release
@@ -50,8 +50,8 @@ It reads all Conventional Commits since the previous version tag.
 - Other commit types do not create a version unless they contain a breaking change.
 
 The workflow creates the version tag and GitHub Release without a release pull request.
-It then builds and uploads the archives, checksums, and Homebrew cask.
-The workflow installs the published cask on macOS 26 ARM64.
+It then builds and uploads the archives, checksums, and Homebrew Formula.
+The workflow installs the published Formula on macOS 26 ARM64.
 The release passes after CLI startup and LaunchAgent checks succeed.
 
 To retry artifact publication for an existing tag, run the Release workflow manually and provide the tag.

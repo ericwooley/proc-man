@@ -115,19 +115,19 @@ Use the returned process ID for later commands.
 
 ## Install with Homebrew
 
-The Homebrew cask supports macOS and Linux.
+The Homebrew Formula supports macOS and Linux.
 [Homebrew requires explicit trust](https://docs.brew.sh/Tap-Trust) for non-official taps.
-These commands work after a release publishes the cask to `ericwooley/homebrew-apps`.
+These commands work after a release publishes the Formula to `ericwooley/homebrew-apps`.
 
-Install proc-man with its fully qualified cask name:
+Install proc-man with its fully qualified Formula name:
 
 ```sh
-brew install --cask ericwooley/apps/proc-man
+brew install ericwooley/apps/proc-man
 ```
 
-This command adds `ericwooley/apps` and trusts only the proc-man cask.
+This command adds `ericwooley/apps` and trusts only the proc-man Formula.
 It also installs and starts the proc-man user service.
-The cask uses the default daemon setup command on macOS and Linux:
+The Formula uses the default daemon setup command on macOS and Linux:
 
 ```sh
 proc-man daemon install --now
@@ -137,24 +137,32 @@ You can also add the tap before installation:
 
 ```sh
 brew tap ericwooley/apps
-brew install --cask ericwooley/apps/proc-man
+brew install ericwooley/apps/proc-man
 ```
 
 Upgrade an installed release:
 
 ```sh
 brew update
-brew upgrade --cask ericwooley/apps/proc-man
+brew upgrade ericwooley/apps/proc-man
 ```
 
 Remove proc-man and its tap:
 
 ```sh
-brew uninstall --cask proc-man
+proc-man daemon uninstall
+brew uninstall proc-man
 brew untap ericwooley/apps
 ```
 
-Homebrew stops and removes the user service during cask removal.
+Remove the user service before Homebrew removes the executable.
+
+Replace an installed Cask with the Formula:
+
+```sh
+brew uninstall --cask proc-man
+brew install ericwooley/apps/proc-man
+```
 
 Windows users can download a ZIP archive from the GitHub Release.
 
@@ -183,7 +191,7 @@ npm run test:browser
 Each qualifying push to `main` creates a version from its Conventional Commits.
 The workflow creates the version tag and GitHub Release directly.
 It then builds archives for macOS, Linux, and Windows.
-It also updates the `ericwooley/homebrew-apps` cask.
+It also updates the `ericwooley/homebrew-apps` Formula.
 
 See [Releasing](docs/releasing.md) for the required tap repository and token.
 
