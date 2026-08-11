@@ -26,7 +26,7 @@ proc-man does not create a worktree resource or worktree page.
 
 ## Requirements
 
-- Go 1.24 or newer.
+- Go 1.26 or newer.
 - Node.js 22 or newer.
 - npm.
 - `jq` 1.6 or newer for the shell smoke test.
@@ -127,6 +127,11 @@ brew install --cask ericwooley/apps/proc-man
 
 This command adds `ericwooley/apps` and trusts only the proc-man cask.
 It also installs and starts the proc-man user service.
+The cask uses the default daemon setup command on macOS and Linux:
+
+```sh
+proc-man daemon install --now
+```
 
 You can also add the tap before installation:
 
@@ -153,17 +158,17 @@ Homebrew stops and removes the user service during cask removal.
 
 Windows users can download a ZIP archive from the GitHub Release.
 
-## Install the user service manually
+## Start the background daemon
 
-Use this step only for archive or source installations.
-Place `bin/proc-man` in a stable executable path.
+Use this command as the default daemon setup after any proc-man installation:
 
 ```sh
-./bin/proc-man daemon install --now
+proc-man daemon install --now
 ```
 
-Linux uses a systemd user service.
-macOS uses a per-user LaunchAgent.
+The command installs and starts a systemd user service on Linux.
+The command installs and starts a per-user LaunchAgent on macOS.
+Homebrew runs this command automatically during installation and upgrades.
 
 ## Test
 

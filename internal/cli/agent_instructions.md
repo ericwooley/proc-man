@@ -7,6 +7,16 @@ Register one-shot commands as tasks.
 Add tags that identify the project, component, and purpose.
 Declare each HTTP or TCP port that the command uses.
 
+### Start the proc-man daemon
+
+Use this command as the default daemon setup on Linux and macOS:
+
+```sh
+proc-man daemon install --now
+```
+
+The command installs and starts the current user service.
+
 ### Find registered processes
 
 List processes for the current directory before you register or start a process:

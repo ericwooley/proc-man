@@ -57,14 +57,21 @@ Use this option only during frontend development.
 
 ## User-service installation
 
-Homebrew cask installation and upgrades install and start the user service automatically.
-Homebrew cask removal stops and removes the user service definition.
-
-For archive or source installations, place the binary in a stable path before installation.
-The generated service file records the current executable path.
+Use this command as the default daemon setup on Linux and macOS:
 
 ```sh
 proc-man daemon install --now
+```
+
+The command installs the user service and starts it immediately.
+The generated service file records the current executable path.
+
+Homebrew runs this command automatically during installation and upgrades.
+Homebrew cask removal stops and removes the user service definition.
+
+Check the installed daemon:
+
+```sh
 proc-man daemon status
 ```
 

@@ -198,8 +198,18 @@ Without `--file`, registration searches parent directories for `.proc-man.yaml`.
 
 ## Manage the user service
 
+Use this command as the default daemon setup on Linux and macOS:
+
 ```sh
 proc-man daemon install --now
+```
+
+Linux installs a systemd user service.
+macOS installs a per-user LaunchAgent.
+
+Manage the installed daemon:
+
+```sh
 proc-man daemon status
 proc-man daemon restart
 proc-man daemon stop

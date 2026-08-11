@@ -22,3 +22,19 @@ test("CLI docs cover process registration, execution, logs, and manifest hooks",
   );
   assert.doesNotMatch(cli, /├── worktree|├── command/);
 });
+
+test("daemon documentation uses one default command on Linux and macOS", async () => {
+  const paths = [
+    "../README.md",
+    "../docs/operations.md",
+    "../docs/cli.md",
+    "../internal/cli/agent_instructions.md",
+  ];
+
+  for (const path of paths) {
+    const content = await readFile(new URL(path, import.meta.url), "utf8");
+    assert.match(content, /proc-man daemon install --now/, path);
+    assert.match(content, /Linux/, path);
+    assert.match(content, /macOS/, path);
+  }
+});
