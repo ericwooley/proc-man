@@ -65,3 +65,28 @@ func TestLaunchAgentInstallNowReplacesRunningService(t *testing.T) {
 		t.Fatalf("Calls = %#v, want %#v", calls, wantCalls)
 	}
 }
+
+func TestUserServiceEnvironmentAddsLinuxBusDefaults(t *testing.T) {
+	t.Parallel()
+	got := userServiceEnvironment("linux", 1000, []string{"PATH=/usr/bin"})
+	want := []string{
+		"PATH=/usr/bin",
+		"XDG_RUNTIME_DIR=/run/user/1000",
+		"DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus",
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("Environment = %#v, want %#v", got, want)
+	}
+}
+
+func TestUserServiceEnvironmentPreservesExplicitBusValues(t *testing.T) {
+	t.Parallel()
+	want := []string{
+		"XDG_RUNTIME_DIR=/custom/runtime",
+		"DBUS_SESSION_BUS_ADDRESS=unix:path=/custom/bus",
+	}
+	got := userServiceEnvironment("linux", 1000, want)
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("Environment = %#v, want %#v", got, want)
+	}
+}

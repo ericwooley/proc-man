@@ -29,11 +29,38 @@ func Current() (*Manager, error) {
 		GOOS: runtime.GOOS, Home: home, Executable: executable,
 		Run: func(name string, arguments ...string) error {
 			command := exec.Command(name, arguments...)
+			command.Env = userServiceEnvironment(runtime.GOOS, currentUserID(), os.Environ())
 			command.Stdout = os.Stdout
 			command.Stderr = os.Stderr
 			return command.Run()
 		},
 	}, nil
+}
+
+func userServiceEnvironment(goos string, userID int, environment []string) []string {
+	result := append([]string(nil), environment...)
+	if goos != "linux" {
+		return result
+	}
+	runtimeDirectory := environmentValue(result, "XDG_RUNTIME_DIR")
+	if runtimeDirectory == "" {
+		runtimeDirectory = fmt.Sprintf("/run/user/%d", userID)
+		result = append(result, "XDG_RUNTIME_DIR="+runtimeDirectory)
+	}
+	if environmentValue(result, "DBUS_SESSION_BUS_ADDRESS") == "" {
+		result = append(result, "DBUS_SESSION_BUS_ADDRESS=unix:path="+runtimeDirectory+"/bus")
+	}
+	return result
+}
+
+func environmentValue(environment []string, key string) string {
+	prefix := key + "="
+	for index := len(environment) - 1; index >= 0; index-- {
+		if strings.HasPrefix(environment[index], prefix) {
+			return strings.TrimPrefix(environment[index], prefix)
+		}
+	}
+	return ""
 }
 
 func (manager *Manager) Install(now bool) (string, error) {
