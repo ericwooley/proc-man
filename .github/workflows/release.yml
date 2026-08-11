@@ -23,6 +23,7 @@ concurrency:
 jobs:
   release:
     name: Version and publish
+    environment: release
     runs-on: ubuntu-latest
     steps:
       - name: Check out the release source

@@ -29,6 +29,7 @@ test("main workflow versions Conventional Commits and publishes release artifact
 
   assert.match(workflow, /branches:\s*\n\s*- main/);
   assert.match(workflow, /workflow_dispatch:/);
+  assert.match(workflow, /release:\s*\n\s*name: Version and publish\s*\n\s*environment: release/);
   assert.match(workflow, /semantic-release@25\.0\.9/);
   assert.match(workflow, /steps\.version\.outputs\.tag/);
   assert.match(workflow, /inputs\.tag/);
