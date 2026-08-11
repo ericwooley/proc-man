@@ -113,7 +113,10 @@ WantedBy=default.target
 		return "", err
 	}
 	if now {
-		if err := manager.Run("systemctl", "--user", "enable", "--now", "proc-man.service"); err != nil {
+		if err := manager.Run("systemctl", "--user", "enable", "proc-man.service"); err != nil {
+			return "", err
+		}
+		if err := manager.Run("systemctl", "--user", "restart", "proc-man.service"); err != nil {
 			return "", err
 		}
 	}
@@ -146,7 +149,9 @@ func (manager *Manager) installLaunchAgent(now bool) (string, error) {
 		return "", err
 	}
 	if now {
-		if err := manager.Run("launchctl", "bootstrap", "gui/"+fmt.Sprint(currentUserID()), path); err != nil {
+		domain := "gui/" + fmt.Sprint(currentUserID())
+		_ = manager.Run("launchctl", "bootout", domain, path)
+		if err := manager.Run("launchctl", "bootstrap", domain, path); err != nil {
 			return "", err
 		}
 	}

@@ -126,6 +126,7 @@ brew install --cask ericwooley/apps/proc-man
 ```
 
 This command adds `ericwooley/apps` and trusts only the proc-man cask.
+It also installs and starts the proc-man user service.
 
 You can also add the tap before installation:
 
@@ -148,10 +149,13 @@ brew uninstall --cask proc-man
 brew untap ericwooley/apps
 ```
 
+Homebrew stops and removes the user service during cask removal.
+
 Windows users can download a ZIP archive from the GitHub Release.
 
-## Install the user service
+## Install the user service manually
 
+Use this step only for archive or source installations.
 Place `bin/proc-man` in a stable executable path.
 
 ```sh

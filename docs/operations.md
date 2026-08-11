@@ -57,7 +57,10 @@ Use this option only during frontend development.
 
 ## User-service installation
 
-Place the binary in a stable path before installation.
+Homebrew cask installation and upgrades install and start the user service automatically.
+Homebrew cask removal stops and removes the user service definition.
+
+For archive or source installations, place the binary in a stable path before installation.
 The generated service file records the current executable path.
 
 ```sh

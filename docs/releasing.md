@@ -16,6 +16,8 @@ Each release also contains `checksums.txt`.
 
 The release workflow publishes a Homebrew cask to `ericwooley/homebrew-apps`.
 The cask supports macOS and Linux.
+The cask installs and starts the proc-man user service.
+The cask removes the user service during uninstallation.
 Create that repository before the first release.
 
 Add the `HOMEBREW_TAP_GITHUB_TOKEN` Actions secret to this repository.

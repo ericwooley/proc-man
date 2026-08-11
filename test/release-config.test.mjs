@@ -16,6 +16,8 @@ test("release configuration builds all supported desktop systems", async () => {
   assert.match(configuration, /homepage:.*GITHUB_REPOSITORY/);
   assert.match(configuration, /name: homebrew-apps/);
   assert.match(configuration, /HOMEBREW_TAP_GITHUB_TOKEN/);
+  assert.match(configuration, /hooks:\s*[\s\S]*uninstall:\s*\|[\s\S]*\["daemon", "uninstall"\]/);
+  assert.match(configuration, /hooks:\s*[\s\S]*install:\s*\|[\s\S]*\["daemon", "install", "--now"\]/);
   assert.match(configuration, /release:\s*[\s\S]*mode: keep-existing/);
   assert.match(configuration, /replace_existing_artifacts: true/);
   assert.match(configuration, /files:\s*[\s\S]*- LICENSE[\s\S]*- README\.md/);
