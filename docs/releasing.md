@@ -39,11 +39,19 @@ brew install --cask ericwooley/tap/proc-man
 
 ## Create a release
 
-1. Confirm that the release commit is on the default branch.
-2. Create a semantic version tag such as `v0.1.0`.
-3. Push the tag to GitHub.
-4. Check the Release workflow result.
-5. Confirm the archives and Homebrew cask.
+Each merge to `main` runs Release Please.
+Release Please reads Conventional Commit headers and creates or updates one release pull request.
+
+- `fix:` creates a patch version.
+- `feat:` creates a minor version.
+- A `!` after the type or a `BREAKING CHANGE:` footer creates a major version.
+- Other commit types do not create a version unless they contain a breaking change.
+
+Merge the generated release pull request when its version and changelog are ready.
+That merge creates the version tag and GitHub Release.
+The same workflow builds and uploads the archives, checksums, and Homebrew cask.
+
+To retry artifact publication for an existing tag, run the Release workflow manually and provide the tag.
 
 The workflow builds the React application before GoReleaser builds each binary.
 GoReleaser sets the CLI version from the Git tag.

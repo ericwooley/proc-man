@@ -2,28 +2,52 @@ name: Release
 
 on:
   push:
-    tags:
-      - "v*"
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag to rebuild
+        required: true
+        type: string
 
 permissions:
   contents: write
+  issues: write
+  pull-requests: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   release:
-    name: Build and publish release
+    name: Version and publish
     runs-on: ubuntu-latest
     steps:
-      - name: Check out the repository
+      - name: Create or update the release pull request
+        id: release
+        if: github.event_name == 'push'
+        uses: googleapis/release-please-action@v4
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+      - name: Check out the release tag
+        if: steps.release.outputs.release_created == 'true' || github.event_name == 'workflow_dispatch'
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || steps.release.outputs.tag_name }}
 
       - name: Set up Go
+        if: steps.release.outputs.release_created == 'true' || github.event_name == 'workflow_dispatch'
         uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
 
       - name: Set up Node.js
+        if: steps.release.outputs.release_created == 'true' || github.event_name == 'workflow_dispatch'
         uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -31,15 +55,19 @@ jobs:
           cache-dependency-path: web/package-lock.json
 
       - name: Install frontend dependencies
+        if: steps.release.outputs.release_created == 'true' || github.event_name == 'workflow_dispatch'
         run: npm ci --prefix web
 
       - name: Build the React application
+        if: steps.release.outputs.release_created == 'true' || github.event_name == 'workflow_dispatch'
         run: npm run build:web
 
       - name: Test the Go application
+        if: steps.release.outputs.release_created == 'true' || github.event_name == 'workflow_dispatch'
         run: go test ./...
 
       - name: Publish archives and the Homebrew cask
+        if: steps.release.outputs.release_created == 'true' || github.event_name == 'workflow_dispatch'
         uses: goreleaser/goreleaser-action@v7
         with:
           distribution: goreleaser

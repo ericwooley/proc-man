@@ -171,8 +171,10 @@ npm run test:browser
 
 ## Release
 
-Version tags create archives for macOS, Linux, and Windows.
-The release workflow also updates the repository owner’s `homebrew-tap` cask.
+Merges to `main` update a Release Please pull request from Conventional Commits.
+Merge that release pull request to create the version tag and GitHub Release.
+The same workflow builds archives for macOS, Linux, and Windows.
+It also updates the `ericwooley/homebrew-tap` cask.
 
 See [Releasing](docs/releasing.md) for the required tap repository and token.
 

@@ -30,6 +30,7 @@ archives:
         formats: [zip]
     name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
     files:
+      - LICENSE
       - README.md
 
 checksum:
@@ -43,6 +44,10 @@ changelog:
       - "^test:"
       - "^chore:"
       - "^Merge "
+
+release:
+  mode: keep-existing
+  replace_existing_artifacts: true
 
 homebrew_casks:
   - name: proc-man
