@@ -24,7 +24,23 @@ func FileSystem(files fs.FS) http.Handler {
 			server.ServeHTTP(response, request)
 			return
 		}
+		if assetName, ok := rootAssetName(name); ok {
+			if _, err := fs.Stat(files, assetName); err == nil {
+				request.URL.Path = "/" + assetName
+				server.ServeHTTP(response, request)
+				return
+			}
+		}
 		request.URL.Path = "/"
 		server.ServeHTTP(response, request)
 	})
+}
+
+func rootAssetName(name string) (string, bool) {
+	const marker = "/assets/"
+	index := strings.Index(name, marker)
+	if index < 0 {
+		return "", false
+	}
+	return name[index+1:], true
 }
