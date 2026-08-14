@@ -3,6 +3,7 @@
 - Status: Accepted
 - Date: 2026-07-29
 - Updated: 2026-08-06
+- Amended by: ADR 0008
 
 ## Context
 
@@ -37,4 +38,5 @@ more complex.
 ## Alternatives
 
 Separate command resources split the inventory. CLI-only task execution loses
-durable history. Automatic restart can create hidden crash loops.
+durable history. ADR 0008 accepts this trade for transient one-shot commands.
+Automatic restart can create hidden crash loops.

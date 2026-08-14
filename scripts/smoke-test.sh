@@ -17,6 +17,14 @@ trap cleanup EXIT INT TERM
 port=13398
 admin_url="http://127.0.0.1:$port"
 
+one_shot_output=$(
+  cd "$repo_dir"
+  "$repo_dir/bin/proc-man" run -- sh -c 'printf "smoke ready\n"'
+)
+if [ "$one_shot_output" != "smoke ready" ]; then
+  exit 1
+fi
+
 "$repo_dir/bin/proc-man" serve \
   --port "$port" \
   --data-dir "$test_dir/data" \
@@ -33,17 +41,6 @@ until curl -fsS "$admin_url/readyz" >/dev/null 2>&1; do
   sleep 0.05
 done
 
-task_json=$(
-  "$repo_dir/bin/proc-man" --admin-url "$admin_url" --json \
-    process register \
-    --label "Smoke task" \
-    --kind task \
-    --tag smoke \
-    --cwd "$repo_dir" \
-    --shell 'printf "smoke ready\n"'
-)
-task_id=$(printf '%s' "$task_json" | jq -r '.data.process.id')
-
 service_json=$(
   "$repo_dir/bin/proc-man" --admin-url "$admin_url" --json \
     process register \
@@ -56,36 +53,11 @@ service_json=$(
 )
 service_id=$(printf '%s' "$service_json" | jq -r '.data.process.id')
 
-run_json=$(
-  "$repo_dir/bin/proc-man" --admin-url "$admin_url" --json \
-    process run "$task_id"
-)
-run_id=$(printf '%s' "$run_json" | jq -r '.data.run.id')
-
 "$repo_dir/bin/proc-man" --admin-url "$admin_url" \
   process start "$service_id" >/dev/null
 
-attempt=0
-while :; do
-  state=$(
-    curl -fsS "$admin_url/api/v1/runs/$run_id" |
-      jq -r '.run.state'
-  )
-  case "$state" in
-    exited|failed|canceled|interrupted) break ;;
-  esac
-  attempt=$((attempt + 1))
-  if [ "$attempt" -ge 100 ]; then
-    exit 1
-  fi
-  sleep 0.05
-done
-
-"$repo_dir/bin/proc-man" --admin-url "$admin_url" \
-  process logs "$task_id" --run "$run_id" |
-  grep -q "smoke ready"
 curl -fsS "$admin_url/" | grep -q '<div id="root"></div>'
-curl -fsS "$admin_url/process/$task_id" | grep -q '<div id="root"></div>'
+curl -fsS "$admin_url/process/$service_id" | grep -q '<div id="root"></div>'
 "$repo_dir/bin/proc-man" --admin-url "$admin_url" \
   process stop "$service_id" >/dev/null
 

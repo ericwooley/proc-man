@@ -9,3 +9,4 @@
 | [0005](0005-sqlite-metadata-and-ndjson-run-logs.md) | Accepted | SQLite metadata and NDJSON run logs |
 | [0006](0006-versioned-local-control-plane.md) | Accepted | One versioned loopback API |
 | [0007](0007-process-registry-and-tag-organization.md) | Accepted | Flat process registry with tag organization |
+| [0008](0008-direct-one-shot-cli-execution.md) | Accepted | Direct one-shot CLI execution without registration |

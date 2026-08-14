@@ -7,20 +7,23 @@ proc-man ships as one Go binary.
 The binary has three parts:
 
 1. The service supervises child process groups.
-2. The CLI calls the local HTTP API.
+2. The CLI runs one-shot commands or calls the local HTTP API.
 3. The embedded React application calls the same API.
 
 ```text
-CLI ───────────────┐
-                   ▼
-Browser ───────▶ Local API ───────▶ Process supervisor
-                   │                       │
-                   ▼                       ▼
-                 SQLite               NDJSON logs
+CLI ───────────────────────────────▶ One-shot child
+ │
+ └───────────────┐
+                 ▼
+Browser ─────▶ Local API ───────▶ Process supervisor
+                 │                       │
+                 ▼                       ▼
+               SQLite               NDJSON logs
 ```
 
-The service owns process and run state.
+The service owns registered process and retained run state.
 The CLI and React application do not access SQLite directly.
+Direct runs do not create stored state.
 
 ## Local control plane
 
@@ -51,6 +54,11 @@ Manifest source data records configuration provenance.
 Source paths do not create application navigation or API parents.
 
 ## Process execution
+
+Direct runs execute one argv command in the invoking directory.
+They attach stdin, stdout, and stderr to the CLI process.
+They wait for completion and return the child exit code.
+They do not create a process definition, run record, or log file.
 
 A process has kind `service` or `task`.
 

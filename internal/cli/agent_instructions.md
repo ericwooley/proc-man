@@ -1,11 +1,11 @@
 ## proc-man process management
 
-Use proc-man as the process registry for this repository.
-Associate each process with its working directory.
-Register long-running commands as services.
-Register one-shot commands as tasks.
+Use proc-man to manage long-running services for this repository.
+Associate each registered service with its working directory.
+Register only long-running commands as services.
+Run one-shot commands directly without registration.
 Add tags that identify the project, component, and purpose.
-Declare each HTTP or TCP port that the command uses.
+Declare each HTTP or TCP port that the service uses.
 
 ### Start the proc-man daemon
 
@@ -19,7 +19,7 @@ The command installs and starts the current user service.
 
 ### Find registered processes
 
-List processes for the current directory before you register or start a process:
+List processes for the current directory before you register or start a service:
 
 ```sh
 proc-man process list --directory "$PWD"
@@ -27,7 +27,7 @@ proc-man process list --directory "$PWD"
 
 Use the process ID from this list for status, lifecycle, and log commands.
 
-### Register a service
+### Register a long-running service
 
 ```sh
 proc-man process register \
@@ -42,28 +42,26 @@ proc-man process register \
 
 Omit the port flag when the process has no port.
 
-### Register a task
+### Run a one-shot command
 
 ```sh
-proc-man process register \
-  --label "<label>" \
-  --kind task \
-  --cwd "$PWD" \
-  --tag "project:<project>" \
-  -- <command> [args...]
+proc-man run -- <command> [args...]
 ```
 
-### Manage processes and logs
+The command uses the directory that invoked proc-man.
+It does not register a process or require the proc-man daemon.
+It waits for completion and streams stdin, stdout, and stderr directly.
+It does not retain output or run history.
 
-Use start, stop, and restart for services.
-Use run for tasks.
+### Manage registered services and logs
+
+Use start, stop, and restart for registered services.
 
 ```sh
 proc-man process status PROCESS_ID
 proc-man process start PROCESS_ID
 proc-man process stop PROCESS_ID
 proc-man process restart PROCESS_ID
-proc-man process run PROCESS_ID
 proc-man process logs PROCESS_ID
 proc-man run list --process PROCESS_ID
 proc-man run logs RUN_ID

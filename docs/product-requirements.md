@@ -7,6 +7,7 @@ proc-man provides one local inventory for development processes.
 The product helps a developer find a process, run it, inspect its ports, and read its logs.
 
 Coding agents and scripts can register the same processes through the CLI or API.
+They can run one-shot commands from the CLI without registration.
 
 ## Process registration
 
@@ -54,6 +55,10 @@ Coding agents and scripts can register the same processes through the CLI or API
 
 ## Execution
 
+- Run one direct command in the invoking directory without registration.
+- Stream direct command input and output through the CLI process.
+- Wait for a direct command and return its child exit code.
+- Do not retain direct command output or run history.
 - Start, stop, and restart a service.
 - Keep one active run for each service.
 - Run a task.

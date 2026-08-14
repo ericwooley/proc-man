@@ -12,7 +12,8 @@ test("CLI docs cover process registration, execution, logs, and manifest hooks",
   assert.match(cli, /proc-man process list --directory \./);
   assert.match(cli, /without a manifest file/);
   assert.match(cli, /proc-man process start PROCESS_ID/);
-  assert.match(cli, /proc-man process run PROCESS_ID/);
+  assert.match(cli, /proc-man run -- npm test/);
+  assert.doesNotMatch(cli, /## Register a task|--label "Test suite"/);
   assert.match(cli, /proc-man process logs PROCESS_ID/);
   assert.match(cli, /proc-man process deregister PROCESS_ID/);
   assert.match(cli, /proc-man register --dry-run --json/);

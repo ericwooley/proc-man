@@ -304,7 +304,7 @@ test("CLI contract starts from the process inventory and supports tag filters", 
   assert.match(cli, /proc-man process register/);
   assert.match(cli, /proc-man process deregister PROCESS_ID/);
   assert.match(cli, /proc-man process start/);
-  assert.match(cli, /proc-man process run/);
+  assert.match(cli, /proc-man run --/);
   assert.match(cli, /proc-man process logs/);
   assert.match(cli, /proc-man register --dry-run --json/);
   assert.doesNotMatch(cli, /├── worktree|├── command/);

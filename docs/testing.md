@@ -62,13 +62,12 @@ npm run test:smoke
 
 The smoke test:
 
-1. Starts the built service with temporary data.
-2. Registers a task and service.
-3. Runs the task.
-4. Starts the service immediately after the task.
-5. Reads the task logs.
-6. Checks the application and detail routes.
-7. Stops the service.
+1. Runs a direct one-shot command without the service.
+2. Starts the built service with temporary data.
+3. Registers a long-running service.
+4. Starts the registered service.
+5. Checks the application and detail routes.
+6. Stops the registered service.
 
 This check requires `curl` and `jq`.
 

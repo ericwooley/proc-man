@@ -2,7 +2,8 @@
 
 ## Connection
 
-The CLI calls the local service.
+The CLI calls the local service for registered process and retained run commands.
+The direct run command executes without the local service.
 
 The administration URL resolves in this order:
 
@@ -47,7 +48,7 @@ proc-man
 │   ├── run
 │   ├── cancel
 │   └── logs
-├── run
+├── run -- COMMAND [ARG...]
 │   ├── list
 │   ├── status
 │   └── logs
@@ -71,9 +72,9 @@ proc-man serve --login-shell /bin/zsh
 
 The `--host` value must resolve to a loopback address.
 
-## Register a service
+## Register a long-running service
 
-`process register` creates one imperative process without a manifest file.
+`process register` creates one long-running process without a manifest file.
 The current directory becomes the working directory when `--cwd` is absent.
 
 ```sh
@@ -98,16 +99,18 @@ proc-man process register \
   --shell 'exec ./scripts/start-api'
 ```
 
-## Register a task
+## Run a one-shot command
 
 ```sh
-proc-man process register \
-  --label "Test suite" \
-  --kind task \
-  --tag test \
-  --cwd "$PWD" \
-  -- npm test
+proc-man run -- npm test
 ```
+
+The command uses the directory that invoked proc-man.
+It does not register a process or call the local service.
+It waits for completion and streams stdin, stdout, and stderr directly.
+It does not retain output or run history.
+The command returns the child exit code when the child fails.
+The `--json` flag cannot be used with a direct command.
 
 ## Find processes
 
@@ -150,15 +153,18 @@ proc-man process restart PROCESS_ID
 
 These commands reject task processes.
 
-## Run a task
+## Managed task compatibility
+
+Existing registered task definitions can still use these commands:
 
 ```sh
 proc-man process run PROCESS_ID
 proc-man process cancel PROCESS_ID --run RUN_ID
 ```
 
-The Run command returns immediately with a run ID.
+The run command returns immediately with a run ID.
 Use the run commands to inspect its result.
+Use direct runs for new one-shot commands.
 
 ## Read runs and logs
 
@@ -232,6 +238,9 @@ Success uses this envelope:
 API errors include a stable code and message.
 
 ## Exit codes
+
+Direct runs return the child exit code.
+Other commands use these exit codes:
 
 | Code | Meaning |
 | --- | --- |

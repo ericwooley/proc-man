@@ -33,6 +33,19 @@ type application struct {
 	jsonOutput bool
 }
 
+type directRunExitError struct {
+	cause *exec.ExitError
+	code  int
+}
+
+func (err *directRunExitError) Error() string {
+	return err.cause.Error()
+}
+
+func (err *directRunExitError) Unwrap() error {
+	return err.cause
+}
+
 func New(version string, output, errorsOutput io.Writer) *cobra.Command {
 	app := &application{
 		version: version, output: output, errors: errorsOutput,
@@ -101,7 +114,8 @@ func (app *application) processRegisterCommand() *cobra.Command {
 	var tags, ports, environment []string
 	command := &cobra.Command{
 		Use:   "register [flags] -- command [args...]",
-		Short: "Register one process",
+		Short: "Register one long-running service",
+		Long:  "Register one long-running service. Use 'proc-man run -- COMMAND [ARG...]' for new one-shot commands.",
 		RunE: func(command *cobra.Command, arguments []string) error {
 			if cwd == "" {
 				value, err := os.Getwd()
@@ -360,7 +374,45 @@ func (app *application) processLogsCommand() *cobra.Command {
 }
 
 func (app *application) runCommand() *cobra.Command {
-	command := &cobra.Command{Use: "run", Short: "Inspect retained runs"}
+	command := &cobra.Command{
+		Use:   "run -- COMMAND [ARG...]",
+		Short: "Run one command or inspect retained runs",
+		Args: func(command *cobra.Command, arguments []string) error {
+			if command.ArgsLenAtDash() < 0 {
+				return fmt.Errorf("direct command arguments must follow --")
+			}
+			if len(arguments) == 0 {
+				return fmt.Errorf("a command is required after --")
+			}
+			return nil
+		},
+		RunE: func(command *cobra.Command, arguments []string) error {
+			if app.jsonOutput {
+				return fmt.Errorf("--json cannot be used with a direct command")
+			}
+			directory, err := os.Getwd()
+			if err != nil {
+				return fmt.Errorf("resolve working directory: %w", err)
+			}
+			child := exec.CommandContext(command.Context(), arguments[0], arguments[1:]...)
+			child.Dir = directory
+			child.Stdin = command.InOrStdin()
+			child.Stdout = command.OutOrStdout()
+			child.Stderr = command.ErrOrStderr()
+			if err := child.Run(); err != nil {
+				var exitError *exec.ExitError
+				if errors.As(err, &exitError) {
+					code := exitError.ExitCode()
+					if code < 0 {
+						code = 1
+					}
+					return &directRunExitError{cause: exitError, code: code}
+				}
+				return fmt.Errorf("run %q: %w", arguments[0], err)
+			}
+			return nil
+		},
+	}
 	command.AddCommand(app.runListCommand(), app.runStatusCommand(), app.runLogsCommand())
 	return command
 }
@@ -708,6 +760,10 @@ func ExitCode(err error) int {
 	if err == nil {
 		return 0
 	}
+	var runExit *directRunExitError
+	if errors.As(err, &runExit) {
+		return runExit.code
+	}
 	var apiError *client.APIError
 	if errors.As(err, &apiError) {
 		switch apiError.Status {
@@ -727,4 +783,9 @@ func ExitCode(err error) int {
 		return 6
 	}
 	return 2
+}
+
+func IsDirectRunExit(err error) bool {
+	var runExit *directRunExitError
+	return errors.As(err, &runExit)
 }

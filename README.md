@@ -5,15 +5,16 @@ proc-man is a local process manager for development commands.
 Each process has a label, tags, a command, a working directory, declared ports, runs, and logs.
 
 The Go service supervises processes and serves the React application.
-The CLI and application use the same local API.
+The CLI uses the local API for registered processes and retained runs.
+Direct one-shot commands run in the CLI process.
 The React application provides the process inventory and process detail routes.
 
 ## Features
 
-- Register services and one-shot tasks.
+- Register and manage long-running services.
+- Run one-shot commands directly from the invoking directory.
 - Filter and group processes with tags or working directories.
 - Start, stop, and restart services.
-- Run and cancel tasks.
 - Record declared ports as process metadata.
 - Read current and retained run logs.
 - Apply and remove process manifests.
@@ -73,12 +74,9 @@ Open <http://127.0.0.1:13337/>.
 The service accepts loopback hosts only.
 proc-man targets local development and has no deployment workflow.
 
-## Register a process
+## Register a long-running service
 
-These commands register processes directly.
-They do not require a manifest file.
-
-Register a service:
+This command registers a long-running service without a manifest file.
 
 ```sh
 ./bin/proc-man process register \
@@ -91,18 +89,17 @@ Register a service:
   -- npm run dev -- --port 4310
 ```
 
-Register a task:
+## Run a one-shot command
 
 ```sh
-./bin/proc-man process register \
-  --label "Storefront tests" \
-  --kind task \
-  --tag test \
-  --cwd "$PWD" \
-  -- npm test
+./bin/proc-man run -- npm test
 ```
 
-Use the returned process ID for later commands.
+The command runs in the invoking directory without registration or daemon access.
+It waits for completion and streams stdin, stdout, and stderr directly.
+It does not retain output or run history.
+
+Use the registered service ID for later commands.
 
 ```sh
 ./bin/proc-man process list

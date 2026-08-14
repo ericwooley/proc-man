@@ -12,7 +12,7 @@ var version = "dev"
 
 func main() {
 	err := cli.ExecuteContext(context.Background(), version)
-	if err != nil {
+	if err != nil && !cli.IsDirectRunExit(err) {
 		fmt.Fprintln(os.Stderr, err)
 	}
 	os.Exit(cli.ExitCode(err))
