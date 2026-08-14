@@ -115,6 +115,122 @@ func TestProcessTaskAndLogsJourney(t *testing.T) {
 	}
 }
 
+func TestProcessListUsesCursorPaginationWhenRequested(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+	state, err := store.Open(filepath.Join(root, "state.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { state.Close() })
+	manager := supervisor.New(state, supervisor.Options{
+		LogRoot: filepath.Join(root, "logs"), Shell: "/bin/sh",
+	})
+	server := httptest.NewServer(New(state, manager, nil).Handler())
+	t.Cleanup(server.Close)
+
+	for index := 0; index < 5; index++ {
+		tags := []string{"all"}
+		if index%2 == 0 {
+			tags = append(tags, "target")
+		}
+		requestJSON(t, http.MethodPost, server.URL+"/api/v1/processes", map[string]any{
+			"label": fmt.Sprintf("Process %d", index),
+			"kind":  "task",
+			"tags":  tags,
+			"cwd":   root,
+			"command": map[string]any{
+				"argv": []string{"true"},
+			},
+		}, http.StatusCreated, nil)
+	}
+
+	type pageResponse struct {
+		Processes []domain.Process `json:"processes"`
+		Page      struct {
+			Limit      int    `json:"limit"`
+			HasMore    bool   `json:"has_more"`
+			NextCursor string `json:"next_cursor"`
+		} `json:"page"`
+	}
+
+	var first pageResponse
+	requestJSON(t, http.MethodGet, server.URL+"/api/v1/processes?limit=2",
+		nil, http.StatusOK, &first)
+	if len(first.Processes) != 2 || first.Page.Limit != 2 ||
+		!first.Page.HasMore || first.Page.NextCursor == "" {
+		t.Fatalf("First page = %#v", first)
+	}
+
+	var second pageResponse
+	requestJSON(t, http.MethodGet,
+		server.URL+"/api/v1/processes?limit=2&cursor="+url.QueryEscape(first.Page.NextCursor),
+		nil, http.StatusOK, &second)
+	if len(second.Processes) != 2 || !second.Page.HasMore || second.Page.NextCursor == "" {
+		t.Fatalf("Second page = %#v", second)
+	}
+
+	var third pageResponse
+	requestJSON(t, http.MethodGet,
+		server.URL+"/api/v1/processes?limit=2&cursor="+url.QueryEscape(second.Page.NextCursor),
+		nil, http.StatusOK, &third)
+	if len(third.Processes) != 1 || third.Page.HasMore || third.Page.NextCursor != "" {
+		t.Fatalf("Third page = %#v", third)
+	}
+
+	seen := map[string]bool{}
+	for _, page := range [][]domain.Process{first.Processes, second.Processes, third.Processes} {
+		for _, process := range page {
+			if seen[process.ID] {
+				t.Fatalf("Process %q appeared on multiple pages", process.ID)
+			}
+			seen[process.ID] = true
+		}
+	}
+	if len(seen) != 5 {
+		t.Fatalf("Paged process count = %d, want 5", len(seen))
+	}
+
+	var filtered pageResponse
+	requestJSON(t, http.MethodGet,
+		server.URL+"/api/v1/processes?limit=2&tag=target",
+		nil, http.StatusOK, &filtered)
+	if len(filtered.Processes) != 2 || !filtered.Page.HasMore {
+		t.Fatalf("Filtered first page = %#v", filtered)
+	}
+	for _, process := range filtered.Processes {
+		if !contains(process.Tags, "target") {
+			t.Fatalf("Filtered process tags = %#v", process.Tags)
+		}
+	}
+
+	var unpaged pageResponse
+	requestJSON(t, http.MethodGet, server.URL+"/api/v1/processes",
+		nil, http.StatusOK, &unpaged)
+	if len(unpaged.Processes) != 5 {
+		t.Fatalf("Unpaged process count = %d, want 5", len(unpaged.Processes))
+	}
+
+	for _, invalidQuery := range []string{
+		"limit=0",
+		"limit=101",
+		"limit=2&cursor=not-a-cursor",
+	} {
+		requestJSON(t, http.MethodGet,
+			server.URL+"/api/v1/processes?"+invalidQuery,
+			nil, http.StatusBadRequest, nil)
+	}
+}
+
+func contains(values []string, target string) bool {
+	for _, value := range values {
+		if value == target {
+			return true
+		}
+	}
+	return false
+}
+
 func requestJSON(
 	t *testing.T,
 	method string,

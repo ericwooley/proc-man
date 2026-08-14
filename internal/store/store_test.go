@@ -4,8 +4,10 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"proc-man/internal/domain"
 )
@@ -158,6 +160,105 @@ func TestOpenConfiguresBusyTimeoutForEveryConnection(t *testing.T) {
 		}
 		if timeout != 5000 {
 			t.Fatalf("connection %d busy timeout = %d, want 5000", index, timeout)
+		}
+	}
+}
+
+func TestListProcessPageOrdersAndFiltersBeforeLimit(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	state, err := Open(filepath.Join(t.TempDir(), "state.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { state.Close() })
+
+	now := time.Date(2026, time.August, 14, 12, 0, 0, 0, time.UTC)
+	state.now = func() time.Time { return now }
+	for index := 0; index < 6; index++ {
+		now = now.Add(time.Minute)
+		process := domain.Process{
+			ID:      fmt.Sprintf("proc_%02d", index),
+			Label:   fmt.Sprintf("Process %02d", index),
+			Kind:    domain.ProcessKindTask,
+			Tags:    []string{"other"},
+			Command: domain.Command{Argv: []string{"true"}},
+			CWD:     "/workspace/other",
+		}
+		if index%2 == 0 {
+			process.Label = fmt.Sprintf("Target %02d", index)
+			process.Tags = []string{"target"}
+			process.CWD = "/workspace/target"
+		}
+		if _, err := state.CreateProcess(ctx, process); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	filter := domain.ProcessFilter{
+		Query:     "target",
+		Directory: "/workspace/target",
+		Tags:      []string{"TARGET"},
+		Kind:      domain.ProcessKindTask,
+		State:     domain.ProcessStateStopped,
+	}
+	first, err := state.ListProcessPage(ctx, filter, 2, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(first.Processes) != 2 || first.Processes[0].ID != "proc_04" ||
+		first.Processes[1].ID != "proc_02" || !first.HasMore || first.NextCursor == "" {
+		t.Fatalf("First page = %#v", first)
+	}
+
+	second, err := state.ListProcessPage(ctx, filter, 2, first.NextCursor)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(second.Processes) != 1 || second.Processes[0].ID != "proc_00" ||
+		second.HasMore || second.NextCursor != "" {
+		t.Fatalf("Second page = %#v", second)
+	}
+
+	if _, err := state.ListProcessPage(ctx, filter, 2, "not-a-cursor"); !errors.Is(err, domain.ErrValidation) {
+		t.Fatalf("Invalid cursor error = %v", err)
+	}
+}
+
+func TestListProcessPageUsesIDAsStableTieBreaker(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	state, err := Open(filepath.Join(t.TempDir(), "state.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { state.Close() })
+
+	state.now = func() time.Time {
+		return time.Date(2026, time.August, 14, 12, 0, 0, 0, time.UTC)
+	}
+	for _, id := range []string{"proc_a", "proc_c", "proc_b"} {
+		if _, err := state.CreateProcess(ctx, domain.Process{
+			ID: id, Label: id, Kind: domain.ProcessKindTask,
+			Command: domain.Command{Argv: []string{"true"}}, CWD: "/workspace",
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	first, err := state.ListProcessPage(ctx, domain.ProcessFilter{}, 2, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := state.ListProcessPage(ctx, domain.ProcessFilter{}, 2, first.NextCursor)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := []string{first.Processes[0].ID, first.Processes[1].ID, second.Processes[0].ID}
+	want := []string{"proc_c", "proc_b", "proc_a"}
+	for index := range want {
+		if got[index] != want[index] {
+			t.Fatalf("Process order = %#v, want %#v", got, want)
 		}
 	}
 }

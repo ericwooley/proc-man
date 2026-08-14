@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"database/sql"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -22,6 +23,17 @@ var ErrNotFound = errors.New("not found")
 type Store struct {
 	db  *sql.DB
 	now func() time.Time
+}
+
+type ProcessPage struct {
+	Processes  []domain.Process
+	HasMore    bool
+	NextCursor string
+}
+
+type processPageCursor struct {
+	UpdatedAt string `json:"updated_at"`
+	ID        string `json:"id"`
 }
 
 func Open(path string) (*Store, error) {
@@ -253,6 +265,189 @@ func (store *Store) ListProcesses(ctx context.Context, filter domain.ProcessFilt
 		processes = append(processes, process)
 	}
 	return processes, rows.Err()
+}
+
+func (store *Store) ListProcessPage(
+	ctx context.Context,
+	filter domain.ProcessFilter,
+	limit int,
+	cursor string,
+) (ProcessPage, error) {
+	if limit < 1 || limit > 100 {
+		return ProcessPage{}, fmt.Errorf("%w: limit must be between 1 and 100", domain.ErrValidation)
+	}
+
+	conditions, arguments, err := processPageConditions(filter, cursor)
+	if err != nil {
+		return ProcessPage{}, err
+	}
+	query := `SELECT
+		p.id, p.label, p.kind, p.state, p.source_json, p.command_json, p.cwd,
+		p.env_json, p.ports_json, p.created_at, p.updated_at
+		FROM processes p`
+	if len(conditions) > 0 {
+		query += " WHERE " + strings.Join(conditions, " AND ")
+	}
+	query += ` ORDER BY julianday(p.updated_at) DESC, p.id DESC LIMIT ?`
+	arguments = append(arguments, limit+1)
+
+	rows, err := store.db.QueryContext(ctx, query, arguments...)
+	if err != nil {
+		return ProcessPage{}, fmt.Errorf("list process page: %w", err)
+	}
+	defer rows.Close()
+
+	processes := make([]domain.Process, 0, limit+1)
+	for rows.Next() {
+		process, err := scanProcess(rows)
+		if err != nil {
+			return ProcessPage{}, fmt.Errorf("scan process page: %w", err)
+		}
+		processes = append(processes, process)
+	}
+	if err := rows.Err(); err != nil {
+		return ProcessPage{}, fmt.Errorf("read process page: %w", err)
+	}
+
+	hasMore := len(processes) > limit
+	if hasMore {
+		processes = processes[:limit]
+	}
+	if err := store.loadProcessTags(ctx, processes); err != nil {
+		return ProcessPage{}, err
+	}
+	page := ProcessPage{Processes: processes, HasMore: hasMore}
+	if hasMore {
+		page.NextCursor, err = encodeProcessPageCursor(processes[len(processes)-1])
+		if err != nil {
+			return ProcessPage{}, err
+		}
+	}
+	return page, nil
+}
+
+func processPageConditions(filter domain.ProcessFilter, encodedCursor string) ([]string, []any, error) {
+	requiredTags, err := domain.NormalizeTags(filter.Tags)
+	if err != nil {
+		return nil, nil, err
+	}
+	conditions := make([]string, 0)
+	arguments := make([]any, 0)
+
+	if filter.Kind != "" {
+		conditions = append(conditions, "p.kind = ?")
+		arguments = append(arguments, filter.Kind)
+	}
+	if filter.State != "" {
+		conditions = append(conditions, "p.state = ?")
+		arguments = append(arguments, filter.State)
+	}
+	directory := strings.TrimSpace(filter.Directory)
+	if directory != "" {
+		conditions = append(conditions, "p.cwd = ?")
+		arguments = append(arguments, filepath.Clean(directory))
+	}
+	for _, tag := range requiredTags {
+		conditions = append(conditions, `EXISTS (
+			SELECT 1 FROM process_tags required_tag
+			WHERE required_tag.process_id = p.id AND required_tag.tag = ?
+		)`)
+		arguments = append(arguments, tag)
+	}
+
+	needle := strings.ToLower(strings.TrimSpace(filter.Query))
+	if needle != "" {
+		conditions = append(conditions, `(
+			instr(lower(p.id), ?) > 0 OR
+			instr(lower(p.label), ?) > 0 OR
+			instr(lower(p.cwd), ?) > 0 OR
+			instr(lower(p.command_json), ?) > 0 OR
+			instr(lower(p.ports_json), ?) > 0 OR
+			EXISTS (
+				SELECT 1 FROM process_tags search_tag
+				WHERE search_tag.process_id = p.id AND instr(lower(search_tag.tag), ?) > 0
+			)
+		)`)
+		for range 6 {
+			arguments = append(arguments, needle)
+		}
+	}
+
+	if encodedCursor != "" {
+		cursor, err := decodeProcessPageCursor(encodedCursor)
+		if err != nil {
+			return nil, nil, err
+		}
+		conditions = append(conditions, `(
+			julianday(p.updated_at) < julianday(?) OR
+			(julianday(p.updated_at) = julianday(?) AND p.id < ?)
+		)`)
+		arguments = append(arguments, cursor.UpdatedAt, cursor.UpdatedAt, cursor.ID)
+	}
+	return conditions, arguments, nil
+}
+
+func encodeProcessPageCursor(process domain.Process) (string, error) {
+	payload, err := json.Marshal(processPageCursor{
+		UpdatedAt: formatTime(process.UpdatedAt),
+		ID:        process.ID,
+	})
+	if err != nil {
+		return "", fmt.Errorf("encode process cursor: %w", err)
+	}
+	return base64.RawURLEncoding.EncodeToString(payload), nil
+}
+
+func decodeProcessPageCursor(value string) (processPageCursor, error) {
+	payload, err := base64.RawURLEncoding.DecodeString(value)
+	if err != nil {
+		return processPageCursor{}, fmt.Errorf("%w: invalid process cursor", domain.ErrValidation)
+	}
+	var cursor processPageCursor
+	if err := json.Unmarshal(payload, &cursor); err != nil {
+		return processPageCursor{}, fmt.Errorf("%w: invalid process cursor", domain.ErrValidation)
+	}
+	if cursor.ID == "" {
+		return processPageCursor{}, fmt.Errorf("%w: invalid process cursor", domain.ErrValidation)
+	}
+	parsed, err := time.Parse(time.RFC3339Nano, cursor.UpdatedAt)
+	if err != nil {
+		return processPageCursor{}, fmt.Errorf("%w: invalid process cursor", domain.ErrValidation)
+	}
+	cursor.UpdatedAt = formatTime(parsed)
+	return cursor, nil
+}
+
+func (store *Store) loadProcessTags(ctx context.Context, processes []domain.Process) error {
+	if len(processes) == 0 {
+		return nil
+	}
+	placeholders := make([]string, len(processes))
+	arguments := make([]any, len(processes))
+	processIndexes := make(map[string]int, len(processes))
+	for index := range processes {
+		placeholders[index] = "?"
+		arguments[index] = processes[index].ID
+		processIndexes[processes[index].ID] = index
+	}
+	rows, err := store.db.QueryContext(ctx, `SELECT process_id, tag FROM process_tags
+		WHERE process_id IN (`+strings.Join(placeholders, ",")+`)
+		ORDER BY process_id, tag`, arguments...)
+	if err != nil {
+		return fmt.Errorf("get process page tags: %w", err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var processID, tag string
+		if err := rows.Scan(&processID, &tag); err != nil {
+			return fmt.Errorf("scan process page tag: %w", err)
+		}
+		index, ok := processIndexes[processID]
+		if ok {
+			processes[index].Tags = append(processes[index].Tags, tag)
+		}
+	}
+	return rows.Err()
 }
 
 func (store *Store) SetProcessState(ctx context.Context, id string, state domain.ProcessState) error {

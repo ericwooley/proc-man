@@ -30,9 +30,19 @@ Process list filters are:
 - repeated `tag`
 - `kind`
 - `state`
+- `limit`
+- `cursor`
 
 Repeated tags use AND behavior.
 The directory filter matches the exact stored working directory.
+
+Set `limit` from 1 through 100 to use cursor pagination.
+The server orders paginated results by the most recent update, then by process ID.
+The response adds a `page` object with `limit`, `has_more`, and `next_cursor`.
+Pass `next_cursor` as `cursor` to read the next older page.
+The server applies process filters before the page limit.
+
+Requests without `limit` or `cursor` keep the original unpaged v1 behavior.
 
 ## Runs
 

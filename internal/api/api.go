@@ -107,13 +107,37 @@ func (server *Server) tags(response http.ResponseWriter, request *http.Request) 
 
 func (server *Server) listProcesses(response http.ResponseWriter, request *http.Request) {
 	query := request.URL.Query()
-	processes, err := server.store.ListProcesses(request.Context(), domain.ProcessFilter{
+	filter := domain.ProcessFilter{
 		Query:     query.Get("query"),
 		Directory: query.Get("directory"),
 		Tags:      query["tag"],
 		Kind:      domain.ProcessKind(query.Get("kind")),
 		State:     domain.ProcessState(query.Get("state")),
-	})
+	}
+	limit, paginated, err := processPageLimit(query)
+	if err != nil {
+		writeError(response, err)
+		return
+	}
+	if paginated {
+		page, err := server.store.ListProcessPage(
+			request.Context(), filter, limit, query.Get("cursor"),
+		)
+		if err != nil {
+			writeError(response, err)
+			return
+		}
+		writeJSON(response, http.StatusOK, map[string]any{
+			"processes": page.Processes,
+			"page": map[string]any{
+				"limit":       limit,
+				"has_more":    page.HasMore,
+				"next_cursor": page.NextCursor,
+			},
+		})
+		return
+	}
+	processes, err := server.store.ListProcesses(request.Context(), filter)
 	if err != nil {
 		writeError(response, err)
 		return
@@ -570,6 +594,22 @@ func processEvent(kind string, process domain.Process) events.Event {
 func parseLimit(request *http.Request) int {
 	value, _ := strconv.Atoi(request.URL.Query().Get("limit"))
 	return value
+}
+
+func processPageLimit(query url.Values) (int, bool, error) {
+	if !query.Has("limit") && query.Get("cursor") == "" {
+		return 0, false, nil
+	}
+	if !query.Has("limit") {
+		return 25, true, nil
+	}
+	limit, err := strconv.Atoi(query.Get("limit"))
+	if err != nil || limit < 1 || limit > 100 {
+		return 0, false, fmt.Errorf(
+			"%w: limit must be between 1 and 100", domain.ErrValidation,
+		)
+	}
+	return limit, true, nil
 }
 
 func safeFileName(value string) string {
