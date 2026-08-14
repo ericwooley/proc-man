@@ -87,6 +87,15 @@ macOS writes:
 $HOME/Library/LaunchAgents/dev.proc-man.plist
 ```
 
+The macOS LaunchAgent writes daemon output here:
+
+```text
+$HOME/Library/Logs/proc-man/daemon.log
+$HOME/Library/Logs/proc-man/daemon-error.log
+```
+
+The error log includes process launch failures, such as denied working-directory access.
+
 Manage the installed service:
 
 ```sh

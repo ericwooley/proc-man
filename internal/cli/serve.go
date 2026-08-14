@@ -55,6 +55,9 @@ func (app *application) serveCommand() *cobra.Command {
 			manager := supervisor.New(state, supervisor.Options{
 				LogRoot: supervisor.DefaultLogRoot(dataDir),
 				Shell:   shell, StopTimeout: stopTimeout,
+				OnError: func(err error) {
+					fmt.Fprintln(app.errors, err)
+				},
 			})
 			var web http.Handler = embeddedweb.Handler()
 			if webDir != "" {

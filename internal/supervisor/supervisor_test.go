@@ -1,8 +1,12 @@
 package supervisor
 
 import (
+	"bytes"
 	"context"
+	"errors"
+	"io/fs"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -58,5 +62,119 @@ func TestTaskRunCapturesOutput(t *testing.T) {
 	}
 	if len(records) != 2 || streams["stdout"] != "ready" || streams["stderr"] != "warning" {
 		t.Fatalf("Records = %#v", records)
+	}
+}
+
+func TestLaunchFilesystemFailureCreatesFailedRunAndLog(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	root := t.TempDir()
+	state, err := store.Open(filepath.Join(root, "state.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { state.Close() })
+	missingCWD := filepath.Join(root, "unavailable")
+	process, err := state.CreateProcess(ctx, domain.Process{
+		ID: "proc_unavailable", Label: "Unavailable", Kind: domain.ProcessKindTask,
+		Command: domain.Command{Argv: []string{"true"}},
+		CWD:     missingCWD,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var daemonErrors bytes.Buffer
+	manager := New(state, Options{
+		LogRoot: filepath.Join(root, "logs"),
+		OnError: func(err error) {
+			daemonErrors.WriteString(err.Error())
+		},
+	})
+	eventChannel, unsubscribe := manager.Events().Subscribe()
+	t.Cleanup(unsubscribe)
+
+	run, launchErr := manager.RunTask(ctx, process.ID)
+	if !errors.Is(launchErr, ErrCWDUnavailable) {
+		t.Fatalf("Error = %v, want ErrCWDUnavailable", launchErr)
+	}
+	if run.ID == "" {
+		t.Fatal("filesystem failure did not create a run")
+	}
+	if !errors.Is(launchErr, fs.ErrNotExist) {
+		t.Fatalf("Error = %v, want the filesystem cause", launchErr)
+	}
+
+	storedRun, err := state.GetRun(ctx, run.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if storedRun.State != domain.RunStateFailed || storedRun.Error == "" {
+		t.Fatalf("Run = %#v", storedRun)
+	}
+	if !strings.Contains(storedRun.Error, missingCWD) {
+		t.Fatalf("Run error = %q, want path %q", storedRun.Error, missingCWD)
+	}
+	records, err := logstore.Read(storedRun.LogPath, logstore.Query{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(records) != 1 || records[0].Stream != "stderr" ||
+		!strings.Contains(records[0].Text, storedRun.Error) {
+		t.Fatalf("Records = %#v, want the launch error on stderr", records)
+	}
+	if !strings.Contains(daemonErrors.String(), storedRun.Error) {
+		t.Fatalf("Daemon error = %q, want the launch error", daemonErrors.String())
+	}
+	deadline := time.After(time.Second)
+	for {
+		select {
+		case event := <-eventChannel:
+			if event.Type != "run.finished" {
+				continue
+			}
+			if event.ResourceID != run.ID {
+				t.Fatalf("Event = %#v", event)
+			}
+			return
+		case <-deadline:
+			t.Fatal("filesystem failure did not publish a run.finished event")
+		}
+	}
+}
+
+func TestCommandStartFailureCreatesErrorLog(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	root := t.TempDir()
+	state, err := store.Open(filepath.Join(root, "state.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { state.Close() })
+	process, err := state.CreateProcess(ctx, domain.Process{
+		ID: "proc_missing_command", Label: "Missing command", Kind: domain.ProcessKindTask,
+		Command: domain.Command{Argv: []string{filepath.Join(root, "missing-command")}},
+		CWD:     root,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	manager := New(state, Options{LogRoot: filepath.Join(root, "logs")})
+
+	run, launchErr := manager.RunTask(ctx, process.ID)
+	if launchErr == nil || run.ID == "" {
+		t.Fatalf("Run = %#v, error = %v", run, launchErr)
+	}
+	storedRun, err := state.GetRun(ctx, run.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	records, err := logstore.Read(storedRun.LogPath, logstore.Query{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if storedRun.State != domain.RunStateFailed || len(records) != 1 ||
+		records[0].Stream != "stderr" || !strings.Contains(records[0].Text, "start process") {
+		t.Fatalf("Run = %#v, records = %#v", storedRun, records)
 	}
 }

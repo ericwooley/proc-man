@@ -41,6 +41,7 @@ type Manager struct {
 	shell       string
 	stopTimeout time.Duration
 	events      *events.Broker
+	onError     func(error)
 
 	mu               sync.Mutex
 	active           map[string]*activeRun
@@ -52,6 +53,7 @@ type Options struct {
 	Shell       string
 	StopTimeout time.Duration
 	Events      *events.Broker
+	OnError     func(error)
 }
 
 func New(state *store.Store, options Options) *Manager {
@@ -66,7 +68,7 @@ func New(state *store.Store, options Options) *Manager {
 	}
 	return &Manager{
 		store: state, logRoot: options.LogRoot, shell: options.Shell,
-		stopTimeout: options.StopTimeout, events: options.Events,
+		stopTimeout: options.StopTimeout, events: options.Events, onError: options.OnError,
 		active: map[string]*activeRun{}, serviceByProcess: map[string]string{},
 	}
 }
@@ -101,11 +103,9 @@ func (manager *Manager) RunTask(ctx context.Context, processID string) (domain.R
 }
 
 func (manager *Manager) launch(ctx context.Context, process domain.Process) (domain.Run, error) {
-	if stat, err := os.Stat(process.CWD); err != nil || !stat.IsDir() {
-		return domain.Run{}, fmt.Errorf("%w: %s", ErrCWDUnavailable, process.CWD)
-	}
 	runID, err := ids.New("run")
 	if err != nil {
+		manager.reportLaunchError(process.ID, err)
 		return domain.Run{}, err
 	}
 	processID := process.ID
@@ -119,13 +119,30 @@ func (manager *Manager) launch(ctx context.Context, process domain.Process) (dom
 		})
 	})
 	if err != nil {
+		manager.reportLaunchError(process.ID, err)
 		return domain.Run{}, err
 	}
 	run.LogPath = logPath
+	if err := manager.store.CreateRun(ctx, run); err != nil {
+		writer.Close()
+		manager.reportLaunchError(process.ID, err)
+		return domain.Run{}, err
+	}
+	if process.Kind == domain.ProcessKindService {
+		_ = manager.store.SetProcessState(ctx, process.ID, domain.ProcessStateStarting)
+	}
+	stat, err := os.Stat(process.CWD)
+	if err != nil {
+		launchErr := fmt.Errorf("%w: %w", ErrCWDUnavailable, err)
+		return manager.completeLaunchFailure(ctx, run, writer, launchErr)
+	}
+	if !stat.IsDir() {
+		launchErr := fmt.Errorf("%w: %s: not a directory", ErrCWDUnavailable, process.CWD)
+		return manager.completeLaunchFailure(ctx, run, writer, launchErr)
+	}
 	command, err := manager.command(process, run.ID)
 	if err != nil {
-		writer.Close()
-		return domain.Run{}, err
+		return manager.completeLaunchFailure(ctx, run, writer, err)
 	}
 	stdout := writer.Stream("stdout")
 	stderr := writer.Stream("stderr")
@@ -134,22 +151,8 @@ func (manager *Manager) launch(ctx context.Context, process domain.Process) (dom
 	command.Dir = process.CWD
 	command.Env = manager.environment(process, run.ID)
 	configureManagedCommand(command)
-	if err := manager.store.CreateRun(ctx, run); err != nil {
-		writer.Close()
-		return domain.Run{}, err
-	}
-	if process.Kind == domain.ProcessKindService {
-		_ = manager.store.SetProcessState(ctx, process.ID, domain.ProcessStateStarting)
-	}
 	if err := command.Start(); err != nil {
-		now := time.Now().UTC()
-		run.State = domain.RunStateFailed
-		run.EndedAt = &now
-		run.Error = err.Error()
-		_ = manager.store.UpdateRun(ctx, run)
-		_ = manager.store.SetProcessState(ctx, process.ID, domain.ProcessStateFailed)
-		writer.Close()
-		return run, fmt.Errorf("start process: %w", err)
+		return manager.completeLaunchFailure(ctx, run, writer, fmt.Errorf("start process: %w", err))
 	}
 	run.PID = command.Process.Pid
 	run.State = domain.RunStateRunning
@@ -178,6 +181,33 @@ func (manager *Manager) launch(ctx context.Context, process domain.Process) (dom
 	})
 	go manager.wait(active)
 	return run, nil
+}
+
+func (manager *Manager) completeLaunchFailure(
+	ctx context.Context,
+	run domain.Run,
+	writer *logstore.Writer,
+	launchErr error,
+) (domain.Run, error) {
+	now := time.Now().UTC()
+	run.State = domain.RunStateFailed
+	run.EndedAt = &now
+	run.Error = launchErr.Error()
+	_ = writer.Append("stderr", "proc-man: "+run.Error, false)
+	_ = writer.Close()
+	_ = manager.store.UpdateRun(ctx, run)
+	_ = manager.store.SetProcessState(ctx, run.Process.ID, domain.ProcessStateFailed)
+	manager.events.Publish(events.Event{
+		Type: "run.finished", ResourceID: run.ID, Data: run,
+	})
+	manager.reportLaunchError(run.Process.ID, launchErr)
+	return run, launchErr
+}
+
+func (manager *Manager) reportLaunchError(processID string, err error) {
+	if manager.onError != nil {
+		manager.onError(fmt.Errorf("launch process %s: %w", processID, err))
+	}
 }
 
 func (manager *Manager) command(process domain.Process, runID string) (*exec.Cmd, error) {

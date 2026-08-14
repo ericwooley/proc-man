@@ -4,6 +4,9 @@
 
 proc-man captures stdout and stderr for every run.
 
+Failed launches also create a run when proc-man can access its data directory.
+The run error appears in the stderr records and the daemon error output.
+
 The supervisor assigns one sequence number and receive time to each record.
 Separate child pipes can report records in either arrival order.
 
