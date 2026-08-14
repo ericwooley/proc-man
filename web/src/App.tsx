@@ -919,19 +919,37 @@ function ProcessDetailPage() {
 
 function PortRow({ port }: { port: Port }) {
   const address = `${port.protocol}://${port.host}:${port.port}${port.path ?? ""}`;
-  return (
-    <div className="port-row">
-      <code>{port.name} · {port.host}:{port.port}{port.path ?? ""}</code>
-      {port.protocol === "tcp" ? (
-        <button className="icon-button" type="button" aria-label={`Copy ${port.name} endpoint`} onClick={() => void navigator.clipboard.writeText(address)}>
-          <Copy />
-        </button>
-      ) : (
-        <a className="icon-button" href={address} target="_blank" rel="noreferrer" aria-label={`Open ${port.name} endpoint`}>
-          <ArrowSquareOut />
-        </a>
-      )}
-    </div>
+  const endpoint = `${port.host}:${port.port}${port.path ?? ""}`;
+  const isTCP = port.protocol === "tcp";
+  const content = (
+    <>
+      <code>{port.name} · {endpoint}</code>
+      <span className="port-row-action" aria-hidden="true">
+        <span>{isTCP ? "Copy" : "Open"}</span>
+        {isTCP ? <Copy /> : <ArrowSquareOut />}
+      </span>
+    </>
+  );
+
+  return isTCP ? (
+    <button
+      className="port-row"
+      type="button"
+      aria-label={`Copy ${port.name} endpoint at ${endpoint}`}
+      onClick={() => void navigator.clipboard.writeText(address)}
+    >
+      {content}
+    </button>
+  ) : (
+    <a
+      className="port-row"
+      href={address}
+      target="_blank"
+      rel="noreferrer"
+      aria-label={`Open ${port.name} endpoint at ${endpoint}`}
+    >
+      {content}
+    </a>
   );
 }
 

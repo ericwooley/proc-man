@@ -24,6 +24,13 @@ const process: Process = {
       protocol: "http",
       path: "/",
     },
+    {
+      id: "port_02",
+      name: "inspector",
+      host: "127.0.0.1",
+      port: 9310,
+      protocol: "tcp",
+    },
   ],
   created_at: "2026-08-06T17:00:00Z",
   updated_at: "2026-08-06T17:00:00Z",
@@ -142,6 +149,28 @@ describe("App navigation", () => {
     expect(await screen.findByRole("heading", { name: "Storefront web" })).toBeVisible();
     expect(screen.getByText("npm run dev -- --port 4310")).toBeVisible();
     expect(await screen.findByText("ready on port 4310")).toBeVisible();
+  });
+
+  it("uses each declared port row as its labeled action target", async () => {
+    render(
+      <MemoryRouter initialEntries={[`/process/${process.id}`]}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    const openRow = await screen.findByRole("link", {
+      name: "Open http endpoint at 127.0.0.1:4310/",
+    });
+    expect(openRow).toHaveClass("port-row");
+    expect(openRow).toHaveTextContent("http · 127.0.0.1:4310/");
+    expect(within(openRow).getByText("Open")).toBeVisible();
+
+    const copyRow = screen.getByRole("button", {
+      name: "Copy inspector endpoint at 127.0.0.1:9310",
+    });
+    expect(copyRow).toHaveClass("port-row");
+    expect(copyRow).toHaveTextContent("inspector · 127.0.0.1:9310");
+    expect(within(copyRow).getByText("Copy")).toBeVisible();
   });
 
   it("filters and groups processes by their associated directory", async () => {
