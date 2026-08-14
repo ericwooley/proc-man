@@ -61,7 +61,7 @@ const processFixture = {
   id: "proc_browser",
   selector: "proc_browser",
   label: "Browser task",
-  tags: ["frontend", "browser"],
+  tags: ["frontend", "browser", "project:proc-man"],
   kind: "task",
   state: "stopped",
   source: { kind: "imperative" },
@@ -185,9 +185,16 @@ try {
       navCount: document.querySelectorAll(".rail-link").length,
       navActive: document.querySelector(".rail-link").classList.contains("active"),
       directory: document.querySelector(".row-directory").innerText,
+      hasProjectFilter: Boolean(document.querySelector('select[aria-label="Filter by project"]')),
       hasDirectoryFilter: Boolean(document.querySelector('select[aria-label="Filter by directory"]')),
+      processTypes: [...document.querySelectorAll('[aria-label="Filter by process type"] button')]
+        .map(button => button.textContent),
+      hasProjectGrouping: [...document.querySelectorAll('select[aria-label="Group processes"] option')]
+        .some(option => option.value === "project"),
       hasDirectoryGrouping: [...document.querySelectorAll('select[aria-label="Group processes"] option')]
-        .some(option => option.value === "directory")
+        .some(option => option.value === "directory"),
+      hasTypeGrouping: [...document.querySelectorAll('select[aria-label="Group processes"] option')]
+        .some(option => option.value === "kind")
     })`),
     {
       heading: "Processes",
@@ -196,8 +203,12 @@ try {
       navCount: 1,
       navActive: true,
       directory: repository,
+      hasProjectFilter: true,
       hasDirectoryFilter: true,
+      processTypes: ["All types", "Long-running", "One-shot"],
+      hasProjectGrouping: true,
       hasDirectoryGrouping: true,
+      hasTypeGrouping: true,
     },
   );
 
@@ -209,6 +220,16 @@ try {
   await waitFor(
     `document.querySelector(".group-heading strong")?.textContent === ${JSON.stringify(repository)}`,
     "Directory grouping did not render",
+  );
+
+  await evaluate(`(() => {
+    const group = document.querySelector('select[aria-label="Group processes"]');
+    group.value = "project";
+    group.dispatchEvent(new Event("change", { bubbles: true }));
+  })()`);
+  await waitFor(
+    `document.querySelector(".group-heading strong")?.textContent === "proc-man"`,
+    "Project grouping did not render",
   );
 
   if (process.env.PROC_MAN_INVENTORY_SCREENSHOT) {

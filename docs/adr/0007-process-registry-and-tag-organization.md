@@ -32,7 +32,10 @@ belong to worktrees and makes one use case the product structure.
 
 - V1 permits normalized free-form tags.
 - Clients suggest existing tags.
+- A project filter uses tags with the `project:` prefix.
+- The project filter does not create a project resource.
 - Repeated tag filters use AND semantics.
+- Project grouping can show one process in several project groups.
 - Group-by-tag can show one process in several groups.
 - Directory grouping shows each process in its exact working directory.
 - A directory remains a process field and does not become a parent resource.

@@ -36,10 +36,15 @@ They can run one-shot commands from the CLI without registration.
 - Search labels, tags, commands, directories, and declared ports.
 - Apply inventory search and filters before pagination.
 - Filter by process kind.
+- Show process kinds as long-running services and one-shot tasks.
+- Filter by tags that use the `project:` prefix through a project selector.
 - Filter by an exact working directory.
 - Filter by one or more tags.
+- Group matching processes by project tag.
 - Group matching processes by working directory.
+- Group matching processes by process kind.
 - Group matching processes by tag.
+- Show a `No project` group when required.
 - Show an `untagged` group when required.
 
 ## Process details

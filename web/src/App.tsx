@@ -68,7 +68,7 @@ import type {
 } from "./types";
 
 type Theme = "light" | "dark";
-type GroupMode = "none" | "tag" | "directory";
+type GroupMode = "none" | "project" | "directory" | "kind" | "tag";
 type ProcessPaging = {
   filterKey: string;
   cursor: string;
@@ -76,6 +76,20 @@ type ProcessPaging = {
 };
 
 const processPageLimit = 25;
+const projectTagPrefix = "project:";
+
+function projectName(tag: string): string {
+  return tag.startsWith(projectTagPrefix) ? tag.slice(projectTagPrefix.length) : "";
+}
+
+function projectTags(process: Process): string[] {
+  return process.tags.filter((tag) => projectName(tag));
+}
+
+function processTypeLabel(kind: Process["kind"], plural = false): string {
+  if (kind === "service") return plural ? "Long-running services" : "Long-running";
+  return plural ? "One-shot tasks" : "One-shot";
+}
 
 export function App() {
   const [theme, setTheme] = useState<Theme>(() => {
@@ -171,6 +185,7 @@ function InventoryPage() {
   const [query, setQuery] = useState("");
   const debouncedQuery = useDebouncedValue(query, 250);
   const [kind, setKind] = useState<"all" | "service" | "task">("all");
+  const [project, setProject] = useState("");
   const [directory, setDirectory] = useState("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [groupMode, setGroupMode] = useState<GroupMode>("none");
@@ -191,6 +206,7 @@ function InventoryPage() {
   const filterKey = JSON.stringify([
     debouncedQuery.trim(),
     kind,
+    project,
     directory,
     selectedTags,
   ]);
@@ -210,7 +226,7 @@ function InventoryPage() {
       const result = await listProcesses({
         query: debouncedQuery.trim() || undefined,
         directory: directory || undefined,
-        tags: selectedTags,
+        tags: project ? [project, ...selectedTags] : selectedTags,
         kind: kind === "all" ? undefined : kind,
         limit: processPageLimit,
         cursor: activeCursor || undefined,
@@ -226,7 +242,7 @@ function InventoryPage() {
     } finally {
       if (sequence === loadSequence.current) setLoading(false);
     }
-  }, [activeCursor, debouncedQuery, directory, kind, selectedTags]);
+  }, [activeCursor, debouncedQuery, directory, kind, project, selectedTags]);
 
   useEffect(() => {
     setPaging((current) => current.filterKey === filterKey ? current : {
@@ -241,7 +257,7 @@ function InventoryPage() {
     return subscribeToEvents(() => void load());
   }, [load]);
 
-  const tags = useMemo(() => {
+  const tagFacets = useMemo(() => {
     if (facets.tags.length > 0) {
       return facets.tags.map(({ value, count }) => [value, count] as [string, number]);
     }
@@ -253,6 +269,16 @@ function InventoryPage() {
     }
     return [...counts.entries()].sort(([left], [right]) => left.localeCompare(right));
   }, [facets.tags, processes]);
+
+  const projects = useMemo(
+    () => tagFacets.filter(([tag]) => projectName(tag)),
+    [tagFacets],
+  );
+
+  const tags = useMemo(
+    () => tagFacets.filter(([tag]) => !projectName(tag)),
+    [tagFacets],
+  );
 
   const directories = useMemo(() => {
     if (facets.directories.length > 0) {
@@ -269,6 +295,7 @@ function InventoryPage() {
     const needle = query.trim().toLowerCase();
     return processes.filter((process) => {
       if (kind !== "all" && process.kind !== kind) return false;
+      if (project && !process.tags.includes(project)) return false;
       if (directory && process.cwd !== directory) return false;
       if (!selectedTags.every((tag) => process.tags.includes(tag))) return false;
       if (!needle) return true;
@@ -288,9 +315,38 @@ function InventoryPage() {
       ];
       return searchable.some((value) => value.toLowerCase().includes(needle));
     });
-  }, [directory, kind, processes, query, selectedTags]);
+  }, [directory, kind, processes, project, query, selectedTags]);
 
   const groups = useMemo(() => {
+    if (groupMode === "project") {
+      const allProjects = new Set(
+        filtered.flatMap((process) => {
+          const tags = projectTags(process);
+          return tags.length > 0 ? tags : [""];
+        }),
+      );
+      return [...allProjects]
+        .sort((left, right) => projectName(left).localeCompare(projectName(right)))
+        .map((tag) => ({
+          key: tag ? `project-tag:${tag}` : "project:none",
+          label: tag ? projectName(tag) : "No project",
+          type: "project" as const,
+          processes: filtered.filter((process) => {
+            const tags = projectTags(process);
+            return tag ? tags.includes(tag) : tags.length === 0;
+          }),
+        }));
+    }
+    if (groupMode === "kind") {
+      return (["service", "task"] as const)
+        .filter((value) => filtered.some((process) => process.kind === value))
+        .map((value) => ({
+          key: `kind:${value}`,
+          label: processTypeLabel(value, true),
+          type: "kind" as const,
+          processes: filtered.filter((process) => process.kind === value),
+        }));
+    }
     if (groupMode === "tag") {
       const allTags = new Set(filtered.flatMap((process) => process.tags.length ? process.tags : ["untagged"]));
       return [...allTags].sort().map((tag) => ({
@@ -353,7 +409,7 @@ function InventoryPage() {
   }
 
   const hasActiveFilters = Boolean(
-    query.trim() || kind !== "all" || directory || selectedTags.length,
+    query.trim() || kind !== "all" || project || directory || selectedTags.length,
   );
 
   return (
@@ -385,7 +441,7 @@ function InventoryPage() {
             </button>
           )}
         </label>
-        <div className="segmented" aria-label="Process kind">
+        <div className="segmented" aria-label="Filter by process type">
           {(["all", "service", "task"] as const).map((value) => (
             <button
               key={value}
@@ -394,7 +450,7 @@ function InventoryPage() {
               aria-pressed={kind === value}
               onClick={() => setKind(value)}
             >
-              {value === "all" ? "All" : `${value}s`}
+              {value === "all" ? "All types" : processTypeLabel(value)}
             </button>
           ))}
         </div>
@@ -406,28 +462,48 @@ function InventoryPage() {
             onChange={(event) => setGroupMode(event.target.value as GroupMode)}
           >
             <option value="none">None</option>
-            <option value="tag">Tag</option>
+            <option value="project">Project</option>
             <option value="directory">Directory</option>
+            <option value="kind">Process type</option>
+            <option value="tag">Tag</option>
           </select>
         </label>
       </div>
 
-      {directories.length > 0 && (
-        <div className="directory-filter-row">
-          <label className="directory-filter">
-            <Folder />
-            <span>Directory</span>
-            <select
-              aria-label="Filter by directory"
-              value={directory}
-              onChange={(event) => setDirectory(event.target.value)}
-            >
-              <option value="">All directories</option>
-              {directories.map(([path, count]) => (
-                <option value={path} key={path}>{path} ({count})</option>
-              ))}
-            </select>
-          </label>
+      {(projects.length > 0 || directories.length > 0) && (
+        <div className="facet-filter-row">
+          {projects.length > 0 && (
+            <label className="facet-filter project-filter">
+              <Tag />
+              <span>Project</span>
+              <select
+                aria-label="Filter by project"
+                value={project}
+                onChange={(event) => setProject(event.target.value)}
+              >
+                <option value="">All projects</option>
+                {projects.map(([tag, count]) => (
+                  <option value={tag} key={tag}>{projectName(tag)} ({count})</option>
+                ))}
+              </select>
+            </label>
+          )}
+          {directories.length > 0 && (
+            <label className="facet-filter directory-filter">
+              <Folder />
+              <span>Directory</span>
+              <select
+                aria-label="Filter by directory"
+                value={directory}
+                onChange={(event) => setDirectory(event.target.value)}
+              >
+                <option value="">All directories</option>
+                {directories.map(([path, count]) => (
+                  <option value={path} key={path}>{path} ({count})</option>
+                ))}
+              </select>
+            </label>
+          )}
         </div>
       )}
 
@@ -497,7 +573,13 @@ function InventoryPage() {
                   }
                 >
                   {collapsed ? <CaretRight /> : <CaretDown />}
-                  {group.type === "directory" ? <Folder /> : <Tag />}
+                  {group.type === "directory" ? (
+                    <Folder />
+                  ) : group.type === "kind" ? (
+                    <TerminalWindow />
+                  ) : (
+                    <Tag />
+                  )}
                   <strong>{group.label}</strong>
                   <span>{group.processes.length}</span>
                 </button>
@@ -575,7 +657,7 @@ function ProcessTable({
   return (
     <div className="process-table" role="table" aria-label="Processes">
       <div className="process-table-header" role="row">
-        <span>Process</span><span>State</span><span>Declared ports</span><span>Kind</span><span>Actions</span>
+        <span>Process</span><span>State</span><span>Declared ports</span><span>Type</span><span>Actions</span>
       </div>
       {processes.map((process) => (
         <article
@@ -623,7 +705,7 @@ function ProcessTable({
               <span key={port.id}>{port.name} · {port.host}:{port.port}</span>
             )) : <span className="muted">None</span>}
           </div>
-          <span className="kind-cell" role="cell">{process.kind}</span>
+          <span className="kind-cell" role="cell">{processTypeLabel(process.kind)}</span>
           <ProcessActions
             process={process}
             compact
@@ -819,7 +901,7 @@ function ProcessDetailPage() {
           <div>
             <h1 ref={heading} tabIndex={-1}>{process.label}</h1>
             <div className="detail-subtitle">
-              <code>{process.id}</code><span>·</span><span>{process.kind}</span><span>·</span>
+              <code>{process.id}</code><span>·</span><span>{processTypeLabel(process.kind)}</span><span>·</span>
               <StatusPill state={process.state} />
             </div>
             <div className="detail-tags">
@@ -1032,7 +1114,16 @@ function RegisterDialog({
         <form onSubmit={(event) => void submit(event)}>
           <label>Label<input required value={label} onChange={(event) => setLabel(event.target.value)} placeholder="Storefront web" /></label>
           <div className="form-grid">
-            <label>Kind<select value={kind} onChange={(event) => setKind(event.target.value as "service" | "task")}><option value="service">Service</option><option value="task">Task</option></select></label>
+            <label>
+              Type
+              <select
+                value={kind}
+                onChange={(event) => setKind(event.target.value as "service" | "task")}
+              >
+                <option value="service">Long-running service</option>
+                <option value="task">One-shot task</option>
+              </select>
+            </label>
             <label>Tags<input value={tags} onChange={(event) => setTags(event.target.value)} placeholder="frontend, project:storefront" /></label>
           </div>
           <label>Working directory<input required value={cwd} onChange={(event) => setCWD(event.target.value)} placeholder="/home/me/code/storefront" /></label>

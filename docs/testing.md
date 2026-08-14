@@ -42,6 +42,7 @@ React tests cover:
 - Header brand separation.
 - Active Processes navigation.
 - Inventory loading.
+- Project, directory, and process-type filtering and grouping.
 - List-to-detail navigation.
 - Direct process detail routes.
 - Run log display.
@@ -87,6 +88,8 @@ The check verifies:
 - The brand sits in the header.
 - The navigation contains one Processes route.
 - The Processes route has an active state.
+- Project and directory filters load.
+- Project, directory, and process-type grouping options load.
 - A process opens its detail route.
 - Full logs load.
 - Declared ports load.

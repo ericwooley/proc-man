@@ -45,6 +45,8 @@ Each process has an opaque ID, a human label, and zero or more tags.
 
 Labels can repeat.
 Tags provide filtering and grouping.
+Tags with the `project:` prefix provide the project filter and project groups.
+The project view does not create a project resource.
 The working directory associates each process with one directory.
 Clients can filter or group the flat registry by this value.
 

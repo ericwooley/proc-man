@@ -41,7 +41,8 @@ const otherProcess: Process = {
   id: "proc_02",
   selector: "admin-worker",
   label: "Admin worker",
-  tags: ["backend"],
+  tags: ["backend", "project:admin"],
+  kind: "task",
   state: "stopped",
   cwd: "/code/admin",
   ports: [],
@@ -198,6 +199,51 @@ describe("App navigation", () => {
     });
     expect(await screen.findByRole("button", { name: "/code/storefront, 1 process" })).toBeVisible();
     expect(screen.getByRole("button", { name: "/code/admin, 1 process" })).toBeVisible();
+  });
+
+  it("filters and groups processes by project and process type", async () => {
+    render(
+      <MemoryRouter initialEntries={["/"]}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText("Storefront web")).toBeVisible();
+    const projectFilter = screen.getByRole("combobox", { name: "Filter by project" });
+    expect(within(projectFilter).getByRole("option", { name: "storefront (1)" })).toBeVisible();
+    expect(within(projectFilter).getByRole("option", { name: "admin (1)" })).toBeVisible();
+
+    fireEvent.change(projectFilter, { target: { value: "project:storefront" } });
+    expect(screen.queryByText("Admin worker")).not.toBeInTheDocument();
+    expect(await screen.findByText("Storefront web")).toBeVisible();
+    await waitFor(() => {
+      const requests = vi.mocked(fetch).mock.calls.map(([input]) => String(input));
+      expect(requests.some((request) => request.includes("tag=project%3Astorefront"))).toBe(true);
+    });
+
+    fireEvent.change(projectFilter, { target: { value: "" } });
+    fireEvent.click(screen.getByRole("button", { name: "One-shot" }));
+    expect(screen.queryByText("Storefront web")).not.toBeInTheDocument();
+    expect(await screen.findByText("Admin worker")).toBeVisible();
+    await waitFor(() => {
+      const requests = vi.mocked(fetch).mock.calls.map(([input]) => String(input));
+      expect(requests.some((request) => request.includes("kind=task"))).toBe(true);
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "All types" }));
+    fireEvent.change(screen.getByRole("combobox", { name: "Group processes" }), {
+      target: { value: "project" },
+    });
+    expect(await screen.findByRole("button", { name: "storefront, 1 process" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "admin, 1 process" })).toBeVisible();
+
+    fireEvent.change(screen.getByRole("combobox", { name: "Group processes" }), {
+      target: { value: "kind" },
+    });
+    expect(await screen.findByRole("button", {
+      name: "Long-running services, 1 process",
+    })).toBeVisible();
+    expect(screen.getByRole("button", { name: "One-shot tasks, 1 process" })).toBeVisible();
   });
 
   it("loads older process pages only after the user requests them", async () => {

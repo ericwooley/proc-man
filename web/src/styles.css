@@ -267,7 +267,7 @@ h1, h2, p { margin-top: 0; }
   cursor: pointer;
 }
 .segmented button.selected { color: var(--ink); background: var(--surface-strong); box-shadow: 0 2px 8px rgba(0,0,0,.08); }
-.select-control, .directory-filter {
+.select-control, .facet-filter {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -275,7 +275,7 @@ h1, h2, p { margin-top: 0; }
   font-size: 11px;
   font-weight: 700;
 }
-.select-control select, .directory-filter select {
+.select-control select, .facet-filter select {
   min-height: 38px;
   padding: 0 30px 0 10px;
   color: var(--ink);
@@ -283,12 +283,15 @@ h1, h2, p { margin-top: 0; }
   border: 1px solid var(--border);
   border-radius: 9px;
 }
-.directory-filter-row {
+.facet-filter-row {
   display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
   margin-top: 14px;
 }
-.directory-filter { min-width: 0; }
-.directory-filter svg { flex: none; width: 15px; height: 15px; }
+.facet-filter { min-width: 0; }
+.facet-filter svg { flex: none; width: 15px; height: 15px; }
+.project-filter select { width: min(280px, 70vw); }
 .directory-filter select { width: min(620px, 70vw); }
 .tag-filter-row {
   display: flex;
@@ -394,7 +397,7 @@ h1, h2, p { margin-top: 0; }
 .status-pill.failed, .status-pill.canceled { color: var(--danger); background: color-mix(in srgb, var(--danger) 10%, var(--surface-strong)); }
 .status-pill.stopping, .status-pill.interrupted { color: var(--warning); background: color-mix(in srgb, var(--warning) 12%, var(--surface-strong)); }
 .row-ports { display: flex; flex-direction: column; gap: 3px; font-family: ui-monospace, monospace; font-size: 10px; }
-.kind-cell { color: var(--muted); font-size: 11px; text-transform: capitalize; }
+.kind-cell { color: var(--muted); font-size: 11px; }
 .row-actions { display: flex; align-items: center; justify-content: flex-end; gap: 6px; }
 .row-actions.compact .button, .row-actions.compact .icon-button { min-height: 32px; height: 32px; }
 .process-groups { display: grid; gap: 10px; }
@@ -539,8 +542,8 @@ h1, h2, p { margin-top: 0; }
   .segmented { width: 100%; }
   .segmented button { flex: 1; }
   .select-control { justify-self: start; }
-  .directory-filter { width: 100%; }
-  .directory-filter select { width: 100%; min-width: 0; }
+  .facet-filter { width: 100%; }
+  .facet-filter select { width: 100%; min-width: 0; }
   .inventory-summary { gap: 12px; overflow-x: auto; white-space: nowrap; }
   .process-row { grid-template-columns: minmax(0, 1fr); gap: 10px; padding: 14px; }
   .process-row > [role="cell"]:nth-child(2) { position: absolute; right: 14px; margin-top: 1px; }

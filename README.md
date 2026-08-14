@@ -13,7 +13,7 @@ The React application provides the process inventory and process detail routes.
 
 - Register and manage long-running services.
 - Run one-shot commands from the invoking directory with an audit record.
-- Filter and group processes with tags or working directories.
+- Filter and group processes by project tag, working directory, or process type.
 - Start, stop, and restart services.
 - Record declared ports as process metadata.
 - Read current and retained run logs.
