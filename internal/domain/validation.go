@@ -3,6 +3,7 @@ package domain
 import (
 	"errors"
 	"fmt"
+	"path/filepath"
 	"regexp"
 	"sort"
 	"strings"
@@ -12,6 +13,28 @@ var tagPattern = regexp.MustCompile(`^[a-z0-9._:-]+$`)
 var portNamePattern = regexp.MustCompile(`^[a-z][a-z0-9_-]*$`)
 
 var ErrValidation = errors.New("validation failed")
+
+func DirectRunSnapshot(directory string, arguments []string) (ProcessSnapshot, error) {
+	directory = strings.TrimSpace(directory)
+	if directory == "" || !filepath.IsAbs(directory) {
+		return ProcessSnapshot{}, fmt.Errorf("%w: direct run cwd must be absolute", ErrValidation)
+	}
+	if len(arguments) == 0 {
+		return ProcessSnapshot{}, fmt.Errorf("%w: direct run argv is required", ErrValidation)
+	}
+	commandArguments := append([]string(nil), arguments...)
+	for _, argument := range commandArguments {
+		if strings.ContainsRune(argument, 0) {
+			return ProcessSnapshot{}, fmt.Errorf("%w: argv contains a null byte", ErrValidation)
+		}
+	}
+	directory = filepath.Clean(directory)
+	return ProcessSnapshot{
+		Label: directory, Tags: []string{}, Kind: ProcessKindTask,
+		Command: Command{Argv: commandArguments}, CWD: directory,
+		Env: map[string]string{}, Ports: []Port{}, Source: Source{Kind: "direct"},
+	}, nil
+}
 
 func NormalizeProcess(process Process) (Process, error) {
 	process.Label = strings.TrimSpace(process.Label)

@@ -50,12 +50,14 @@ Requests without `limit` or `cursor` keep the original unpaged v1 behavior.
 | Method and path | Purpose |
 | --- | --- |
 | `GET /api/v1/runs` | List runs. |
+| `POST /api/v1/runs` | Start one direct audit run. |
 | `GET /api/v1/runs/{id}` | Get one run. |
 | `POST /api/v1/runs/{id}/cancel` | Cancel an active task run. |
 
 Run list filters are:
 
 - `process_id`
+- `directory`
 - repeated `tag`
 - `kind`
 - `state`
@@ -63,6 +65,12 @@ Run list filters are:
 
 Run responses include a process snapshot.
 The snapshot remains after process deregistration.
+The directory filter matches the exact snapshot directory.
+
+A direct run request accepts `cwd`, `argv`, and optional `env` values.
+The service retains the directory and exact argv values in the run snapshot.
+The service uses `env` for execution but does not retain it in the snapshot.
+Direct runs have no process ID and use the `direct` source kind.
 
 ## Logs
 

@@ -4,12 +4,10 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
-	"io"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"os"
-	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
@@ -40,38 +38,84 @@ func TestAgentInstructionsPrintMarkdownWithoutServiceAccess(t *testing.T) {
 	if !strings.Contains(output.String(), "Register only long-running commands as services.") {
 		t.Fatalf("Agent instructions do not reserve registration for long-running commands")
 	}
-	for _, obsolete := range []string{"Register a task", "--kind task", "proc-man process run PROCESS_ID"} {
+	if !strings.Contains(output.String(), "stores one audit record") {
+		t.Fatalf("Agent instructions do not describe the direct run audit record")
+	}
+	for _, obsolete := range []string{
+		"Register a task", "--kind task", "proc-man process run PROCESS_ID",
+		"does not require the proc-man daemon", "does not retain output or run history",
+	} {
 		if strings.Contains(output.String(), obsolete) {
 			t.Fatalf("Agent instructions contain obsolete task registration text %q", obsolete)
 		}
 	}
 }
 
-func TestRunExecutesInInvokingDirectoryAndStreamsOutput(t *testing.T) {
-	executable, err := filepath.Abs(os.Args[0])
-	if err != nil {
-		t.Fatal(err)
-	}
+func TestRunCreatesAuditAndStreamsRetainedOutput(t *testing.T) {
 	directory := t.TempDir()
 	t.Chdir(directory)
 
 	output := newStreamingBuffer()
 	errorsOutput := newStreamingBuffer()
-	inputReader, inputWriter := io.Pipe()
-	t.Cleanup(func() {
-		_ = inputReader.Close()
-		_ = inputWriter.Close()
-	})
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
+	releaseFinish := make(chan struct{})
+	var received struct {
+		CWD  string   `json:"cwd"`
+		Argv []string `json:"argv"`
+		Env  []string `json:"env"`
+	}
+	t.Setenv("PROC_MAN_TEST_CALLER_ENV", "caller-value")
+	logRequests := 0
+	run := directRunForTest(directory, []string{"test-command", "first", "two words", "--child-flag"})
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		switch {
+		case request.Method == http.MethodPost && request.URL.Path == "/api/v1/runs":
+			if err := json.NewDecoder(request.Body).Decode(&received); err != nil {
+				t.Errorf("Decode direct run: %v", err)
+			}
+			writeCLIJSON(response, http.StatusAccepted, map[string]any{"run": run})
+		case request.Method == http.MethodGet && request.URL.Path == "/api/v1/runs/run_direct/logs":
+			logRequests++
+			if logRequests == 1 {
+				if request.URL.Query().Get("since") != "" {
+					t.Errorf("First since value = %q, want empty", request.URL.Query().Get("since"))
+				}
+				writeCLIJSON(response, http.StatusOK, map[string]any{
+					"run": run,
+					"records": []domain.LogRecord{
+						{Sequence: 1, Stream: "stdout", Text: "ready"},
+						{Sequence: 2, Stream: "stderr", Text: "warning"},
+					},
+				})
+				return
+			}
+			<-releaseFinish
+			if request.URL.Query().Get("since") != "2" {
+				t.Errorf("Final since value = %q, want 2", request.URL.Query().Get("since"))
+			}
+			exitCode := 0
+			finished := run
+			finished.State = domain.RunStateExited
+			finished.ExitCode = &exitCode
+			writeCLIJSON(response, http.StatusOK, map[string]any{
+				"run": finished,
+				"records": []domain.LogRecord{
+					{Sequence: 3, Stream: "stdout", Text: "tail", Partial: true},
+				},
+			})
+		default:
+			t.Errorf("Request = %s %s", request.Method, request.URL.String())
+			writeCLIJSON(response, http.StatusNotFound, map[string]any{})
+		}
+	}))
+	t.Cleanup(server.Close)
 
 	command := New("test", output, errorsOutput)
 	command.SetContext(ctx)
-	command.SetIn(inputReader)
 	command.SetArgs([]string{
-		"run", "--", executable,
-		"-test.run=TestOneShotCommandHelper", "--",
-		"proc-man-test-helper", "stream", "first", "two words", "--child-flag",
+		"--admin-url", server.URL, "run", "--",
+		"test-command", "first", "two words", "--child-flag",
 	})
 	result := make(chan error, 1)
 	go func() {
@@ -85,54 +129,162 @@ func TestRunExecutesInInvokingDirectoryAndStreamsOutput(t *testing.T) {
 	case <-ctx.Done():
 		t.Fatal("Command did not stream output before the timeout")
 	}
-	if _, err := io.WriteString(inputWriter, "input from caller"); err != nil {
-		t.Fatal(err)
-	}
-	if err := inputWriter.Close(); err != nil {
-		t.Fatal(err)
-	}
+	close(releaseFinish)
 	if err := <-result; err != nil {
 		t.Fatal(err)
 	}
 
-	lines := strings.Split(strings.TrimSpace(output.String()), "\n")
-	if len(lines) != 3 || lines[0] != "ready" || lines[2] != "input=input from caller" {
+	if output.String() != "ready\ntail" {
 		t.Fatalf("Output = %q", output.String())
 	}
-	var payload struct {
-		CWD  string   `json:"cwd"`
-		Args []string `json:"args"`
+	if errorsOutput.String() != "warning\n" {
+		t.Fatalf("Error output = %q", errorsOutput.String())
 	}
-	if err := json.Unmarshal([]byte(lines[1]), &payload); err != nil {
+	if received.CWD != directory {
+		t.Fatalf("CWD = %q, want %q", received.CWD, directory)
+	}
+	wantArguments := []string{"test-command", "first", "two words", "--child-flag"}
+	if len(received.Argv) != len(wantArguments) {
+		t.Fatalf("Arguments = %#v, want %#v", received.Argv, wantArguments)
+	}
+	for index := range wantArguments {
+		if received.Argv[index] != wantArguments[index] {
+			t.Fatalf("Arguments = %#v, want %#v", received.Argv, wantArguments)
+		}
+	}
+	if !containsString(received.Env, "PROC_MAN_TEST_CALLER_ENV=caller-value") {
+		t.Fatalf("Environment does not contain the caller value: %#v", received.Env)
+	}
+}
+
+func TestRunCancelsAuditWhenCommandContextEnds(t *testing.T) {
+	directory := t.TempDir()
+	t.Chdir(directory)
+	run := directRunForTest(directory, []string{"test-command"})
+	requestObserved := make(chan struct{})
+	cancelObserved := make(chan struct{})
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		switch request.Method + " " + request.URL.Path {
+		case "POST /api/v1/runs":
+			writeCLIJSON(response, http.StatusAccepted, map[string]any{"run": run})
+		case "GET /api/v1/runs/run_direct/logs":
+			select {
+			case <-requestObserved:
+			default:
+				close(requestObserved)
+			}
+			writeCLIJSON(response, http.StatusOK, map[string]any{"run": run, "records": []any{}})
+		case "POST /api/v1/runs/run_direct/cancel":
+			select {
+			case <-cancelObserved:
+			default:
+				close(cancelObserved)
+			}
+			stopping := run
+			stopping.State = domain.RunStateStopping
+			writeCLIJSON(response, http.StatusAccepted, map[string]any{"run": stopping})
+		default:
+			t.Errorf("Request = %s %s", request.Method, request.URL.String())
+			writeCLIJSON(response, http.StatusNotFound, map[string]any{})
+		}
+	}))
+	t.Cleanup(server.Close)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	command := New("test", &bytes.Buffer{}, &bytes.Buffer{})
+	command.SetContext(ctx)
+	command.SetArgs([]string{"--admin-url", server.URL, "run", "--", "test-command"})
+	result := make(chan error, 1)
+	go func() { result <- command.Execute() }()
+	<-requestObserved
+	cancel()
+	if err := <-result; !errors.Is(err, context.Canceled) {
+		t.Fatalf("Error = %v, want context cancellation", err)
+	}
+	select {
+	case <-cancelObserved:
+	case <-time.After(time.Second):
+		t.Fatal("Direct run cancellation was not sent")
+	}
+}
+
+func TestRunDrainsEveryTerminalLogPage(t *testing.T) {
+	directory := t.TempDir()
+	t.Chdir(directory)
+	run := directRunForTest(directory, []string{"test-command"})
+	exitCode := 0
+	run.State = domain.RunStateExited
+	run.ExitCode = &exitCode
+	firstPage := make([]domain.LogRecord, directRunLogPageSize)
+	for index := range firstPage {
+		firstPage[index] = domain.LogRecord{Sequence: int64(index + 1), Partial: true}
+	}
+	logRequests := 0
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		switch request.Method + " " + request.URL.Path {
+		case "POST /api/v1/runs":
+			writeCLIJSON(response, http.StatusAccepted, map[string]any{"run": run})
+		case "GET /api/v1/runs/run_direct/logs":
+			logRequests++
+			if logRequests == 1 {
+				writeCLIJSON(response, http.StatusOK, map[string]any{"run": run, "records": firstPage})
+				return
+			}
+			writeCLIJSON(response, http.StatusOK, map[string]any{
+				"run": run,
+				"records": []domain.LogRecord{{
+					Sequence: directRunLogPageSize + 1, Stream: "stdout", Text: "tail",
+				}},
+			})
+		default:
+			t.Errorf("Request = %s %s", request.Method, request.URL.String())
+			writeCLIJSON(response, http.StatusNotFound, map[string]any{})
+		}
+	}))
+	t.Cleanup(server.Close)
+
+	var output bytes.Buffer
+	command := New("test", &output, &bytes.Buffer{})
+	command.SetArgs([]string{"--admin-url", server.URL, "run", "--", "test-command"})
+	if err := command.Execute(); err != nil {
 		t.Fatal(err)
 	}
-	if payload.CWD != directory {
-		t.Fatalf("CWD = %q, want %q", payload.CWD, directory)
-	}
-	wantArguments := []string{"first", "two words", "--child-flag"}
-	if fmt.Sprint(payload.Args) != fmt.Sprint(wantArguments) {
-		t.Fatalf("Arguments = %#v, want %#v", payload.Args, wantArguments)
-	}
-	if errorsOutput.String() != "helper stderr\n" {
-		t.Fatalf("Error output = %q", errorsOutput.String())
+	if output.String() != "tail\n" || logRequests != 2 {
+		t.Fatalf("Output = %q and log requests = %d", output.String(), logRequests)
 	}
 }
 
 func TestRunPreservesChildExitCode(t *testing.T) {
-	executable, err := filepath.Abs(os.Args[0])
-	if err != nil {
-		t.Fatal(err)
-	}
+	directory := t.TempDir()
+	run := directRunForTest(directory, []string{"test-command"})
+	exitCode := 23
+	finished := run
+	finished.State = domain.RunStateFailed
+	finished.ExitCode = &exitCode
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		switch request.Method + " " + request.URL.Path {
+		case "POST /api/v1/runs":
+			writeCLIJSON(response, http.StatusAccepted, map[string]any{"run": run})
+		case "GET /api/v1/runs/run_direct/logs":
+			writeCLIJSON(response, http.StatusOK, map[string]any{
+				"run":     finished,
+				"records": []domain.LogRecord{{Sequence: 1, Stream: "stderr", Text: "helper failed"}},
+			})
+		default:
+			t.Errorf("Request = %s %s", request.Method, request.URL.String())
+			writeCLIJSON(response, http.StatusNotFound, map[string]any{})
+		}
+	}))
+	t.Cleanup(server.Close)
+
 	var output bytes.Buffer
 	var errorsOutput bytes.Buffer
 	command := New("test", &output, &errorsOutput)
 	command.SetArgs([]string{
-		"run", "--", executable,
-		"-test.run=TestOneShotCommandHelper", "--",
-		"proc-man-test-helper", "exit", "23",
+		"--admin-url", server.URL, "run", "--", "test-command",
 	})
 
-	err = command.Execute()
+	err := command.Execute()
 	if !IsDirectRunExit(err) {
 		t.Fatalf("Error = %v, want a direct run exit error", err)
 	}
@@ -169,52 +321,57 @@ func TestRunRejectsJSONOutput(t *testing.T) {
 func TestRunListStillReadsRetainedRuns(t *testing.T) {
 	t.Parallel()
 	var requestedPath string
+	var requestedDirectory string
 	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
 		requestedPath = request.URL.Path
+		requestedDirectory = request.URL.Query().Get("directory")
 		_ = json.NewEncoder(response).Encode(map[string]any{"runs": []domain.Run{}})
 	}))
 	t.Cleanup(server.Close)
 
 	var output bytes.Buffer
 	command := New("test", &output, &output)
-	command.SetArgs([]string{"--admin-url", server.URL, "run", "list"})
+	command.SetArgs([]string{"--admin-url", server.URL, "run", "list", "--directory", "."})
 	if err := command.Execute(); err != nil {
 		t.Fatal(err)
 	}
 	if requestedPath != "/api/v1/runs" {
 		t.Fatalf("Request path = %q, want /api/v1/runs", requestedPath)
 	}
+	directory, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if requestedDirectory != directory {
+		t.Fatalf("Directory = %q, want %q", requestedDirectory, directory)
+	}
 }
 
-func TestOneShotCommandHelper(_ *testing.T) {
-	marker := -1
-	for index, argument := range os.Args {
-		if argument == "proc-man-test-helper" {
-			marker = index
-			break
+func directRunForTest(directory string, arguments []string) domain.Run {
+	return domain.Run{
+		ID: "run_direct", State: domain.RunStateRunning,
+		Process: domain.ProcessSnapshot{
+			Label: directory, Kind: domain.ProcessKindTask,
+			Command: domain.Command{Argv: arguments}, CWD: directory,
+			Tags: []string{}, Env: map[string]string{}, Ports: []domain.Port{},
+			Source: domain.Source{Kind: "direct"},
+		},
+	}
+}
+
+func writeCLIJSON(response http.ResponseWriter, status int, value any) {
+	response.Header().Set("Content-Type", "application/json")
+	response.WriteHeader(status)
+	_ = json.NewEncoder(response).Encode(value)
+}
+
+func containsString(values []string, target string) bool {
+	for _, value := range values {
+		if value == target {
+			return true
 		}
 	}
-	if marker < 0 {
-		return
-	}
-	mode := os.Args[marker+1]
-	if mode == "exit" {
-		fmt.Fprintln(os.Stderr, "helper failed")
-		var code int
-		_, _ = fmt.Sscan(os.Args[marker+2], &code)
-		os.Exit(code)
-	}
-
-	directory, _ := os.Getwd()
-	fmt.Fprintln(os.Stdout, "ready")
-	payload, _ := json.Marshal(map[string]any{
-		"cwd": directory, "args": os.Args[marker+2:],
-	})
-	fmt.Fprintln(os.Stdout, string(payload))
-	fmt.Fprintln(os.Stderr, "helper stderr")
-	input, _ := io.ReadAll(os.Stdin)
-	fmt.Fprintf(os.Stdout, "input=%s\n", input)
-	os.Exit(0)
+	return false
 }
 
 type streamingBuffer struct {

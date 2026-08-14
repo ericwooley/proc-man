@@ -4,8 +4,11 @@ package supervisor
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"strings"
 	"syscall"
 )
 
@@ -18,6 +21,33 @@ func defaultShell() string {
 
 func newShellCommand(shell string, script string) *exec.Cmd {
 	return exec.Command(shell, "-lc", script)
+}
+
+func resolveDirectExecutable(name, cwd string, environment []string) (string, error) {
+	if strings.ContainsRune(name, os.PathSeparator) {
+		return name, nil
+	}
+	path := ""
+	for index := len(environment) - 1; index >= 0; index-- {
+		key, value, found := strings.Cut(environment[index], "=")
+		if found && key == "PATH" {
+			path = value
+			break
+		}
+	}
+	for _, directory := range filepath.SplitList(path) {
+		if directory == "" {
+			directory = cwd
+		} else if !filepath.IsAbs(directory) {
+			directory = filepath.Join(cwd, directory)
+		}
+		candidate := filepath.Join(directory, name)
+		info, err := os.Stat(candidate)
+		if err == nil && !info.IsDir() && info.Mode().Perm()&0o111 != 0 {
+			return candidate, nil
+		}
+	}
+	return "", fmt.Errorf("executable file %q was not found in the caller PATH", name)
 }
 
 func configureManagedCommand(command *exec.Cmd) {

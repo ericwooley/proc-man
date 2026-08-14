@@ -7,23 +7,21 @@ proc-man ships as one Go binary.
 The binary has three parts:
 
 1. The service supervises child process groups.
-2. The CLI runs one-shot commands or calls the local HTTP API.
+2. The CLI calls the local HTTP API.
 3. The embedded React application calls the same API.
 
 ```text
-CLI ───────────────────────────────▶ One-shot child
- │
- └───────────────┐
-                 ▼
-Browser ─────▶ Local API ───────▶ Process supervisor
-                 │                       │
-                 ▼                       ▼
-               SQLite               NDJSON logs
+CLI ────────┐
+            ▼
+Browser ─▶ Local API ───────▶ Process supervisor ───────▶ Child process
+            │                         │
+            ▼                         ▼
+          SQLite                  NDJSON logs
 ```
 
 The service owns registered process and retained run state.
 The CLI and React application do not access SQLite directly.
-Direct runs do not create stored state.
+Direct runs create stored audit state without process definitions.
 
 ## Local control plane
 
@@ -56,9 +54,12 @@ Source paths do not create application navigation or API parents.
 ## Process execution
 
 Direct runs execute one argv command in the invoking directory.
-They attach stdin, stdout, and stderr to the CLI process.
+The service starts the command with the caller environment.
+The CLI streams retained stdout and stderr records while the command runs.
 They wait for completion and return the child exit code.
-They do not create a process definition, run record, or log file.
+They do not forward stdin.
+They create a run record and log file without a process definition.
+An interrupted CLI cancels its active direct run.
 
 A process has kind `service` or `task`.
 
@@ -75,14 +76,15 @@ The supervisor sends SIGKILL after the configured stop limit.
 Argv commands preserve argument boundaries.
 Shell commands use the configured login shell.
 
-The supervisor adds these environment values:
+The supervisor adds `PROC_MAN_RUN_ID` to every run.
+It adds these environment values to registered runs:
 
 - `PROC_MAN_PROCESS_ID`
-- `PROC_MAN_RUN_ID`
 - `PROC_MAN_PORT_<NAME>`
 - `PROC_MAN_HOST_<NAME>`
 
 Commands can use `{process_id}`, `{definition_id}`, `{run_id}`, and `{port.<name>}` placeholders.
+Direct argv values do not expand proc-man placeholders.
 
 ## Declared ports
 

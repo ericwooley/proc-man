@@ -115,6 +115,84 @@ func TestProcessTaskAndLogsJourney(t *testing.T) {
 	}
 }
 
+func TestDirectRunAuditJourney(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+	state, err := store.Open(filepath.Join(root, "state.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { state.Close() })
+	manager := supervisor.New(state, supervisor.Options{
+		LogRoot: filepath.Join(root, "logs"), StopTimeout: 100 * time.Millisecond,
+	})
+	server := httptest.NewServer(New(state, manager, nil).Handler())
+	t.Cleanup(server.Close)
+
+	arguments := []string{
+		"/bin/sh", "-c", `printf 'audit %s\n' "$AUDIT_VALUE"; printf 'audit error\n' >&2; exit 23`,
+	}
+	var started struct {
+		Run domain.Run `json:"run"`
+	}
+	requestJSON(t, http.MethodPost, server.URL+"/api/v1/runs", map[string]any{
+		"cwd": root, "argv": arguments, "env": []string{"AUDIT_VALUE=caller-environment"},
+	}, http.StatusAccepted, &started)
+	if started.Run.ID == "" || started.Run.ProcessID != nil ||
+		started.Run.Process.Source.Kind != "direct" || len(started.Run.Process.Env) != 0 {
+		t.Fatalf("Started run = %#v", started.Run)
+	}
+
+	deadline := time.Now().Add(3 * time.Second)
+	var audit struct {
+		Run     domain.Run         `json:"run"`
+		Records []domain.LogRecord `json:"records"`
+	}
+	for {
+		requestJSON(t, http.MethodGet,
+			server.URL+"/api/v1/runs/"+started.Run.ID+"/logs",
+			nil, http.StatusOK, &audit,
+		)
+		if audit.Run.State.Terminal() {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("direct run did not finish")
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	hasCallerEnvironment := false
+	for _, record := range audit.Records {
+		if record.Stream == "stdout" && record.Text == "audit caller-environment" {
+			hasCallerEnvironment = true
+		}
+	}
+	if audit.Run.ExitCode == nil || *audit.Run.ExitCode != 23 ||
+		len(audit.Records) != 2 || !hasCallerEnvironment {
+		t.Fatalf("Audit = %#v", audit)
+	}
+
+	var listed struct {
+		Runs []domain.Run `json:"runs"`
+	}
+	requestJSON(t, http.MethodGet,
+		server.URL+"/api/v1/runs?directory="+url.QueryEscape(root),
+		nil, http.StatusOK, &listed,
+	)
+	if len(listed.Runs) != 1 || listed.Runs[0].ID != started.Run.ID ||
+		listed.Runs[0].Process.CWD != root ||
+		len(listed.Runs[0].Process.Command.Argv) != len(arguments) {
+		t.Fatalf("Listed runs = %#v", listed.Runs)
+	}
+	processes, err := state.ListProcesses(context.Background(), domain.ProcessFilter{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(processes) != 0 {
+		t.Fatalf("Processes = %#v, want none", processes)
+	}
+}
+
 func TestProcessListUsesCursorPaginationWhenRequested(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()

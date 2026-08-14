@@ -61,14 +61,14 @@ Declared ports remain visible when the process is stopped.
 
 ## Run
 
-A run represents one service start or task execution.
+A run represents one service start, registered task execution, or direct command.
 
 A run stores:
 
 - An opaque run ID.
-- The current process ID when the definition still exists.
+- An optional process ID for registered execution.
 - A complete process snapshot.
-- State and process ID.
+- State and operating-system process ID.
 - Start and end times.
 - Exit code and error text.
 - Log file path.
@@ -86,6 +86,15 @@ Run states are:
 Terminal run states keep their history.
 Deregistering a process keeps its run snapshots.
 
+## Direct audit run
+
+A direct audit run has no registered process ID.
+Its snapshot uses the `direct` source kind and the `task` process kind.
+The snapshot stores the invoking directory and exact argv command.
+The audit stores timestamps, terminal state, exit code, and output records.
+The caller environment controls execution but does not enter the snapshot.
+Clients can filter run history by the exact snapshot directory.
+
 ## Service lifecycle
 
 ```text
@@ -100,8 +109,8 @@ Restart stops the active run and creates a new run.
 
 ## Task lifecycle
 
-Run creates an independent run.
-Cancel signals one active task run.
+Run creates an independent registered task run.
+Cancel signals one active registered or direct task run.
 
 The process state returns to stopped after a task ends.
 Run history shows the result of each invocation.
@@ -117,6 +126,8 @@ Tag grouping can show one process in several groups.
 ## Source
 
 An imperative process has source kind `imperative`.
+
+A direct audit run has source kind `direct`.
 
 A manifest process has:
 

@@ -17,14 +17,6 @@ trap cleanup EXIT INT TERM
 port=13398
 admin_url="http://127.0.0.1:$port"
 
-one_shot_output=$(
-  cd "$repo_dir"
-  "$repo_dir/bin/proc-man" run -- sh -c 'printf "smoke ready\n"'
-)
-if [ "$one_shot_output" != "smoke ready" ]; then
-  exit 1
-fi
-
 "$repo_dir/bin/proc-man" serve \
   --port "$port" \
   --data-dir "$test_dir/data" \
@@ -40,6 +32,52 @@ until curl -fsS "$admin_url/readyz" >/dev/null 2>&1; do
   fi
   sleep 0.05
 done
+
+audit_script='printf "smoke %s\n" "$PROC_MAN_SMOKE_ENV"'
+one_shot_output=$(
+  cd "$repo_dir"
+  PROC_MAN_SMOKE_ENV=caller-value \
+    "$repo_dir/bin/proc-man" --admin-url "$admin_url" \
+    run -- /bin/sh -c "$audit_script"
+)
+if [ "$one_shot_output" != "smoke caller-value" ]; then
+  exit 1
+fi
+
+direct_runs_json=$(
+  "$repo_dir/bin/proc-man" --admin-url "$admin_url" --json \
+    run list --directory "$repo_dir"
+)
+direct_run_id=$(
+  printf '%s' "$direct_runs_json" | jq -er \
+    --arg directory "$repo_dir" \
+    --arg script "$audit_script" '
+      .data.runs as $runs
+      | if (
+          ($runs | length) == 1
+          and $runs[0].process_id == null
+          and $runs[0].process.source.kind == "direct"
+          and $runs[0].process.cwd == $directory
+          and ($runs[0].process.env | length) == 0
+          and $runs[0].process.command.argv == ["/bin/sh", "-c", $script]
+          and $runs[0].state == "exited"
+          and $runs[0].exit_code == 0
+        ) then $runs[0].id else error("invalid direct audit run") end
+    '
+)
+
+direct_logs_json=$(
+  "$repo_dir/bin/proc-man" --admin-url "$admin_url" --json \
+    run logs "$direct_run_id"
+)
+printf '%s' "$direct_logs_json" | jq -e \
+  '.data.records | any(.stream == "stdout" and .text == "smoke caller-value")' \
+  >/dev/null
+
+processes_json=$(
+  "$repo_dir/bin/proc-man" --admin-url "$admin_url" --json process list
+)
+printf '%s' "$processes_json" | jq -e '.data.processes | length == 0' >/dev/null
 
 service_json=$(
   "$repo_dir/bin/proc-man" --admin-url "$admin_url" --json \

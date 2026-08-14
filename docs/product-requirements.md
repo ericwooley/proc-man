@@ -56,9 +56,13 @@ They can run one-shot commands from the CLI without registration.
 ## Execution
 
 - Run one direct command in the invoking directory without registration.
-- Stream direct command input and output through the CLI process.
+- Send the caller environment for direct command execution.
+- Stream direct stdout and stderr through the CLI.
 - Wait for a direct command and return its child exit code.
-- Do not retain direct command output or run history.
+- Cancel an active direct run when its CLI receives an interrupt.
+- Retain one audit run for each direct command.
+- Store the direct directory, exact argv command, timestamps, output, and exit code.
+- Keep direct audit runs outside the process registry.
 - Start, stop, and restart a service.
 - Keep one active run for each service.
 - Run a task.

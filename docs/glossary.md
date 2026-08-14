@@ -41,10 +41,15 @@ The argv array or shell string that starts a service run or task run.
 
 ## Run
 
-One service start or task invocation with snapshotted configuration, timestamps,
-terminal result, and logs.
+One service start, registered task invocation, or direct command with a snapshot,
+timestamps, a terminal result, and logs.
 
-## Process log
+## Direct audit run
+
+A retained one-shot command execution without a registered process definition.
+It records the directory, exact argv command, timestamps, result, and output.
+
+## Run log
 
 The retained stdout and stderr record stream for one run.
 

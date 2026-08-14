@@ -2,8 +2,7 @@
 
 ## Connection
 
-The CLI calls the local service for registered process and retained run commands.
-The direct run command executes without the local service.
+The CLI calls the local service for process commands and all run commands.
 
 The administration URL resolves in this order:
 
@@ -106,9 +105,12 @@ proc-man run -- npm test
 ```
 
 The command uses the directory that invoked proc-man.
-It does not register a process or call the local service.
-It waits for completion and streams stdin, stdout, and stderr directly.
-It does not retain output or run history.
+It creates an audit run without registering a process.
+The local service must be running.
+The CLI streams stdout and stderr while the service retains the same records.
+The audit run stores the directory, exact arguments, timestamps, output, and exit code.
+The command receives the caller environment but does not receive stdin.
+An interrupt cancels the active audit run.
 The command returns the child exit code when the child fails.
 The `--json` flag cannot be used with a direct command.
 
@@ -170,6 +172,7 @@ Use direct runs for new one-shot commands.
 
 ```sh
 proc-man run list
+proc-man run list --directory .
 proc-man run list --process PROCESS_ID
 proc-man run list --kind task --state exited
 proc-man run status RUN_ID
@@ -181,6 +184,9 @@ proc-man run logs RUN_ID --format ndjson --output run.ndjson
 ```
 
 `process logs` selects the latest run by default.
+The run directory filter uses an exact absolute path.
+The CLI resolves a relative run directory before it calls the API.
+Direct audit runs have no process ID.
 
 ## Open a declared endpoint
 

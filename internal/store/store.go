@@ -573,6 +573,10 @@ func (store *Store) ListRuns(ctx context.Context, filter domain.RunFilter) ([]do
 	if limit <= 0 || limit > 500 {
 		limit = 100
 	}
+	directory := strings.TrimSpace(filter.Directory)
+	if directory != "" {
+		directory = filepath.Clean(directory)
+	}
 	var runs []domain.Run
 	for rows.Next() {
 		run, err := scanRun(rows)
@@ -580,6 +584,9 @@ func (store *Store) ListRuns(ctx context.Context, filter domain.RunFilter) ([]do
 			return nil, err
 		}
 		if filter.ProcessID != "" && (run.ProcessID == nil || *run.ProcessID != filter.ProcessID) {
+			continue
+		}
+		if directory != "" && filepath.Clean(run.Process.CWD) != directory {
 			continue
 		}
 		if filter.Kind != "" && run.Process.Kind != filter.Kind {

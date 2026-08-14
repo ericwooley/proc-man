@@ -49,9 +49,19 @@ proc-man run -- <command> [args...]
 ```
 
 The command uses the directory that invoked proc-man.
-It does not register a process or require the proc-man daemon.
-It waits for completion and streams stdin, stdout, and stderr directly.
-It does not retain output or run history.
+It does not register a process.
+The proc-man daemon must be running.
+Each command stores one audit record with its directory, exact arguments, timestamps, output, and exit code.
+The CLI streams stdout and stderr from the audit log while the command runs.
+The command receives the caller environment but does not receive stdin.
+Do not put secrets in command arguments because the audit record retains them.
+
+Find audit records for the current directory:
+
+```sh
+proc-man run list --directory "$PWD"
+proc-man run logs RUN_ID
+```
 
 ### Manage registered services and logs
 

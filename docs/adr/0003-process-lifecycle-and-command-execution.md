@@ -38,5 +38,5 @@ more complex.
 ## Alternatives
 
 Separate command resources split the inventory. CLI-only task execution loses
-durable history. ADR 0008 accepts this trade for transient one-shot commands.
+durable history. ADR 0008 adds unregistered audit runs for transient commands.
 Automatic restart can create hidden crash loops.

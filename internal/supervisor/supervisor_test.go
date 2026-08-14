@@ -65,6 +65,109 @@ func TestTaskRunCapturesOutput(t *testing.T) {
 	}
 }
 
+func TestDirectRunCreatesAuditWithoutProcess(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	root := t.TempDir()
+	state, err := store.Open(filepath.Join(root, "state.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { state.Close() })
+	arguments := []string{
+		"/bin/sh", "-c", `printf 'ready %s\n' "$AUDIT_VALUE"; printf 'warning\n' >&2; exit 23`,
+	}
+	manager := New(state, Options{LogRoot: filepath.Join(root, "logs")})
+
+	run, err := manager.RunDirect(ctx, root, arguments, []string{"AUDIT_VALUE=caller-environment"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	deadline := time.Now().Add(3 * time.Second)
+	for {
+		run, err = state.GetRun(ctx, run.ID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if run.State.Terminal() {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("direct run did not finish")
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+
+	if run.ProcessID != nil || run.Process.Source.Kind != "direct" ||
+		run.Process.CWD != root || run.ExitCode == nil || *run.ExitCode != 23 {
+		t.Fatalf("Run = %#v", run)
+	}
+	if len(run.Process.Command.Argv) != len(arguments) ||
+		run.Process.Command.Argv[2] != arguments[2] {
+		t.Fatalf("Arguments = %#v, want %#v", run.Process.Command.Argv, arguments)
+	}
+	processes, err := state.ListProcesses(ctx, domain.ProcessFilter{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(processes) != 0 {
+		t.Fatalf("Processes = %#v, want none", processes)
+	}
+	records, err := logstore.Read(run.LogPath, logstore.Query{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	streams := map[string]string{}
+	for _, record := range records {
+		streams[record.Stream] = record.Text
+	}
+	if len(records) != 2 || streams["stdout"] != "ready caller-environment" ||
+		streams["stderr"] != "warning" {
+		t.Fatalf("Records = %#v", records)
+	}
+}
+
+func TestDirectRunLaunchFailureCreatesAuditWithoutProcess(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	root := t.TempDir()
+	state, err := store.Open(filepath.Join(root, "state.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { state.Close() })
+	manager := New(state, Options{LogRoot: filepath.Join(root, "logs")})
+
+	run, err := manager.RunDirect(ctx, root, []string{"proc-man-command-that-does-not-exist"}, nil)
+	if err == nil {
+		t.Fatal("RunDirect() error = nil, want a launch error")
+	}
+	if run.ID == "" || run.ProcessID != nil || run.State != domain.RunStateFailed {
+		t.Fatalf("Run = %#v", run)
+	}
+	stored, err := state.GetRun(ctx, run.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stored.Error == "" || stored.Process.Source.Kind != "direct" {
+		t.Fatalf("Stored run = %#v", stored)
+	}
+	records, err := logstore.Read(stored.LogPath, logstore.Query{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(records) != 1 || records[0].Stream != "stderr" {
+		t.Fatalf("Records = %#v", records)
+	}
+	processes, err := state.ListProcesses(ctx, domain.ProcessFilter{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(processes) != 0 {
+		t.Fatalf("Processes = %#v, want none", processes)
+	}
+}
+
 func TestLaunchFilesystemFailureCreatesFailedRunAndLog(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()

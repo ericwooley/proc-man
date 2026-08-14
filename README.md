@@ -6,13 +6,13 @@ Each process has a label, tags, a command, a working directory, declared ports, 
 
 The Go service supervises processes and serves the React application.
 The CLI uses the local API for registered processes and retained runs.
-Direct one-shot commands run in the CLI process.
+Direct one-shot commands create retained audit runs without process registration.
 The React application provides the process inventory and process detail routes.
 
 ## Features
 
 - Register and manage long-running services.
-- Run one-shot commands directly from the invoking directory.
+- Run one-shot commands from the invoking directory with an audit record.
 - Filter and group processes with tags or working directories.
 - Start, stop, and restart services.
 - Record declared ports as process metadata.
@@ -95,11 +95,20 @@ This command registers a long-running service without a manifest file.
 ./bin/proc-man run -- npm test
 ```
 
-The command runs in the invoking directory without registration or daemon access.
-It waits for completion and streams stdin, stdout, and stderr directly.
-It does not retain output or run history.
+The command runs in the invoking directory without process registration.
+The proc-man daemon must be running.
+The CLI streams stdout and stderr while proc-man stores the same output.
+The audit run stores the directory, exact arguments, timestamps, output, and exit code.
+The command receives the caller environment but does not receive stdin.
 
-Use the registered service ID for later commands.
+List audit runs for the current directory:
+
+```sh
+./bin/proc-man run list --directory .
+./bin/proc-man run logs RUN_ID
+```
+
+Use each registered service ID for its lifecycle commands.
 
 ```sh
 ./bin/proc-man process list

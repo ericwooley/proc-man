@@ -2,8 +2,53 @@ package domain
 
 import (
 	"errors"
+	"strings"
 	"testing"
 )
+
+func TestDirectRunSnapshotRecordsExecutionContext(t *testing.T) {
+	t.Parallel()
+	arguments := []string{"npm", "test", "--", "two words"}
+	snapshot, err := DirectRunSnapshot("/workspace/project", arguments)
+	if err != nil {
+		t.Fatal(err)
+	}
+	arguments[0] = "changed"
+
+	if snapshot.ID != "" || snapshot.Label != "/workspace/project" ||
+		snapshot.Kind != ProcessKindTask || snapshot.Source.Kind != "direct" ||
+		snapshot.CWD != "/workspace/project" {
+		t.Fatalf("Snapshot = %#v", snapshot)
+	}
+	if len(snapshot.Command.Argv) != 4 || snapshot.Command.Argv[0] != "npm" ||
+		snapshot.Command.Argv[3] != "two words" {
+		t.Fatalf("Arguments = %#v", snapshot.Command.Argv)
+	}
+	if snapshot.Tags == nil || snapshot.Env == nil || snapshot.Ports == nil {
+		t.Fatalf("Snapshot collections must not be nil: %#v", snapshot)
+	}
+}
+
+func TestDirectRunSnapshotRejectsInvalidExecutionContext(t *testing.T) {
+	t.Parallel()
+	for _, test := range []struct {
+		name      string
+		directory string
+		arguments []string
+	}{
+		{name: "relative directory", directory: "project", arguments: []string{"true"}},
+		{name: "empty arguments", directory: "/workspace", arguments: nil},
+		{name: "null argument", directory: "/workspace", arguments: []string{"bad\x00value"}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			_, err := DirectRunSnapshot(test.directory, test.arguments)
+			if !errors.Is(err, ErrValidation) || strings.TrimSpace(err.Error()) == "" {
+				t.Fatalf("Error = %v, want ErrValidation", err)
+			}
+		})
+	}
+}
 
 func TestNormalizeProcess(t *testing.T) {
 	t.Parallel()

@@ -135,6 +135,7 @@ type ProcessFilter struct {
 
 type RunFilter struct {
 	ProcessID string
+	Directory string
 	Kind      ProcessKind
 	State     RunState
 	Tags      []string

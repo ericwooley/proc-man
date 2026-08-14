@@ -63,6 +63,7 @@ func (server *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /api/v1/processes/{id}/runs", server.runProcess)
 	mux.HandleFunc("GET /api/v1/processes/{id}/runs", server.processRuns)
 	mux.HandleFunc("GET /api/v1/runs", server.listRuns)
+	mux.HandleFunc("POST /api/v1/runs", server.createRun)
 	mux.HandleFunc("GET /api/v1/runs/{id}", server.getRun)
 	mux.HandleFunc("POST /api/v1/runs/{id}/cancel", server.cancelRun)
 	mux.HandleFunc("GET /api/v1/runs/{id}/logs", server.runLogs)
@@ -321,6 +322,25 @@ func (server *Server) runProcess(response http.ResponseWriter, request *http.Req
 	writeRunResult(response, run, err)
 }
 
+func (server *Server) createRun(response http.ResponseWriter, request *http.Request) {
+	var input struct {
+		CWD  string   `json:"cwd"`
+		Argv []string `json:"argv"`
+		Env  []string `json:"env,omitempty"`
+	}
+	if err := decodeJSON(request, &input); err != nil {
+		writeError(response, err)
+		return
+	}
+	run, err := server.supervisor.RunDirect(request.Context(), input.CWD, input.Argv, input.Env)
+	if err != nil && run.ID == "" {
+		writeError(response, err)
+		return
+	}
+	response.Header().Set("Location", "/api/v1/runs/"+run.ID)
+	writeJSON(response, http.StatusAccepted, map[string]any{"run": run})
+}
+
 func (server *Server) cancelRun(response http.ResponseWriter, request *http.Request) {
 	run, err := server.supervisor.CancelRun(request.Context(), request.PathValue("id"))
 	writeRunResult(response, run, err)
@@ -349,6 +369,7 @@ func (server *Server) listRuns(response http.ResponseWriter, request *http.Reque
 	query := request.URL.Query()
 	runs, err := server.store.ListRuns(request.Context(), domain.RunFilter{
 		ProcessID: query.Get("process_id"),
+		Directory: query.Get("directory"),
 		Kind:      domain.ProcessKind(query.Get("kind")),
 		State:     domain.RunState(query.Get("state")),
 		Tags:      query["tag"], Limit: parseLimit(request),

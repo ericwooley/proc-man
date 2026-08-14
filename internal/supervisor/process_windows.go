@@ -27,6 +27,52 @@ func newShellCommand(shell string, script string) *exec.Cmd {
 	return exec.Command(shell, "/D", "/S", "/C", script)
 }
 
+func resolveDirectExecutable(name, cwd string, environment []string) (string, error) {
+	if filepath.IsAbs(name) || strings.ContainsAny(name, `/\`) {
+		return name, nil
+	}
+	path := ""
+	extensions := ".COM;.EXE;.BAT;.CMD"
+	pathSet := false
+	extensionsSet := false
+	for index := len(environment) - 1; index >= 0; index-- {
+		key, value, found := strings.Cut(environment[index], "=")
+		if !found {
+			continue
+		}
+		switch {
+		case strings.EqualFold(key, "PATH") && !pathSet:
+			path = value
+			pathSet = true
+		case strings.EqualFold(key, "PATHEXT") && !extensionsSet:
+			extensions = value
+			extensionsSet = true
+		}
+	}
+	names := []string{name}
+	if filepath.Ext(name) == "" {
+		names = names[:0]
+		for _, extension := range filepath.SplitList(extensions) {
+			names = append(names, name+extension)
+		}
+	}
+	for _, directory := range filepath.SplitList(path) {
+		if directory == "" {
+			directory = cwd
+		} else if !filepath.IsAbs(directory) {
+			directory = filepath.Join(cwd, directory)
+		}
+		for _, candidateName := range names {
+			candidate := filepath.Join(directory, candidateName)
+			info, err := os.Stat(candidate)
+			if err == nil && !info.IsDir() {
+				return candidate, nil
+			}
+		}
+	}
+	return "", fmt.Errorf("executable file %q was not found in the caller PATH", name)
+}
+
 func configureManagedCommand(command *exec.Cmd) {
 	command.SysProcAttr = &syscall.SysProcAttr{
 		CreationFlags: syscall.CREATE_NEW_PROCESS_GROUP,

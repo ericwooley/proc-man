@@ -320,13 +320,16 @@ test("API and domain contracts retain process labels, tags, runs, and logs", asy
   assert.match(api, /GET \/api\/v1\/processes/);
   assert.match(api, /POST \/api\/v1\/processes/);
   assert.match(api, /GET \/api\/v1\/runs/);
+  assert.match(api, /POST \/api\/v1\/runs/);
   assert.match(api, /POST \/api\/v1\/run-search/);
   assert.match(api, /List and filter processes/);
   assert.doesNotMatch(api, /GET \/api\/v1\/worktrees/);
   assert.match(domain, /Tag grouping can show one process in several groups/);
   assert.match(domain, /Start and Run return `cwd_unavailable`/);
+  assert.match(domain, /A direct audit run has no registered process ID/);
   assert.match(api, /`cwd_unavailable`/);
   assert.match(logging, /Logs remain after process deregistration/);
+  assert.match(logging, /exact argv command/);
 });
 
 test("browser prerequisites and override are documented", async () => {

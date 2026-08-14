@@ -62,12 +62,14 @@ npm run test:smoke
 
 The smoke test:
 
-1. Runs a direct one-shot command without the service.
-2. Starts the built service with temporary data.
-3. Registers a long-running service.
-4. Starts the registered service.
-5. Checks the application and detail routes.
-6. Stops the registered service.
+1. Starts the built service with temporary data.
+2. Runs a direct one-shot command through the service.
+3. Checks its directory, exact argv command, result, and retained output.
+4. Confirms that the direct run created no process definition.
+5. Registers a long-running service.
+6. Starts the registered service.
+7. Checks the application and detail routes.
+8. Stops the registered service.
 
 This check requires `curl` and `jq`.
 

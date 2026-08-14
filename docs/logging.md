@@ -2,7 +2,7 @@
 
 ## Capture
 
-proc-man captures stdout and stderr for every run.
+proc-man captures stdout and stderr for every registered or direct run.
 
 Failed launches also create a run when proc-man can access its data directory.
 The run error appears in the stderr records and the daemon error output.
@@ -38,6 +38,10 @@ DATA_DIR/
 The file uses user-only permissions.
 SQLite stores the run record and log path.
 
+Direct run records also store the invoking directory and exact argv command.
+Do not put secrets in command arguments because the audit snapshot retains them.
+The caller environment does not enter the direct run snapshot.
+
 Logs remain after process deregistration.
 Current V1 storage does not remove old logs automatically.
 
@@ -53,6 +57,7 @@ proc-man process logs PROCESS_ID
 proc-man process logs PROCESS_ID --stream stderr
 proc-man process logs PROCESS_ID --query failed
 proc-man run logs RUN_ID
+proc-man run list --directory "$PWD"
 ```
 
 ## Live output
@@ -61,6 +66,7 @@ The service publishes new records through Server-Sent Events.
 
 The application refreshes active-run logs while Follow is active.
 The run log event route supports direct consumers.
+The direct run CLI polls retained records and writes each stream to its matching output.
 
 ## Download
 

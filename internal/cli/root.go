@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
+	"os/signal"
 	"path/filepath"
 	"runtime"
 	"sort"
@@ -33,17 +34,15 @@ type application struct {
 	jsonOutput bool
 }
 
+const directRunLogPageSize = 10_000
+
 type directRunExitError struct {
-	cause *exec.ExitError
+	runID string
 	code  int
 }
 
 func (err *directRunExitError) Error() string {
-	return err.cause.Error()
-}
-
-func (err *directRunExitError) Unwrap() error {
-	return err.cause
+	return fmt.Sprintf("run %s exited with code %d", err.runID, err.code)
 }
 
 func New(version string, output, errorsOutput io.Writer) *cobra.Command {
@@ -394,21 +393,51 @@ func (app *application) runCommand() *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("resolve working directory: %w", err)
 			}
-			child := exec.CommandContext(command.Context(), arguments[0], arguments[1:]...)
-			child.Dir = directory
-			child.Stdin = command.InOrStdin()
-			child.Stdout = command.OutOrStdout()
-			child.Stderr = command.ErrOrStderr()
-			if err := child.Run(); err != nil {
-				var exitError *exec.ExitError
-				if errors.As(err, &exitError) {
-					code := exitError.ExitCode()
-					if code < 0 {
-						code = 1
+			var response struct {
+				Run domain.Run `json:"run"`
+			}
+			baseContext := command.Context()
+			runContext, stopSignals := signal.NotifyContext(baseContext, shutdownSignals()...)
+			defer stopSignals()
+			if err := app.client().JSON(baseContext, http.MethodPost,
+				"/api/v1/runs", map[string]any{
+					"cwd": directory, "argv": arguments, "env": os.Environ(),
+				}, &response,
+			); err != nil {
+				return err
+			}
+			if response.Run.ID == "" {
+				return fmt.Errorf("proc-man returned a direct run without an ID")
+			}
+			finished, err := app.followDirectRun(
+				runContext, response.Run.ID,
+				command.OutOrStdout(), command.ErrOrStderr(),
+			)
+			if err != nil {
+				if runContext.Err() != nil {
+					if cancelErr := app.cancelDirectRun(response.Run.ID); cancelErr != nil {
+						fmt.Fprintf(command.ErrOrStderr(),
+							"proc-man: cancel audit run %s: %v\n", response.Run.ID, cancelErr,
+						)
 					}
-					return &directRunExitError{cause: exitError, code: code}
+					if baseContext.Err() != nil {
+						return baseContext.Err()
+					}
+					return &directRunExitError{runID: response.Run.ID, code: 130}
 				}
-				return fmt.Errorf("run %q: %w", arguments[0], err)
+				return err
+			}
+			code := 0
+			if finished.ExitCode != nil {
+				code = *finished.ExitCode
+			} else if finished.State != domain.RunStateExited {
+				code = 1
+			}
+			if code != 0 {
+				if code < 0 {
+					code = 1
+				}
+				return &directRunExitError{runID: finished.ID, code: code}
 			}
 			return nil
 		},
@@ -417,14 +446,90 @@ func (app *application) runCommand() *cobra.Command {
 	return command
 }
 
+func (app *application) cancelDirectRun(runID string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	var response struct {
+		Run domain.Run `json:"run"`
+	}
+	return app.client().JSON(ctx, http.MethodPost,
+		"/api/v1/runs/"+url.PathEscape(runID)+"/cancel", nil, &response,
+	)
+}
+
+func (app *application) followDirectRun(
+	ctx context.Context,
+	runID string,
+	output io.Writer,
+	errorsOutput io.Writer,
+) (domain.Run, error) {
+	var sequence int64
+	for {
+		values := url.Values{}
+		values.Set("limit", strconv.Itoa(directRunLogPageSize))
+		if sequence > 0 {
+			values.Set("since", strconv.FormatInt(sequence, 10))
+		}
+		previousSequence := sequence
+		var response struct {
+			Run     domain.Run         `json:"run"`
+			Records []domain.LogRecord `json:"records"`
+		}
+		path := client.Query("/api/v1/runs/"+url.PathEscape(runID)+"/logs", values)
+		if err := app.client().JSON(ctx, http.MethodGet, path, nil, &response); err != nil {
+			return domain.Run{}, err
+		}
+		for _, record := range response.Records {
+			if record.Sequence <= sequence {
+				continue
+			}
+			writer := output
+			if record.Stream == "stderr" {
+				writer = errorsOutput
+			}
+			if _, err := io.WriteString(writer, record.Text); err != nil {
+				return domain.Run{}, err
+			}
+			if !record.Partial {
+				if _, err := io.WriteString(writer, "\n"); err != nil {
+					return domain.Run{}, err
+				}
+			}
+			sequence = record.Sequence
+		}
+		if response.Run.State.Terminal() &&
+			(len(response.Records) < directRunLogPageSize || sequence == previousSequence) {
+			return response.Run, nil
+		}
+		if len(response.Records) >= directRunLogPageSize {
+			continue
+		}
+		timer := time.NewTimer(100 * time.Millisecond)
+		select {
+		case <-ctx.Done():
+			timer.Stop()
+			return domain.Run{}, ctx.Err()
+		case <-timer.C:
+		}
+	}
+}
+
 func (app *application) runListCommand() *cobra.Command {
-	var processID, kind, state string
+	var processID, directory, kind, state string
 	command := &cobra.Command{
 		Use:   "list",
 		Short: "List retained runs",
 		RunE: func(command *cobra.Command, _ []string) error {
+			if strings.TrimSpace(directory) != "" {
+				absoluteDirectory, err := filepath.Abs(directory)
+				if err != nil {
+					return fmt.Errorf("resolve directory: %w", err)
+				}
+				directory = absoluteDirectory
+			}
 			values := url.Values{
-				"process_id": []string{processID}, "kind": []string{kind}, "state": []string{state},
+				"process_id": []string{processID}, "directory": []string{directory},
+				"kind": []string{kind}, "state": []string{state},
 			}
 			var response any
 			if err := app.client().JSON(command.Context(), http.MethodGet,
@@ -436,6 +541,7 @@ func (app *application) runListCommand() *cobra.Command {
 		},
 	}
 	command.Flags().StringVar(&processID, "process", "", "Process ID")
+	command.Flags().StringVar(&directory, "directory", "", "Exact run directory")
 	command.Flags().StringVar(&kind, "kind", "", "Process kind")
 	command.Flags().StringVar(&state, "state", "", "Run state")
 	return command
