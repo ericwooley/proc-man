@@ -42,6 +42,7 @@ import {
   Navigate,
   Route,
   Routes,
+  useLocation,
   useNavigate,
   useParams,
 } from "react-router-dom";
@@ -58,6 +59,7 @@ import {
   subscribeToEvents,
 } from "./api";
 import type { ProcessInput } from "./api";
+import { ErrorBoundary } from "./ErrorBoundary";
 import type {
   LogRecord,
   Port,
@@ -92,11 +94,35 @@ export function App() {
       toggleTheme={() => setTheme((value) => (value === "light" ? "dark" : "light"))}
     >
       <Routes>
-        <Route path="/" element={<InventoryPage />} />
-        <Route path="/process/:processId" element={<ProcessDetailPage />} />
+        <Route path="/" element={<RouteErrorBoundary><InventoryPage /></RouteErrorBoundary>} />
+        <Route
+          path="/process/:processId"
+          element={<RouteErrorBoundary><ProcessDetailPage /></RouteErrorBoundary>}
+        />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </AppShell>
+  );
+}
+
+function RouteErrorBoundary({ children }: PropsWithChildren) {
+  const location = useLocation();
+  return (
+    <ErrorBoundary
+      resetKeys={[location.pathname]}
+      fallback={({ retry }) => (
+        <div className="route-error" role="alert">
+          <h1>This page could not load</h1>
+          <p>Try again, or return to the process list.</p>
+          <div>
+            <button className="button primary" type="button" onClick={retry}>Try again</button>
+            <Link className="button" to="/" onClick={retry}>Back to Processes</Link>
+          </div>
+        </div>
+      )}
+    >
+      {children}
+    </ErrorBoundary>
   );
 }
 

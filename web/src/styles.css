@@ -460,6 +460,12 @@ h1, h2, p { margin-top: 0; }
 .logs-focused .log-body { flex: 1; height: auto; }
 .not-found { display: grid; place-items: center; min-height: 500px; padding: 40px; text-align: center; }
 .not-found p { color: var(--muted); }
+.route-error { display: grid; place-content: center; min-height: 500px; padding: 40px; text-align: center; }
+.route-error h1, .application-error h1 { margin-bottom: 10px; }
+.route-error p, .application-error p { color: var(--muted); }
+.route-error > div { display: flex; justify-content: center; gap: 8px; }
+.application-error { display: grid; place-items: center; min-height: 100vh; padding: 40px; color: var(--ink); background: var(--surface); text-align: center; }
+.application-error > div { max-width: 460px; }
 .muted { color: var(--muted); font-size: 10px; }
 
 .modal-layer { position: fixed; z-index: 50; inset: 0; display: grid; place-items: center; padding: 24px; background: rgba(13, 17, 14, .62); backdrop-filter: blur(6px); }

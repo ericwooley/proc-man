@@ -91,6 +91,7 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup();
+  vi.restoreAllMocks();
   vi.unstubAllGlobals();
 });
 
@@ -238,5 +239,37 @@ describe("App navigation", () => {
       expect(processRequests).toContain("/api/v1/processes?query=admin&limit=25");
     });
     expect(await screen.findByText("Admin worker")).toBeVisible();
+  });
+
+  it("keeps the application shell available when a process page render fails", async () => {
+    let processRequests = 0;
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
+      const parsed = new URL(String(input), "http://proc-man.test");
+      if (parsed.pathname !== "/api/v1/processes") {
+        return json({ error: { code: "not_found", message: "not found" } }, 404);
+      }
+      processRequests += 1;
+      return json({
+        processes: processRequests === 1
+          ? [{ ...process, tags: undefined }]
+          : [process],
+        page: { limit: 25, has_more: false, next_cursor: "" },
+      });
+    }));
+
+    render(
+      <MemoryRouter initialEntries={["/"]}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByRole("heading", { name: "This page could not load" })).toBeVisible();
+    expect(screen.getByRole("link", { name: "proc-man home" })).toBeVisible();
+    expect(screen.getByRole("navigation", { name: "Primary navigation" })).toBeVisible();
+
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+
+    expect(await screen.findByText("Storefront web")).toBeVisible();
   });
 });
