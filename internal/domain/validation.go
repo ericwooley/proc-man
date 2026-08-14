@@ -68,6 +68,9 @@ func NormalizeProcess(process Process) (Process, error) {
 			port.Path = "/" + port.Path
 		}
 	}
+	if process.Ports == nil {
+		process.Ports = []Port{}
+	}
 
 	if process.Env == nil {
 		process.Env = map[string]string{}

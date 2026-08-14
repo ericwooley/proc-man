@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
+	"sort"
+	"strings"
 	"testing"
 	"time"
 
@@ -261,4 +263,103 @@ func TestListProcessPageUsesIDAsStableTieBreaker(t *testing.T) {
 			t.Fatalf("Process order = %#v, want %#v", got, want)
 		}
 	}
+}
+
+func TestListProcessPageMatchesLegacyDirectoryAndSearch(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	state, err := Open(filepath.Join(t.TempDir(), "state.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { state.Close() })
+
+	for _, process := range []domain.Process{
+		{
+			ID:      "proc_unicode",
+			Label:   "CAFÉ worker",
+			Kind:    domain.ProcessKindTask,
+			Command: domain.Command{Argv: []string{"printf", `"quoted value"`}},
+			CWD:     "/workspace/project/..",
+		},
+		{
+			ID:      "proc_plain",
+			Label:   "Plain worker",
+			Kind:    domain.ProcessKindTask,
+			Command: domain.Command{Argv: []string{"true"}},
+			CWD:     "/workspace/plain",
+		},
+	} {
+		if _, err := state.CreateProcess(ctx, process); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	cases := []struct {
+		name   string
+		filter domain.ProcessFilter
+	}{
+		{name: "noncanonical directory", filter: domain.ProcessFilter{Directory: "/workspace/project/.."}},
+		{name: "Unicode text", filter: domain.ProcessFilter{Query: "café"}},
+		{name: "quoted command text", filter: domain.ProcessFilter{Query: `"quoted value"`}},
+		{name: "JSON field name", filter: domain.ProcessFilter{Query: "argv"}},
+	}
+	for _, testCase := range cases {
+		t.Run(testCase.name, func(t *testing.T) {
+			legacy, err := state.ListProcesses(ctx, testCase.filter)
+			if err != nil {
+				t.Fatal(err)
+			}
+			page, err := state.ListProcessPage(ctx, testCase.filter, 25, "")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if processIDs(page.Processes) != processIDs(legacy) {
+				t.Fatalf(
+					"Filter %#v paged IDs = %q, legacy IDs = %q",
+					testCase.filter, processIDs(page.Processes), processIDs(legacy),
+				)
+			}
+		})
+	}
+}
+
+func TestListProcessPageReturnsEmptyCollections(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	state, err := Open(filepath.Join(t.TempDir(), "state.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { state.Close() })
+
+	if _, err := state.CreateProcess(ctx, domain.Process{
+		ID: "proc_empty", Label: "Empty collections", Kind: domain.ProcessKindTask,
+		Command: domain.Command{Argv: []string{"true"}}, CWD: "/workspace",
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	page, err := state.ListProcessPage(ctx, domain.ProcessFilter{}, 25, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(page.Processes) != 1 {
+		t.Fatalf("Process count = %d, want 1", len(page.Processes))
+	}
+	if page.Processes[0].Tags == nil {
+		t.Fatal("Tags must be an empty collection, not nil")
+	}
+	if page.Processes[0].Ports == nil {
+		t.Fatal("Ports must be an empty collection, not nil")
+	}
+}
+
+func processIDs(processes []domain.Process) string {
+	ids := make([]string, len(processes))
+	for index := range processes {
+		ids[index] = processes[index].ID
+	}
+	sort.Strings(ids)
+	return strings.Join(ids, ",")
 }

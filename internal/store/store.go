@@ -36,6 +36,14 @@ type processPageCursor struct {
 	ID        string `json:"id"`
 }
 
+type normalizedProcessFilter struct {
+	query        string
+	directory    string
+	requiredTags []string
+	kind         domain.ProcessKind
+	state        domain.ProcessState
+}
+
 func Open(path string) (*Store, error) {
 	absolutePath, err := filepath.Abs(path)
 	if err != nil {
@@ -228,16 +236,11 @@ func (store *Store) ListProcesses(ctx context.Context, filter domain.ProcessFilt
 	}
 	defer rows.Close()
 
-	query := strings.ToLower(strings.TrimSpace(filter.Query))
-	directory := strings.TrimSpace(filter.Directory)
-	if directory != "" {
-		directory = filepath.Clean(directory)
-	}
-	requiredTags, err := domain.NormalizeTags(filter.Tags)
+	normalized, err := normalizeProcessFilter(filter)
 	if err != nil {
 		return nil, err
 	}
-	var processes []domain.Process
+	processes := make([]domain.Process, 0)
 	for rows.Next() {
 		process, err := scanProcess(rows)
 		if err != nil {
@@ -247,19 +250,7 @@ func (store *Store) ListProcesses(ctx context.Context, filter domain.ProcessFilt
 		if err != nil {
 			return nil, err
 		}
-		if filter.Kind != "" && process.Kind != filter.Kind {
-			continue
-		}
-		if filter.State != "" && process.State != filter.State {
-			continue
-		}
-		if directory != "" && filepath.Clean(process.CWD) != directory {
-			continue
-		}
-		if !containsAll(process.Tags, requiredTags) {
-			continue
-		}
-		if query != "" && !processMatches(process, query) {
+		if !normalized.matches(process) {
 			continue
 		}
 		processes = append(processes, process)
@@ -277,7 +268,11 @@ func (store *Store) ListProcessPage(
 		return ProcessPage{}, fmt.Errorf("%w: limit must be between 1 and 100", domain.ErrValidation)
 	}
 
-	conditions, arguments, err := processPageConditions(filter, cursor)
+	normalized, err := normalizeProcessFilter(filter)
+	if err != nil {
+		return ProcessPage{}, err
+	}
+	conditions, arguments, err := processPageConditions(normalized, cursor)
 	if err != nil {
 		return ProcessPage{}, err
 	}
@@ -288,8 +283,12 @@ func (store *Store) ListProcessPage(
 	if len(conditions) > 0 {
 		query += " WHERE " + strings.Join(conditions, " AND ")
 	}
-	query += ` ORDER BY julianday(p.updated_at) DESC, p.id DESC LIMIT ?`
-	arguments = append(arguments, limit+1)
+	query += ` ORDER BY julianday(p.updated_at) DESC, p.id DESC`
+	postFilter := normalized.needsDecodedMatch()
+	if !postFilter {
+		query += ` LIMIT ?`
+		arguments = append(arguments, limit+1)
+	}
 
 	rows, err := store.db.QueryContext(ctx, query, arguments...)
 	if err != nil {
@@ -303,7 +302,19 @@ func (store *Store) ListProcessPage(
 		if err != nil {
 			return ProcessPage{}, fmt.Errorf("scan process page: %w", err)
 		}
+		if postFilter {
+			process.Tags, err = store.processTags(ctx, process.ID)
+			if err != nil {
+				return ProcessPage{}, err
+			}
+			if !normalized.matches(process) {
+				continue
+			}
+		}
 		processes = append(processes, process)
+		if len(processes) >= limit+1 {
+			break
+		}
 	}
 	if err := rows.Err(); err != nil {
 		return ProcessPage{}, fmt.Errorf("read process page: %w", err)
@@ -313,8 +324,10 @@ func (store *Store) ListProcessPage(
 	if hasMore {
 		processes = processes[:limit]
 	}
-	if err := store.loadProcessTags(ctx, processes); err != nil {
-		return ProcessPage{}, err
+	if !postFilter {
+		if err := store.loadProcessTags(ctx, processes); err != nil {
+			return ProcessPage{}, err
+		}
 	}
 	page := ProcessPage{Processes: processes, HasMore: hasMore}
 	if hasMore {
@@ -326,51 +339,62 @@ func (store *Store) ListProcessPage(
 	return page, nil
 }
 
-func processPageConditions(filter domain.ProcessFilter, encodedCursor string) ([]string, []any, error) {
+func normalizeProcessFilter(filter domain.ProcessFilter) (normalizedProcessFilter, error) {
 	requiredTags, err := domain.NormalizeTags(filter.Tags)
 	if err != nil {
-		return nil, nil, err
-	}
-	conditions := make([]string, 0)
-	arguments := make([]any, 0)
-
-	if filter.Kind != "" {
-		conditions = append(conditions, "p.kind = ?")
-		arguments = append(arguments, filter.Kind)
-	}
-	if filter.State != "" {
-		conditions = append(conditions, "p.state = ?")
-		arguments = append(arguments, filter.State)
+		return normalizedProcessFilter{}, err
 	}
 	directory := strings.TrimSpace(filter.Directory)
 	if directory != "" {
-		conditions = append(conditions, "p.cwd = ?")
-		arguments = append(arguments, filepath.Clean(directory))
+		directory = filepath.Clean(directory)
 	}
-	for _, tag := range requiredTags {
+	return normalizedProcessFilter{
+		query:        strings.ToLower(strings.TrimSpace(filter.Query)),
+		directory:    directory,
+		requiredTags: requiredTags,
+		kind:         filter.Kind,
+		state:        filter.State,
+	}, nil
+}
+
+func (filter normalizedProcessFilter) needsDecodedMatch() bool {
+	return filter.query != "" || filter.directory != ""
+}
+
+func (filter normalizedProcessFilter) matches(process domain.Process) bool {
+	if filter.kind != "" && process.Kind != filter.kind {
+		return false
+	}
+	if filter.state != "" && process.State != filter.state {
+		return false
+	}
+	if filter.directory != "" && filepath.Clean(process.CWD) != filter.directory {
+		return false
+	}
+	if !containsAll(process.Tags, filter.requiredTags) {
+		return false
+	}
+	return filter.query == "" || processMatches(process, filter.query)
+}
+
+func processPageConditions(filter normalizedProcessFilter, encodedCursor string) ([]string, []any, error) {
+	conditions := make([]string, 0)
+	arguments := make([]any, 0)
+
+	if filter.kind != "" {
+		conditions = append(conditions, "p.kind = ?")
+		arguments = append(arguments, filter.kind)
+	}
+	if filter.state != "" {
+		conditions = append(conditions, "p.state = ?")
+		arguments = append(arguments, filter.state)
+	}
+	for _, tag := range filter.requiredTags {
 		conditions = append(conditions, `EXISTS (
 			SELECT 1 FROM process_tags required_tag
 			WHERE required_tag.process_id = p.id AND required_tag.tag = ?
 		)`)
 		arguments = append(arguments, tag)
-	}
-
-	needle := strings.ToLower(strings.TrimSpace(filter.Query))
-	if needle != "" {
-		conditions = append(conditions, `(
-			instr(lower(p.id), ?) > 0 OR
-			instr(lower(p.label), ?) > 0 OR
-			instr(lower(p.cwd), ?) > 0 OR
-			instr(lower(p.command_json), ?) > 0 OR
-			instr(lower(p.ports_json), ?) > 0 OR
-			EXISTS (
-				SELECT 1 FROM process_tags search_tag
-				WHERE search_tag.process_id = p.id AND instr(lower(search_tag.tag), ?) > 0
-			)
-		)`)
-		for range 6 {
-			arguments = append(arguments, needle)
-		}
 	}
 
 	if encodedCursor != "" {
@@ -426,6 +450,7 @@ func (store *Store) loadProcessTags(ctx context.Context, processes []domain.Proc
 	arguments := make([]any, len(processes))
 	processIndexes := make(map[string]int, len(processes))
 	for index := range processes {
+		processes[index].Tags = []string{}
 		placeholders[index] = "?"
 		arguments[index] = processes[index].ID
 		processIndexes[processes[index].ID] = index
@@ -676,6 +701,15 @@ func scanProcess(scanner rowScanner) (domain.Process, error) {
 	if err := json.Unmarshal([]byte(ports), &process.Ports); err != nil {
 		return domain.Process{}, err
 	}
+	if process.Env == nil {
+		process.Env = map[string]string{}
+	}
+	if process.Ports == nil {
+		process.Ports = []domain.Port{}
+	}
+	if process.Tags == nil {
+		process.Tags = []string{}
+	}
 	process.CreatedAt, _ = time.Parse(time.RFC3339Nano, createdAt)
 	process.UpdatedAt, _ = time.Parse(time.RFC3339Nano, updatedAt)
 	return process, nil
@@ -719,7 +753,7 @@ func (store *Store) processTags(ctx context.Context, id string) ([]string, error
 		return nil, fmt.Errorf("get process tags: %w", err)
 	}
 	defer rows.Close()
-	var tags []string
+	tags := make([]string, 0)
 	for rows.Next() {
 		var tag string
 		if err := rows.Scan(&tag); err != nil {

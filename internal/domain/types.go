@@ -89,15 +89,17 @@ type ProcessSnapshot struct {
 }
 
 func Snapshot(process Process) ProcessSnapshot {
+	tags := append([]string{}, process.Tags...)
+	ports := append([]Port{}, process.Ports...)
 	return ProcessSnapshot{
 		ID:      process.ID,
 		Label:   process.Label,
-		Tags:    append([]string(nil), process.Tags...),
+		Tags:    tags,
 		Kind:    process.Kind,
 		Command: process.Command,
 		CWD:     process.CWD,
 		Env:     cloneMap(process.Env),
-		Ports:   append([]Port(nil), process.Ports...),
+		Ports:   ports,
 		Source:  process.Source,
 	}
 }

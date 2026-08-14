@@ -242,6 +242,45 @@ func TestProcessListUsesCursorPaginationWhenRequested(t *testing.T) {
 	}
 }
 
+func TestProcessListReturnsEmptyCollectionsAsArrays(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+	state, err := store.Open(filepath.Join(root, "state.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { state.Close() })
+	manager := supervisor.New(state, supervisor.Options{
+		LogRoot: filepath.Join(root, "logs"), Shell: "/bin/sh",
+	})
+	server := httptest.NewServer(New(state, manager, nil).Handler())
+	t.Cleanup(server.Close)
+
+	requestJSON(t, http.MethodPost, server.URL+"/api/v1/processes", map[string]any{
+		"label": "Empty collections",
+		"kind":  "task",
+		"cwd":   root,
+		"command": map[string]any{
+			"argv": []string{"true"},
+		},
+	}, http.StatusCreated, nil)
+
+	var listed struct {
+		Processes []domain.Process `json:"processes"`
+	}
+	requestJSON(t, http.MethodGet, server.URL+"/api/v1/processes?limit=25",
+		nil, http.StatusOK, &listed)
+	if len(listed.Processes) != 1 {
+		t.Fatalf("Process count = %d, want 1", len(listed.Processes))
+	}
+	if listed.Processes[0].Tags == nil {
+		t.Fatal("Tags must be a JSON array, not null")
+	}
+	if listed.Processes[0].Ports == nil {
+		t.Fatal("Ports must be a JSON array, not null")
+	}
+}
+
 func contains(values []string, target string) bool {
 	for _, value := range values {
 		if value == target {
