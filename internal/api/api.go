@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/url"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -27,6 +28,16 @@ type Server struct {
 	store      *store.Store
 	supervisor *supervisor.Manager
 	spa        http.Handler
+}
+
+type processFacetResponse struct {
+	Value string `json:"value"`
+	Count int    `json:"count"`
+}
+
+type processFacetsResponse struct {
+	Tags        []processFacetResponse `json:"tags"`
+	Directories []processFacetResponse `json:"directories"`
 }
 
 func New(state *store.Store, manager *supervisor.Manager, spa http.Handler) *Server {
@@ -127,8 +138,14 @@ func (server *Server) listProcesses(response http.ResponseWriter, request *http.
 			writeError(response, err)
 			return
 		}
+		facets, err := server.processFacets(request.Context())
+		if err != nil {
+			writeError(response, err)
+			return
+		}
 		writeJSON(response, http.StatusOK, map[string]any{
 			"processes": page.Processes,
+			"facets":    facets,
 			"page": map[string]any{
 				"limit":       limit,
 				"has_more":    page.HasMore,
@@ -143,6 +160,34 @@ func (server *Server) listProcesses(response http.ResponseWriter, request *http.
 		return
 	}
 	writeJSON(response, http.StatusOK, map[string]any{"processes": processes})
+}
+
+func (server *Server) processFacets(ctx context.Context) (processFacetsResponse, error) {
+	tags, err := server.store.Tags(ctx)
+	if err != nil {
+		return processFacetsResponse{}, err
+	}
+	directories, err := server.store.Directories(ctx)
+	if err != nil {
+		return processFacetsResponse{}, err
+	}
+	return processFacetsResponse{
+		Tags:        sortedProcessFacets(tags),
+		Directories: sortedProcessFacets(directories),
+	}, nil
+}
+
+func sortedProcessFacets(counts map[string]int) []processFacetResponse {
+	values := make([]string, 0, len(counts))
+	for value := range counts {
+		values = append(values, value)
+	}
+	sort.Strings(values)
+	result := make([]processFacetResponse, 0, len(values))
+	for _, value := range values {
+		result = append(result, processFacetResponse{Value: value, Count: counts[value]})
+	}
+	return result
 }
 
 func (server *Server) createProcess(response http.ResponseWriter, request *http.Request) {

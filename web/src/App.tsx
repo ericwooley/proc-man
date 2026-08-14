@@ -67,6 +67,13 @@ import type {
 
 type Theme = "light" | "dark";
 type GroupMode = "none" | "tag" | "directory";
+type ProcessPaging = {
+  filterKey: string;
+  cursor: string;
+  history: string[];
+};
+
+const processPageLimit = 25;
 
 export function App() {
   const [theme, setTheme] = useState<Theme>(() => {
@@ -136,6 +143,7 @@ function InventoryPage() {
   const navigate = useNavigate();
   const [processes, setProcesses] = useState<Process[]>([]);
   const [query, setQuery] = useState("");
+  const debouncedQuery = useDebouncedValue(query, 250);
   const [kind, setKind] = useState<"all" | "service" | "task">("all");
   const [directory, setDirectory] = useState("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
@@ -145,18 +153,62 @@ function InventoryPage() {
   const [error, setError] = useState("");
   const [registerOpen, setRegisterOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Process | null>(null);
+  const [page, setPage] = useState({
+    limit: processPageLimit,
+    has_more: false,
+    next_cursor: "",
+  });
+  const [facets, setFacets] = useState<{
+    tags: Array<{ value: string; count: number }>;
+    directories: Array<{ value: string; count: number }>;
+  }>({ tags: [], directories: [] });
+  const filterKey = JSON.stringify([
+    debouncedQuery.trim(),
+    kind,
+    directory,
+    selectedTags,
+  ]);
+  const [paging, setPaging] = useState<ProcessPaging>({
+    filterKey,
+    cursor: "",
+    history: [],
+  });
+  const activeCursor = paging.filterKey === filterKey ? paging.cursor : "";
+  const cursorHistory = paging.filterKey === filterKey ? paging.history : [];
+  const loadSequence = useRef(0);
 
   const load = useCallback(async () => {
+    const sequence = ++loadSequence.current;
+    setLoading(true);
     try {
-      const result = await listProcesses();
-      setProcesses(result);
+      const result = await listProcesses({
+        query: debouncedQuery.trim() || undefined,
+        directory: directory || undefined,
+        tags: selectedTags,
+        kind: kind === "all" ? undefined : kind,
+        limit: processPageLimit,
+        cursor: activeCursor || undefined,
+      });
+      if (sequence !== loadSequence.current) return;
+      setProcesses(result.processes);
+      setPage(result.page);
+      if (result.facets) setFacets(result.facets);
       setError("");
     } catch (caught) {
+      if (sequence !== loadSequence.current) return;
       setError(errorMessage(caught));
     } finally {
-      setLoading(false);
+      if (sequence === loadSequence.current) setLoading(false);
     }
-  }, []);
+  }, [activeCursor, debouncedQuery, directory, kind, selectedTags]);
+
+  useEffect(() => {
+    setPaging((current) => current.filterKey === filterKey ? current : {
+      filterKey,
+      cursor: "",
+      history: [],
+    });
+  }, [filterKey]);
 
   useEffect(() => {
     void load();
@@ -164,6 +216,9 @@ function InventoryPage() {
   }, [load]);
 
   const tags = useMemo(() => {
+    if (facets.tags.length > 0) {
+      return facets.tags.map(({ value, count }) => [value, count] as [string, number]);
+    }
     const counts = new Map<string, number>();
     for (const process of processes) {
       for (const tag of process.tags) {
@@ -171,21 +226,18 @@ function InventoryPage() {
       }
     }
     return [...counts.entries()].sort(([left], [right]) => left.localeCompare(right));
-  }, [processes]);
+  }, [facets.tags, processes]);
 
   const directories = useMemo(() => {
+    if (facets.directories.length > 0) {
+      return facets.directories.map(({ value, count }) => [value, count] as [string, number]);
+    }
     const counts = new Map<string, number>();
     for (const process of processes) {
       counts.set(process.cwd, (counts.get(process.cwd) ?? 0) + 1);
     }
     return [...counts.entries()].sort(([left], [right]) => left.localeCompare(right));
-  }, [processes]);
-
-  useEffect(() => {
-    if (directory && !directories.some(([path]) => path === directory)) {
-      setDirectory("");
-    }
-  }, [directories, directory]);
+  }, [facets.directories, processes]);
 
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase();
@@ -255,6 +307,28 @@ function InventoryPage() {
       setError(errorMessage(caught));
     }
   }
+
+  function showOlderProcesses() {
+    if (!page.next_cursor) return;
+    setPaging({
+      filterKey,
+      cursor: page.next_cursor,
+      history: [...cursorHistory, activeCursor],
+    });
+  }
+
+  function showNewerProcesses() {
+    if (cursorHistory.length === 0) return;
+    setPaging({
+      filterKey,
+      cursor: cursorHistory[cursorHistory.length - 1] ?? "",
+      history: cursorHistory.slice(0, -1),
+    });
+  }
+
+  const hasActiveFilters = Boolean(
+    query.trim() || kind !== "all" || directory || selectedTags.length,
+  );
 
   return (
     <section className="inventory-page">
@@ -363,16 +437,20 @@ function InventoryPage() {
       )}
 
       <div className="inventory-summary">
-        <span><strong>{filtered.length}</strong> matching processes</span>
-        <span>{processes.filter((process) => process.state === "running").length} running</span>
-        <span>{processes.filter((process) => process.state === "failed").length} need attention</span>
+        <span><strong>{filtered.length}</strong> processes on this page</span>
+        <span>Page {cursorHistory.length + 1}</span>
+        <span>{processes.filter((process) => process.state === "running").length} running on this page</span>
+        <span>{processes.filter((process) => process.state === "failed").length} need attention on this page</span>
       </div>
 
       {error && <ErrorBanner message={error} onRetry={() => void load()} />}
       {loading ? (
         <ProcessSkeleton />
       ) : filtered.length === 0 ? (
-        <EmptyState hasProcesses={processes.length > 0} onRegister={() => setRegisterOpen(true)} />
+        <EmptyState
+          hasProcesses={processes.length > 0 || hasActiveFilters || cursorHistory.length > 0}
+          onRegister={() => setRegisterOpen(true)}
+        />
       ) : groupMode !== "none" ? (
         <div className="process-groups">
           {groups.map((group) => {
@@ -418,12 +496,29 @@ function InventoryPage() {
         />
       )}
 
+      {!loading && (cursorHistory.length > 0 || page.has_more) && (
+        <nav className="process-pagination" aria-label="Process pages">
+          {cursorHistory.length > 0 && (
+            <button className="button" type="button" onClick={showNewerProcesses}>
+              Newer processes
+            </button>
+          )}
+          <span>Page {cursorHistory.length + 1}</span>
+          {page.has_more && (
+            <button className="button" type="button" onClick={showOlderProcesses}>
+              Older processes
+            </button>
+          )}
+        </nav>
+      )}
+
       {registerOpen && (
         <RegisterDialog
           onClose={() => setRegisterOpen(false)}
           onCreated={async () => {
             setRegisterOpen(false);
-            await load();
+            setPaging({ filterKey, cursor: "", history: [] });
+            if (activeCursor === "") await load();
           }}
         />
       )}
@@ -989,6 +1084,15 @@ function EmptyState({ hasProcesses, onRegister }: { hasProcesses: boolean; onReg
       {!hasProcesses && <button className="button primary" type="button" onClick={onRegister}><Plus /> Register process</button>}
     </div>
   );
+}
+
+function useDebouncedValue<T>(value: T, delay: number): T {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const timeout = window.setTimeout(() => setDebounced(value), delay);
+    return () => window.clearTimeout(timeout);
+  }, [delay, value]);
+  return debounced;
 }
 
 function errorMessage(error: unknown): string {

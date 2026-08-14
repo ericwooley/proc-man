@@ -152,6 +152,16 @@ func TestProcessListUsesCursorPaginationWhenRequested(t *testing.T) {
 			HasMore    bool   `json:"has_more"`
 			NextCursor string `json:"next_cursor"`
 		} `json:"page"`
+		Facets struct {
+			Tags []struct {
+				Value string `json:"value"`
+				Count int    `json:"count"`
+			} `json:"tags"`
+			Directories []struct {
+				Value string `json:"value"`
+				Count int    `json:"count"`
+			} `json:"directories"`
+		} `json:"facets"`
 	}
 
 	var first pageResponse
@@ -160,6 +170,16 @@ func TestProcessListUsesCursorPaginationWhenRequested(t *testing.T) {
 	if len(first.Processes) != 2 || first.Page.Limit != 2 ||
 		!first.Page.HasMore || first.Page.NextCursor == "" {
 		t.Fatalf("First page = %#v", first)
+	}
+	if len(first.Facets.Tags) != 2 || first.Facets.Tags[0].Value != "all" ||
+		first.Facets.Tags[0].Count != 5 || first.Facets.Tags[1].Value != "target" ||
+		first.Facets.Tags[1].Count != 3 {
+		t.Fatalf("Tag facets = %#v", first.Facets.Tags)
+	}
+	if len(first.Facets.Directories) != 1 ||
+		first.Facets.Directories[0].Value != root ||
+		first.Facets.Directories[0].Count != 5 {
+		t.Fatalf("Directory facets = %#v", first.Facets.Directories)
 	}
 
 	var second pageResponse

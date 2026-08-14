@@ -111,8 +111,15 @@ try {
         const url = String(input);
         let value;
         let status = 200;
-        if (url === "/api/v1/processes") {
-          value = { processes: [process] };
+        if (url.startsWith("/api/v1/processes?")) {
+          value = {
+            processes: [process],
+            page: { limit: 25, has_more: false, next_cursor: "" },
+            facets: {
+              tags: process.tags.map(value => ({ value, count: 1 })),
+              directories: [{ value: process.cwd, count: 1 }]
+            }
+          };
         } else if (url === "/api/v1/processes/" + process.id) {
           value = { process, runs: [run] };
         } else if (url === "/api/v1/runs/" + run.id + "/logs") {

@@ -616,6 +616,26 @@ func (store *Store) Tags(ctx context.Context) (map[string]int, error) {
 	return tags, rows.Err()
 }
 
+func (store *Store) Directories(ctx context.Context) (map[string]int, error) {
+	rows, err := store.db.QueryContext(ctx,
+		`SELECT cwd, COUNT(*) FROM processes GROUP BY cwd ORDER BY cwd`,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("list process directories: %w", err)
+	}
+	defer rows.Close()
+	directories := map[string]int{}
+	for rows.Next() {
+		var directory string
+		var count int
+		if err := rows.Scan(&directory, &count); err != nil {
+			return nil, err
+		}
+		directories[directory] = count
+	}
+	return directories, rows.Err()
+}
+
 func (store *Store) ProcessesBySource(ctx context.Context, path string) ([]domain.Process, error) {
 	processes, err := store.ListProcesses(ctx, domain.ProcessFilter{})
 	if err != nil {

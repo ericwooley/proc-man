@@ -42,22 +42,48 @@ export type ProcessQuery = {
   tags?: string[];
   kind?: string;
   state?: string;
+  limit?: number;
+  cursor?: string;
+};
+
+export type ProcessPage = {
+  processes: Process[];
+  page: {
+    limit: number;
+    has_more: boolean;
+    next_cursor: string;
+  };
+  facets?: {
+    tags: Array<{ value: string; count: number }>;
+    directories: Array<{ value: string; count: number }>;
+  };
 };
 
 export async function listProcesses(
   input: ProcessQuery = {},
-): Promise<Process[]> {
+): Promise<ProcessPage> {
   const query = new URLSearchParams();
   if (input.query) query.set("query", input.query);
   if (input.directory) query.set("directory", input.directory);
   if (input.kind) query.set("kind", input.kind);
   if (input.state) query.set("state", input.state);
   input.tags?.forEach((tag) => query.append("tag", tag));
+  const limit = input.limit ?? 25;
+  query.set("limit", String(limit));
+  if (input.cursor) query.set("cursor", input.cursor);
   const suffix = query.size ? `?${query.toString()}` : "";
-  const response = await request<{ processes: Process[] }>(
+  const response = await request<Partial<ProcessPage>>(
     `/api/v1/processes${suffix}`,
   );
-  return response.processes ?? [];
+  return {
+    processes: response.processes ?? [],
+    page: response.page ?? {
+      limit,
+      has_more: false,
+      next_cursor: "",
+    },
+    facets: response.facets,
+  };
 }
 
 export async function getProcess(

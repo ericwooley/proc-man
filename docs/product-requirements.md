@@ -29,8 +29,11 @@ Coding agents and scripts can register the same processes through the CLI or API
 
 ## Inventory
 
-- Show all processes on one primary page.
+- Show the most recently updated processes on the primary page.
+- Load older process definitions only after an explicit page action.
+- Limit each process page to 25 definitions.
 - Search labels, tags, commands, directories, and declared ports.
+- Apply inventory search and filters before pagination.
 - Filter by process kind.
 - Filter by an exact working directory.
 - Filter by one or more tags.

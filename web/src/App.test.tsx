@@ -61,8 +61,12 @@ beforeEach(() => {
   localStorage.clear();
   vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
     const url = String(input);
-    if (url === "/api/v1/processes") {
-      return json({ processes: [process, otherProcess] });
+    const parsed = new URL(url, "http://proc-man.test");
+    if (parsed.pathname === "/api/v1/processes") {
+      return json({
+        processes: [process, otherProcess],
+        page: { limit: 25, has_more: false, next_cursor: "" },
+      });
     }
     if (url === `/api/v1/processes/${process.id}`) {
       return json({ process, runs: [run] });
@@ -154,7 +158,7 @@ describe("App navigation", () => {
       target: { value: "/code/admin" },
     });
     expect(screen.queryByText("Storefront web")).not.toBeInTheDocument();
-    expect(screen.getByText("Admin worker")).toBeVisible();
+    expect(await screen.findByText("Admin worker")).toBeVisible();
 
     fireEvent.change(screen.getByRole("combobox", { name: "Filter by directory" }), {
       target: { value: "" },
@@ -162,7 +166,77 @@ describe("App navigation", () => {
     fireEvent.change(screen.getByRole("combobox", { name: "Group processes" }), {
       target: { value: "directory" },
     });
-    expect(screen.getByRole("button", { name: "/code/storefront, 1 process" })).toBeVisible();
+    expect(await screen.findByRole("button", { name: "/code/storefront, 1 process" })).toBeVisible();
     expect(screen.getByRole("button", { name: "/code/admin, 1 process" })).toBeVisible();
+  });
+
+  it("loads older process pages only after the user requests them", async () => {
+    const processRequests: string[] = [];
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      const parsed = new URL(url, "http://proc-man.test");
+      if (parsed.pathname !== "/api/v1/processes") {
+        return json({ error: { code: "not_found", message: "not found" } }, 404);
+      }
+      processRequests.push(url);
+      if (parsed.searchParams.get("query") === "admin") {
+        return json({
+          processes: [otherProcess],
+          page: { limit: 25, has_more: false, next_cursor: "" },
+        });
+      }
+      if (parsed.searchParams.get("cursor") === "older-cursor") {
+        return json({
+          processes: [otherProcess],
+          page: { limit: 25, has_more: false, next_cursor: "" },
+        });
+      }
+      return json({
+        processes: [process],
+        page: { limit: 25, has_more: true, next_cursor: "older-cursor" },
+        facets: {
+          tags: [
+            { value: "backend", count: 1 },
+            { value: "frontend", count: 1 },
+          ],
+          directories: [
+            { value: "/code/admin", count: 1 },
+            { value: "/code/storefront", count: 1 },
+          ],
+        },
+      });
+    }));
+
+    render(
+      <MemoryRouter initialEntries={["/"]}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText("Storefront web")).toBeVisible();
+    expect(processRequests[0]).toBe("/api/v1/processes?limit=25");
+    expect(processRequests.some((request) => request.includes("cursor="))).toBe(false);
+    expect(within(screen.getByRole("combobox", { name: "Filter by directory" }))
+      .getByRole("option", { name: "/code/admin (1)" })).toBeVisible();
+
+    fireEvent.click(screen.getByRole("button", { name: "Older processes" }));
+    expect(await screen.findByText("Admin worker")).toBeVisible();
+    expect(processRequests).toContain(
+      "/api/v1/processes?limit=25&cursor=older-cursor",
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Newer processes" }));
+    expect(await screen.findByText("Storefront web")).toBeVisible();
+
+    fireEvent.click(screen.getByRole("button", { name: "Older processes" }));
+    expect(await screen.findByText("Admin worker")).toBeVisible();
+
+    fireEvent.change(screen.getByPlaceholderText("Search label, tag, port, command, or path"), {
+      target: { value: "admin" },
+    });
+    await waitFor(() => {
+      expect(processRequests).toContain("/api/v1/processes?query=admin&limit=25");
+    });
+    expect(await screen.findByText("Admin worker")).toBeVisible();
   });
 });
