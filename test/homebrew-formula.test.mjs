@@ -32,8 +32,11 @@ test("renderFormula inserts the version and required checksums", async () => {
   assert.match(result, new RegExp(`sha256 "${"1".repeat(64)}"`));
   assert.match(result, new RegExp(`sha256 "${"4".repeat(64)}"`));
   assert.doesNotMatch(result, /__[A-Z0-9_]+__/);
-  assert.doesNotMatch(result, /def post_install/);
-  assert.match(result, /proc-man daemon install --now/);
+  assert.match(
+    result,
+    /def post_install[\s\S]*return unless quiet_system bin\s*\/\s*"proc-man", "daemon", "status"[\s\S]*system bin\s*\/\s*"proc-man", "daemon", "install", "--now"/,
+  );
+  assert.match(result, /Formula reloads a running proc-man user service/);
 });
 
 test("renderFormula rejects an invalid version", () => {

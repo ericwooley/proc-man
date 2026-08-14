@@ -17,7 +17,9 @@ Each release also contains `checksums.txt`.
 The release workflow publishes a Homebrew Formula to `ericwooley/homebrew-apps`.
 The Formula supports macOS and Linux.
 The Formula installs the proc-man executable.
-Run `proc-man daemon install --now` after installation or upgrade.
+Run `proc-man daemon install --now` after the first installation.
+The Formula reloads a running user service during an upgrade.
+The Formula leaves a stopped user service stopped.
 Remove the user service before removing the Formula.
 Create that repository before the first release.
 

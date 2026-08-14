@@ -66,7 +66,9 @@ proc-man daemon install --now
 The command installs the user service and starts it immediately.
 The generated service file records the current executable path.
 
-Run this command after Homebrew installation and upgrades.
+Run this command after the first Homebrew installation.
+The Homebrew Formula reloads a running user service during an upgrade.
+The Formula leaves a stopped user service stopped.
 Run `proc-man daemon uninstall` before Homebrew removes the Formula.
 
 Check the installed daemon:

@@ -155,8 +155,18 @@ jobs:
             "$RUNNER_TEMP/proc-man-help.txt"
           expected_version="${RELEASE_TAG#v}"
           proc-man --version | grep -F "proc-man version $expected_version"
+          if launchctl print "gui/$(id -u)/dev.proc-man" > /dev/null 2>&1; then
+            printf 'Formula installation started the daemon unexpectedly.\n' >&2
+            exit 1
+          fi
           run_bounded 60 proc-man daemon install --now
-          launchctl print "gui/$(id -u)/dev.proc-man"
+          daemon_target="gui/$(id -u)/dev.proc-man"
+          daemon_pid_before="$(launchctl print "$daemon_target" | awk '/pid =/ { print $3; exit }')"
+          test -n "$daemon_pid_before"
+          run_bounded 60 brew postinstall ericwooley/apps/proc-man
+          daemon_pid_after="$(launchctl print "$daemon_target" | awk '/pid =/ { print $3; exit }')"
+          test -n "$daemon_pid_after"
+          test "$daemon_pid_before" != "$daemon_pid_after"
           for attempt in {1..10}; do
             if curl --fail --silent http://127.0.0.1:13337/ > /dev/null; then
               exit 0

@@ -153,6 +153,9 @@ brew update
 brew upgrade ericwooley/apps/proc-man
 ```
 
+The Formula reloads a running user service during an upgrade.
+The Formula leaves a stopped user service stopped.
+
 Remove proc-man and its tap:
 
 ```sh
@@ -182,7 +185,8 @@ proc-man daemon install --now
 
 The command installs and starts a systemd user service on Linux.
 The command installs and starts a per-user LaunchAgent on macOS.
-Run this command after Homebrew installation and upgrades.
+Run this command after the first Homebrew installation.
+Homebrew upgrades reload a running user service.
 
 ## Test
 

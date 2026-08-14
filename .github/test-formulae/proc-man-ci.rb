@@ -11,6 +11,12 @@ class ProcManCi < Formula
     bin.install "proc-man"
   end
 
+  def post_install
+    return unless quiet_system bin/"proc-man", "daemon", "status"
+
+    system bin/"proc-man", "daemon", "install", "--now"
+  end
+
   test do
     system bin/"proc-man", "--help"
   end

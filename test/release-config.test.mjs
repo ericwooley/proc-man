@@ -23,8 +23,10 @@ test("release configuration builds all supported desktop systems", async () => {
   assert.match(configuration, /files:\s*[\s\S]*- LICENSE[\s\S]*- README\.md/);
   assert.match(formula, /on_macos do[\s\S]*on_intel do[\s\S]*on_arm do/);
   assert.match(formula, /on_linux do[\s\S]*on_intel do[\s\S]*on_arm do/);
-  assert.doesNotMatch(formula, /def post_install/);
-  assert.match(formula, /proc-man daemon install --now/);
+  assert.match(
+    formula,
+    /def post_install[\s\S]*return unless quiet_system bin\s*\/\s*"proc-man", "daemon", "status"[\s\S]*system bin\s*\/\s*"proc-man", "daemon", "install", "--now"/,
+  );
 });
 
 test("main workflow versions Conventional Commits and publishes release artifacts", async () => {
@@ -56,6 +58,7 @@ test("main workflow versions Conventional Commits and publishes release artifact
   assert.doesNotMatch(workflow, /Casks\/proc-man\.rb/);
   assert.doesNotMatch(workflow, /gh api --method DELETE/);
   assert.match(workflow, /proc-man daemon install --now/);
+  assert.match(workflow, /brew postinstall ericwooley\/apps\/proc-man/);
   assert.match(workflow, /launchctl print/);
 });
 
@@ -85,6 +88,7 @@ test("macOS ARM64 Formula checks CLI startup and LaunchAgent installation", asyn
   assert.match(workflow, /mkdir -p "\$tap_path\/Formula"/);
   assert.match(workflow, /proc-man --help/);
   assert.match(workflow, /proc-man daemon install --now/);
+  assert.match(workflow, /brew postinstall proc-man\/ci\/proc-man-ci/);
   assert.match(workflow, /launchctl print/);
   assert.match(workflow, /brew install proc-man\/ci\/proc-man-ci/);
   assert.doesNotMatch(workflow, /brew install --cask/);
